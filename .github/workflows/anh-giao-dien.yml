@@ -42,14 +42,19 @@ jobs:
           name: anh-giao-dien
           path: anh-giao-dien/
           if-no-files-found: error
+          # Ảnh nhẹ nhưng cũng không giữ lâu làm gì; gói Free chỉ có 500 MB kho lưu.
+          retention-days: 14
 
+      # Bản .exe nặng ~163 MB, giữ mỗi lần push là 3 lần đầy kho.
+      # Chỉ đóng gói khi tự bấm chạy (tab Actions -> Run workflow).
       - name: Đóng gói bản chạy được (.exe)
-        if: always()
+        if: github.event_name == 'workflow_dispatch'
         run: dotnet publish src/QuanLyDienNuoc -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ban-chay
 
       - name: Gửi bản .exe về
-        if: always()
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: QuanLyDienNuoc-win-x64
           path: ban-chay/
+          retention-days: 3
