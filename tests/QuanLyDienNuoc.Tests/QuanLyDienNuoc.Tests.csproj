@@ -20,11 +20,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Mẫu hoá đơn và các file hoá đơn cũ thật, dùng để kiểm thử xuất/nhập Excel. -->
+    <!-- Mẫu hoá đơn của cửa hàng. -->
     <None Include="..\..\src\QuanLyDienNuoc\MauHoaDon\*.xls"
           Link="MauHoaDon\%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\docs\hoa-don-mau\*.xls"
+    <!--
+      Hoá đơn cũ dùng làm dữ liệu kiểm thử. Đây là bản đã ẩn danh của hoá đơn thật:
+      giữ nguyên cấu trúc file (số tab, sheet biểu đồ, các ô lệch chuẩn) nhưng tên
+      khách, số điện thoại và số tài khoản đã bị thay. Bản gốc nằm ở docs/hoa-don-mau/
+      và không đưa lên git.
+    -->
+    <None Include="HoaDonMau\*.xls"
           Link="HoaDonCu\%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

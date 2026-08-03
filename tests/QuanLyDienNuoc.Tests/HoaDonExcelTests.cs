@@ -60,7 +60,7 @@ public class HoaDonExcelTests : IDisposable
     [Fact]
     public void Xuat_RoiDoc_GiuNguyenDuLieu()
     {
-        var khach = new KhachHang { Ten = "Ông Long", DiaChi = "Xóm 5 Hải Minh" };
+        var khach = new KhachHang { Ten = "Ông Mẫu", DiaChi = "Xóm 5" };
         var hoaDon = new HoaDon { MaHoaDon = "HD2026-01" };
         for (var i = 1; i <= 40; i++)
         {
@@ -83,7 +83,7 @@ public class HoaDonExcelTests : IDisposable
 
         Assert.Equal(2, doc.Trang.Count);                       // 40 dòng => 2 trang
         Assert.Equal(40, doc.TongSoDong);
-        Assert.Equal("Ông Long", doc.TenKhach);
+        Assert.Equal("Ông Mẫu", doc.TenKhach);
         Assert.Equal(new DateTime(2026, 8, 3), doc.NgayTrenHoaDon);
         Assert.Equal(hoaDon.TongTien, doc.Trang.Sum(t => t.TongTien));
 
@@ -112,6 +112,47 @@ public class HoaDonExcelTests : IDisposable
     }
 
     [Fact]
+    public void Xuat_DungFileGocNhieuTab_LayDungTabMauVaBoTabThua()
+    {
+        // Thả thẳng hai file hoá đơn gốc vào thư mục mẫu: to1 có 3 tab, to2 có 4 tab (kèm tab biểu đồ).
+        Directory.CreateDirectory(_thuMucTam);
+        var thuMucMau = Path.Combine(_thuMucTam, "MauGoc");
+        Directory.CreateDirectory(thuMucMau);
+        File.Copy(Path.Combine(ThuMucHoaDonCu, "to1.xls"), Path.Combine(thuMucMau, MauHoaDon.TenFileTrang1));
+        File.Copy(Path.Combine(ThuMucHoaDonCu, "to2.xls"), Path.Combine(thuMucMau, MauHoaDon.TenFileTrangSau));
+
+        var khach = new KhachHang { Ten = "Chú Hải", DiaChi = "Hải Minh" };
+        var hoaDon = new HoaDon { MaHoaDon = "HD2026-09" };
+        for (var i = 1; i <= 35; i++)
+        {
+            hoaDon.ChiTiet.Add(new ChiTietHoaDon { TenHang = $"Van khoá {i}", DonVi = "Cái", DonGia = 55000, SoLuong = 1 });
+        }
+
+        var fileRa = Path.Combine(_thuMucTam, "tu-file-goc.xls");
+        XuatHoaDon.Xuat(hoaDon, khach, fileRa, thuMucMau);
+
+        var doc = DocHoaDon.Doc(fileRa, DateTime.Today);
+
+        // Chỉ còn đúng hai trang, không dính tab "mau hoa don cũ" (chứa số tài khoản) hay "Chart1".
+        Assert.Equal(new[] { "Trang 1", "Trang 2" }, doc.Trang.Select(t => t.TenSheet).ToArray());
+        Assert.Equal(35, doc.TongSoDong);
+        Assert.Equal("Chú Hải", doc.TenKhach);
+        Assert.Equal(hoaDon.TongTien, doc.Trang.Sum(t => t.TongTien));
+
+        // Dữ liệu cũ trong file mẫu phải bị dọn sạch, không lẫn vào hoá đơn mới.
+        Assert.All(doc.Trang, t => Assert.All(t.Dong, d => Assert.StartsWith("Van khoá", d.TenHang)));
+    }
+
+    [Fact]
+    public void ThongTinCuaHang_DocDuocPhanDauTuTabDungTen()
+    {
+        var cuaHang = ThongTinCuaHang.DocTuMau(ThuMucMau);
+
+        Assert.Contains("ĐIỆN NƯỚC", cuaHang.Ten);
+        Assert.Contains("HÓA ĐƠN BÁN HÀNG", cuaHang.TieuDe);
+    }
+
+    [Fact]
     public void Doc_BoQuaSheetBieuDoCuaFileCu()
     {
         // to2.xls có sheet "Chart1" chứa dữ liệu biểu đồ xoay ngang, không phải bảng hàng.
@@ -133,7 +174,7 @@ public class HoaDonExcelTests : IDisposable
         var doc = DocHoaDon.Doc(file, new DateTime(2026, 8, 3));
         var trangDau = doc.Trang[0];
 
-        Assert.Equal("Ông Long", trangDau.TenKhach);
+        Assert.Equal("Ông Mẫu", trangDau.TenKhach);
         Assert.Equal(32, trangDau.Dong.Count);
         Assert.Equal(2507900m, trangDau.TongTien);
         Assert.Equal("Ống 90", trangDau.Dong[0].TenHang);
