@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>QuanLyDienNuoc</RootNamespace>
+    <AssemblyName>QuanLyDienNuoc</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationDefaultFont>Segoe UI, 12pt</ApplicationDefaultFont>
+    <Product>Quản lý đơn hàng cửa hàng điện nước</Product>
+    <AssemblyTitle>Quản lý đơn hàng cửa hàng điện nước</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <!-- Cho phép biên dịch (không chạy) trên macOS/Linux để kiểm lỗi Forms. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\QuanLyDienNuoc.Core\QuanLyDienNuoc.Core.csproj" />
+  </ItemGroup>
+
+</Project>
