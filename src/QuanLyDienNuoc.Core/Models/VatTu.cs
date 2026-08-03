@@ -9,6 +9,9 @@ public sealed class VatTu
 
     public string DonVi { get; set; } = string.Empty;
 
+    /// <summary>Gõ tắt do cửa hàng tự đặt: gõ "o27" ở ô tên hàng là ra "Ống nhựa PVC D27".</summary>
+    public string MaTat { get; set; } = string.Empty;
+
     /// <summary>Giá dùng khi khách chưa có giá riêng.</summary>
     public decimal DonGiaMacDinh { get; set; }
 

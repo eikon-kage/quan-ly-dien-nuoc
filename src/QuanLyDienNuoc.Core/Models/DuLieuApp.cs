@@ -8,4 +8,6 @@ public sealed class DuLieuApp
     public List<VatTu> VatTus { get; set; } = new();
 
     public List<HoaDon> HoaDons { get; set; } = new();
+
+    public List<BoHang> BoHangs { get; set; } = new();
 }
