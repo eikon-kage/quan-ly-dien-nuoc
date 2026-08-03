@@ -75,7 +75,7 @@ public sealed class NhapNhieuDongForm : Form
         var oNen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat, Padding = new Padding(20, 10, 20, 10) };
         var nhan = new Label
         {
-            Text = "GÕ VÀO ĐÂY   —   ví dụ:  ống 27 x10, co 90 x5, keo dán ống x1 @8000",
+            Text = "GÕ VÀO ĐÂY   —   ví dụ:  ống 27 x10, co 90 x5, keo dán ống x1 @8000   ·   trả lại thì viết số âm: ống 27 x-2",
             Font = Theme.FontNhan,
             ForeColor = Theme.Xam,
             Dock = DockStyle.Top,
@@ -156,7 +156,7 @@ public sealed class NhapNhieuDongForm : Form
                     DonGia = gia,
                     SoLuong = muc.SoLuong,
                     ThanhTien = Math.Round(gia * muc.SoLuong, 0, MidpointRounding.AwayFromZero),
-                    TinhTrang = MoTaTinhTrang(vatTu, gia),
+                    TinhTrang = MoTaTinhTrang(vatTu, gia, muc.SoLuong),
                     CanChuY = vatTu is null || gia <= 0m,
                 });
             }
@@ -169,10 +169,11 @@ public sealed class NhapNhieuDongForm : Form
         _lblTong.Text = $"{_nguon.Count} dòng   ·   Tạm tính: {So.Tien(tong)}";
     }
 
-    private static string MoTaTinhTrang(VatTu? vatTu, decimal gia) => vatTu switch
+    private static string MoTaTinhTrang(VatTu? vatTu, decimal gia, decimal soLuong) => vatTu switch
     {
         null => "Hàng mới — sẽ thêm vào danh mục",
         _ when gia <= 0m => "Chưa có giá — nhớ sửa lại",
+        _ when soLuong < 0m => "Khách trả lại — trừ vào hoá đơn",
         _ => "Có sẵn, dùng giá của khách",
     };
 

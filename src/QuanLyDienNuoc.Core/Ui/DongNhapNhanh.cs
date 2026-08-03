@@ -10,6 +10,7 @@ public sealed record MucNhapNhanh(string Ten, decimal SoLuong, decimal? DonGia);
 /// <c>ống 27 x10, co 90 x5, keo x1</c>. Số lượng phải đứng sau dấu <c>x</c> (hoặc <c>*</c>)
 /// để tên hàng có sẵn số như "ống 27" không bị hiểu nhầm là số lượng.
 /// Muốn ghi luôn giá thì thêm <c>@</c>: <c>ống 27 x10 @45000</c>.
+/// Số lượng âm là hàng khách trả lại: <c>ống 27 x-2</c>.
 /// </summary>
 public static partial class DongNhapNhanh
 {
@@ -43,8 +44,9 @@ public static partial class DongNhapNhanh
                 continue;
             }
 
+            // Số âm là dòng trả lại hàng: "ống 27 x-2".
             var soLuong = So.Doc(khop.Groups["sl"].Value);
-            if (soLuong <= 0)
+            if (soLuong == 0m)
             {
                 soLuong = 1m;
             }
@@ -63,7 +65,7 @@ public static partial class DongNhapNhanh
     }
 
     // "ten" tham lam nên dấu nhân cuối cùng mới được tính: "ống 27 x10" ra tên "ống 27", số lượng 10.
-    [GeneratedRegex(@"^(?<ten>.+)[x*×]\s*(?<sl>[\d.,]+)\s*(?:@\s*(?<gia>[\d.,]+))?$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^(?<ten>.+)[x*×]\s*(?<sl>-?[\d.,]+)\s*(?:@\s*(?<gia>[\d.,]+))?$", RegexOptions.IgnoreCase)]
     private static partial Regex MauMuc();
 
     // Dấu phẩy vừa là dấu ngăn món vừa là dấu thập phân kiểu Việt Nam, nên phẩy nằm giữa

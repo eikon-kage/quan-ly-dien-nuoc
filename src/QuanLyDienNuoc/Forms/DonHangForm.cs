@@ -164,9 +164,13 @@ public sealed class DonHangForm : Form
         btnBangGia.Margin = new Padding(0, 8, 10, 0);
         btnBangGia.Click += (_, _) => MoBangGia();
 
-        var btnThanhToan = Theme.Nut("Thanh toán", Theme.Xanh, 160, 42);
+        var btnThanhToan = Theme.NutPhu("Trả cho hoá đơn này", 210, 42);
         btnThanhToan.Margin = new Padding(0, 8, 10, 0);
         btnThanhToan.Click += (_, _) => MoThanhToan();
+
+        var btnThuTien = Theme.Nut("THU TIỀN CỦA KHÁCH", Theme.Xanh, 250, 42);
+        btnThuTien.Margin = new Padding(0, 8, 10, 0);
+        btnThuTien.Click += (_, _) => MoThuTien();
 
         var btnNhacNo = Theme.NutPhu("Nhắc nợ", 140, 42);
         btnNhacNo.Margin = new Padding(0, 8, 10, 0);
@@ -187,6 +191,7 @@ public sealed class DonHangForm : Form
         phai.Controls.Add(btnBangGia);
         phai.Controls.Add(btnNhacNo);
         phai.Controls.Add(btnThanhToan);
+        phai.Controls.Add(btnThuTien);
         phai.Controls.Add(_btnLamLai);
         phai.Controls.Add(_btnHoanTac);
 
@@ -392,6 +397,9 @@ public sealed class DonHangForm : Form
         var btnThem = Theme.Nut("+  THÊM DÒNG", Theme.Xanh, 190, 34);
         btnThem.Click += (_, _) => ThemDong();
 
+        var btnTraLai = Theme.Nut("−  TRẢ LẠI", Theme.Do, 160, 34);
+        btnTraLai.Click += (_, _) => ThemDong(traLai: true);
+
         var hang = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -404,9 +412,10 @@ public sealed class DonHangForm : Form
         hang.Controls.Add(Theme.Truong("TÊN HÀNG (gõ tắt cũng ra: \"o27\", \"27 ong\")", _cboHang, 330));
         hang.Controls.Add(Theme.Truong("ĐƠN VỊ", _txtDonVi, 110));
         hang.Controls.Add(Theme.Truong("ĐƠN GIÁ (tính được: 3+2*4)", _txtDonGia, 150));
-        hang.Controls.Add(Theme.Truong("SỐ LƯỢNG", _txtSoLuong, 120));
+        hang.Controls.Add(Theme.Truong("SỐ LƯỢNG (số âm là trả lại)", _txtSoLuong, 120));
         hang.Controls.Add(Theme.Truong("THÀNH TIỀN", _lblTamTinh, 170));
         hang.Controls.Add(Theme.Truong(" ", btnThem, 190));
+        hang.Controls.Add(Theme.Truong(" ", btnTraLai, 160));
 
         GanPhimEnter(_cboHang);
         GanPhimEnter(_txtDonVi);
@@ -530,11 +539,23 @@ public sealed class DonHangForm : Form
                 return;
             }
 
-            if (_luoiCT.Columns[e.ColumnIndex].DataPropertyName == nameof(ChiTietHoaDon.ThanhTien)
-                && e.CellStyle is { } kieu)
+            if (e.CellStyle is not { } kieu)
+            {
+                return;
+            }
+
+            var cot = _luoiCT.Columns[e.ColumnIndex].DataPropertyName;
+            if (cot == nameof(ChiTietHoaDon.ThanhTien))
             {
                 kieu.Font = Theme.FontLuoiDam;
                 kieu.BackColor = Color.FromArgb(248, 250, 253);
+            }
+
+            // Dòng khách trả lại hàng: số âm, tô đỏ cho khỏi đọc nhầm thành hàng đã lấy.
+            if (_luoiCT.Rows[e.RowIndex].DataBoundItem is ChiTietHoaDon { LaTraLai: true }
+                && cot is nameof(ChiTietHoaDon.SoLuong) or nameof(ChiTietHoaDon.ThanhTien))
+            {
+                kieu.ForeColor = Theme.Do;
             }
         };
 
@@ -795,9 +816,13 @@ public sealed class DonHangForm : Form
 
     // ---------------- Thao tác trên dòng hàng ----------------
 
-    private void ThemDong()
+    /// <summary>
+    /// Thêm một dòng hàng. <paramref name="traLai"/> là khách trả hàng về: số lượng ghi số âm
+    /// nên thành tiền trừ bớt vào hoá đơn, in ra có dấu trừ.
+    /// </summary>
+    private void ThemDong(bool traLai = false)
     {
-        if (Khach is not { } khach)
+        if (Khach is not { } khach || HopThoai.ChanKhiChiXem(this, _kho))
         {
             return;
         }
@@ -811,9 +836,18 @@ public sealed class DonHangForm : Form
         }
 
         var soLuong = So.Tinh(_txtSoLuong.Text);
-        if (soLuong <= 0)
+        if (traLai)
         {
-            HopThoai.CanhBao(this, "Hãy nhập số lượng lớn hơn 0.\n\nGõ được cả phép tính, ví dụ: 3+2*4");
+            soLuong = -Math.Abs(soLuong);
+        }
+
+        if (soLuong == 0)
+        {
+            HopThoai.CanhBao(
+                this,
+                "Hãy nhập số lượng khác 0.\n\n" +
+                "Gõ được cả phép tính, ví dụ: 3+2*4.\n" +
+                "Khách trả lại hàng thì bấm nút TRẢ LẠI, hoặc gõ số âm: -2");
             _txtSoLuong.Focus();
             _txtSoLuong.SelectAll();
             return;
@@ -895,10 +929,24 @@ public sealed class DonHangForm : Form
             return;
         }
 
+        if (KiemTra.TraLaiQuaSoDaMua(_kho.HoaDonCuaKhach(_khachId), ten, vatTu?.Id, soLuong) is { } dangGiu
+            && !HopThoai.Hoi(
+                this,
+                $"Sổ đang ghi khách giữ {So.Luong(dangGiu)} \"{ten}\", " +
+                $"lần này trả lại {So.Luong(Math.Abs(soLuong))}.\n\n" +
+                "Vẫn ghi trả lại chừng này?"))
+        {
+            _txtSoLuong.Focus();
+            _txtSoLuong.SelectAll();
+            return;
+        }
+
         // Hỏi trước khi ghi để mọi thay đổi nằm gọn trong một bước hoàn tác.
         var vatTuMoi = vatTu is null;
         var luuGiaRieng = vatTuMoi;
-        if (vatTu is not null && donGia > 0)
+
+        // Dòng trả lại chỉ trả hàng về, không phải lần bán mới nên đừng đổi giá riêng của khách.
+        if (vatTu is not null && donGia > 0 && soLuong > 0)
         {
             var coGiaCu = khach.BangGiaRieng.TryGetValue(vatTu.Id, out var giaCu) && giaCu > 0;
             if (!coGiaCu)
@@ -923,7 +971,11 @@ public sealed class DonHangForm : Form
             SoLuong = soLuong,
         };
 
-        _kho.ThucHien($"Thêm \"{ten}\" ngày {ngay:dd/MM/yyyy}", () =>
+        var moTa = soLuong < 0
+            ? $"Trả lại \"{ten}\" ngày {ngay:dd/MM/yyyy}"
+            : $"Thêm \"{ten}\" ngày {ngay:dd/MM/yyyy}";
+
+        _kho.ThucHien(moTa, () =>
         {
             if (vatTu is null)
             {
@@ -959,7 +1011,9 @@ public sealed class DonHangForm : Form
         NapHoaDon(hoaDon.Id);
         NapChiTiet(dongMoi.Id);
 
-        _lblTrangThai.Text = $"Đã thêm: {ten} × {So.Luong(soLuong)} = {So.Tien(dongMoi.ThanhTien)}"
+        _lblTrangThai.Text = (soLuong < 0
+                ? $"Đã ghi trả lại: {ten} × {So.Luong(Math.Abs(soLuong))} = {So.Tien(dongMoi.ThanhTien)}"
+                : $"Đã thêm: {ten} × {So.Luong(soLuong)} = {So.Tien(dongMoi.ThanhTien)}")
             + (taoHoaDonMoi ? $" (tự tạo hoá đơn {hoaDon.MaHoaDon})" : string.Empty);
 
         // Sẵn sàng cho dòng tiếp theo, giữ nguyên ngày để nhập nhanh nhiều dòng cùng ngày.
@@ -1506,6 +1560,19 @@ public sealed class DonHangForm : Form
         using var form = new ThanhToanForm(hoaDon.Id);
         form.ShowDialog(this);
         NapHoaDon(hoaDon.Id);
+    }
+
+    private void MoThuTien()
+    {
+        if (Khach is null)
+        {
+            return;
+        }
+
+        using var form = new ThuTienForm(_khachId);
+        form.ShowDialog(this);
+        NapHoaDon(_hoaDonId);
+        _lblTrangThai.Text = "Đã cập nhật tiền khách trả.";
     }
 
     private void MoBangGia()

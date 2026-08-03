@@ -43,6 +43,43 @@ public class HoaDonExcelTests : IDisposable
     }
 
     [Fact]
+    public void Xuat_RoiDoc_GiuNguyenDongTraLai()
+    {
+        var khach = new KhachHang { Ten = "Ông Mẫu" };
+        var hoaDon = new HoaDon { MaHoaDon = "HD2026-01" };
+        hoaDon.ChiTiet.Add(new ChiTietHoaDon
+        {
+            Ngay = new DateTime(2026, 3, 1),
+            TenHang = "Ống 27",
+            DonVi = "Cây",
+            DonGia = 45000,
+            SoLuong = 10,
+        });
+        hoaDon.ChiTiet.Add(new ChiTietHoaDon
+        {
+            Ngay = new DateTime(2026, 3, 2),
+            TenHang = "Ống 27 (trả lại)",
+            DonVi = "Cây",
+            DonGia = 45000,
+            SoLuong = -2,
+        });
+
+        var fileRa = Path.Combine(_thuMucTam, "hoa-don-tra-lai.xls");
+        XuatHoaDon.Xuat(hoaDon, khach, fileRa, ThuMucMau, new DateTime(2026, 8, 3));
+
+        var doc = DocHoaDon.Doc(fileRa, new DateTime(2026, 1, 1));
+        var dongTraLai = doc.Trang[0].Dong[1];
+
+        Assert.Equal(-2m, dongTraLai.SoLuong);
+        Assert.Equal(45000m, dongTraLai.DonGia);
+        Assert.Equal(-90_000m, dongTraLai.ThanhTien);
+
+        // Tổng của tờ hoá đơn đã trừ phần trả lại.
+        Assert.Equal(360_000m, doc.Trang[0].TongTien);
+        Assert.Equal(hoaDon.TongTien, doc.Trang.Sum(t => t.TongTien));
+    }
+
+    [Fact]
     public void ChiaTrang_SapXepTheoNgay()
     {
         var chiTiet = new List<ChiTietHoaDon>

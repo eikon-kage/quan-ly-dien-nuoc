@@ -154,7 +154,8 @@ public static class DocHoaDon
             var thanhTien = LaySo(hang, cot.ThanhTien);
 
             // Hoá đơn cũ hay chỉ ghi thành tiền mà bỏ trống đơn giá.
-            if (donGia == 0 && thanhTien > 0 && soLuong > 0)
+            // Dòng trả lại có số lượng và thành tiền cùng âm nên chia ra vẫn đúng đơn giá.
+            if (donGia == 0 && thanhTien != 0 && soLuong != 0)
             {
                 donGia = Math.Round(thanhTien / soLuong, 0, MidpointRounding.AwayFromZero);
                 trang.CanhBao.Add($"\"{tenHang}\": thiếu đơn giá, đã tự tính {So.Tien(donGia)} từ thành tiền.");

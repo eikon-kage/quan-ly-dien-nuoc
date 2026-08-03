@@ -309,6 +309,15 @@ public sealed class SaoLuuForm : Form
             return;
         }
 
+        // Khôi phục là chép đè thẳng lên file dữ liệu, máy khác đang mở thì tuyệt đối không được.
+        if (_kho.ChiXem)
+        {
+            HopThoai.CanhBao(
+                this,
+                $"Đang mở ở chế độ CHỈ XEM nên không khôi phục được.\n\n{_kho.LyDoChiXem}.");
+            return;
+        }
+
         if (!HopThoai.Hoi(
                 this,
                 $"Khôi phục dữ liệu từ bản lúc {ban.TenHienThi}?\n\n" +

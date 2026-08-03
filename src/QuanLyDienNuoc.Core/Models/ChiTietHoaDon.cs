@@ -22,6 +22,10 @@ public sealed class ChiTietHoaDon
 
     public string GhiChu { get; set; } = string.Empty;
 
+    /// <summary>Dòng khách trả lại hàng: số lượng âm nên thành tiền trừ đi khỏi hoá đơn.</summary>
+    [JsonIgnore]
+    public bool LaTraLai => SoLuong < 0m;
+
     [JsonIgnore]
     public decimal ThanhTien => Math.Round(DonGia * SoLuong, 0, MidpointRounding.AwayFromZero);
 }

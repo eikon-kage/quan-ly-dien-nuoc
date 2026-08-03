@@ -47,6 +47,7 @@ public static class ChupAnhGiaoDien
             loi += ChupForm(thuMucRa, "05-bang-gia-rieng", () => new BangGiaForm(khach.Id));
             loi += ChupForm(thuMucRa, "06-danh-muc-vat-tu", () => new VatTuForm());
             loi += ChupForm(thuMucRa, "07-thanh-toan", () => new ThanhToanForm(hoaDon.Id));
+            loi += ChupForm(thuMucRa, "07b-thu-tien-cua-khach", () => new ThuTienForm(khach.Id));
             loi += ChupForm(thuMucRa, "08-tao-hoa-don", () => new HoaDonForm(null, "HD2026-03", 2026));
             loi += ChupForm(thuMucRa, "09-nhap-tu-excel", () => new NhapExcelForm(khach.Id, 2026, hoaDon.Id, fileExcel));
             loi += ChupForm(thuMucRa, "11-so-cong-no", () => new CongNoForm());
@@ -223,6 +224,10 @@ public static class ChupAnhGiaoDien
             ("Tháo + lắp điều hoà", "Công", 450000, 1, 40),
             ("Công đục + cắt bê tông", "Công", 600000, 1, 52),
             ("Công làm", "Công", 300000, 2, 52),
+
+            // Khách trả lại hàng thừa: số lượng âm nên thành tiền trừ bớt vào hoá đơn.
+            ("Ống 21", "m", 17000, -1.7m, 55),
+            ("Băng tan", "Cuộn", 5000, -2, 55),
         };
 
         foreach (var (ten, donVi, gia, soLuong, ngayLech) in hang)
@@ -251,10 +256,16 @@ public static class ChupAnhGiaoDien
         };
         hoaDonCu.ChiTiet.Add(new ChiTietHoaDon { Ngay = new DateTime(2026, 6, 2), TenHang = "Bồn 1000", DonVi = "Cái", DonGia = 2150000, SoLuong = 1 });
         hoaDonCu.ChiTiet.Add(new ChiTietHoaDon { Ngay = new DateTime(2026, 6, 3), TenHang = "Chân giá bình nóng", DonVi = "Bộ", DonGia = 10000, SoLuong = 1 });
-        hoaDonCu.ThanhToans.Add(new ThanhToan { Ngay = new DateTime(2026, 6, 28), SoTien = 2160000 });
+        hoaDonCu.ThanhToans.Add(new ThanhToan { Ngay = new DateTime(2026, 6, 28), SoTien = 1000000 });
 
         kho.DuLieu.HoaDons.Add(hoaDon);
         kho.DuLieu.HoaDons.Add(hoaDonCu);
+
+        // Một lần khách đưa tiền trả cho cả hai hoá đơn, tự chia từ hoá đơn cũ nhất.
+        BaoCao.ThuTien.Ghi(
+            BaoCao.ThuTien.Chia(new[] { hoaDon, hoaDonCu }, 2_000_000m),
+            new DateTime(2026, 7, 2),
+            "Trả gộp cuối tháng");
 
         // Vài hoá đơn của khách khác cho trang chủ có số liệu
         var rong = new HoaDon

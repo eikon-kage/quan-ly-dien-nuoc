@@ -23,11 +23,17 @@ public sealed class MainForm : Form
     private readonly Button _btnHoanTac = Theme.NutPhu("↶  Hoàn tác", 160);
     private readonly Button _btnLamLai = Theme.NutPhu("↷  Làm lại", 150);
 
+    /// <summary>Thỉnh thoảng ngó lại file dữ liệu xem máy khác có sửa không.</summary>
+    private readonly System.Windows.Forms.Timer _dongHoNgoFile = new() { Interval = 20_000 };
+
     private bool _dangNap;
+    private bool _daBaoFileBiSua;
 
     public MainForm()
     {
-        Text = "Quản lý đơn hàng – Cửa hàng điện nước";
+        Text = _kho.ChiXem
+            ? "Quản lý đơn hàng – Cửa hàng điện nước  [CHỈ XEM]"
+            : "Quản lý đơn hàng – Cửa hàng điện nước";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(1180, 720);
         Size = new Size(1440, 860);
@@ -39,7 +45,16 @@ public sealed class MainForm : Form
         TaoGiaoDien();
 
         _kho.DuLieuThayDoi += Kho_DuLieuThayDoi;
-        FormClosed += (_, _) => _kho.DuLieuThayDoi -= Kho_DuLieuThayDoi;
+        _kho.ThaoTacBiChan += Kho_ThaoTacBiChan;
+        FormClosed += (_, _) =>
+        {
+            _kho.DuLieuThayDoi -= Kho_DuLieuThayDoi;
+            _kho.ThaoTacBiChan -= Kho_ThaoTacBiChan;
+            _dongHoNgoFile.Stop();
+        };
+
+        _dongHoNgoFile.Tick += (_, _) => NgoFileDuLieu();
+        _dongHoNgoFile.Start();
 
         NapNam();
         NapDanhSach();
@@ -206,6 +221,9 @@ public sealed class MainForm : Form
         var btnMo = Theme.Nut("MỞ ĐƠN HÀNG", Theme.Chinh, 230, 52);
         btnMo.Click += (_, _) => MoDonHang();
 
+        var btnThuTien = Theme.Nut("THU TIỀN", Theme.Xanh, 180, 52);
+        btnThuTien.Click += (_, _) => ThuTienCuaKhach();
+
         var btnSua = Theme.NutPhu("Sửa khách", 150, 52);
         btnSua.Click += (_, _) => SuaKhach();
 
@@ -220,6 +238,7 @@ public sealed class MainForm : Form
             WrapContents = false,
         };
         trai.Controls.Add(btnMo);
+        trai.Controls.Add(btnThuTien);
         trai.Controls.Add(btnSua);
         trai.Controls.Add(btnXoa);
 
@@ -242,7 +261,17 @@ public sealed class MainForm : Form
         _lblTrangThai.ForeColor = Theme.Xam;
         _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
         _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
-        _lblTrangThai.Text = $"Ctrl+Z hoàn tác · Ctrl+Y làm lại · F6 sổ công nợ · Dữ liệu: {_kho.DuongDanFile}";
+
+        if (_kho.ChiXem)
+        {
+            _lblTrangThai.ForeColor = Theme.Do;
+            _lblTrangThai.Text = $"CHỈ XEM — {_kho.LyDoChiXem} · F5 nạp lại · Dữ liệu: {_kho.DuongDanFile}";
+        }
+        else
+        {
+            _lblTrangThai.Text =
+                $"Ctrl+Z hoàn tác · Ctrl+Y làm lại · F5 nạp lại · F6 sổ công nợ · Dữ liệu: {_kho.DuongDanFile}";
+        }
 
         var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
         nen.Controls.Add(_lblTrangThai);
@@ -377,8 +406,45 @@ public sealed class MainForm : Form
 
     private void Kho_DuLieuThayDoi(object? sender, EventArgs e)
     {
+        _daBaoFileBiSua = false;
         NapNam();
         NapDanhSach();
+    }
+
+    private void Kho_ThaoTacBiChan(object? sender, EventArgs e) => HopThoai.CanhBao(
+        Form.ActiveForm ?? this,
+        $"Đang mở ở chế độ CHỈ XEM nên không sửa được gì.\n\n{_kho.LyDoChiXem}.\n\n" +
+        "Đóng phần mềm ở máy kia rồi mở lại là sửa được bình thường.");
+
+    /// <summary>
+    /// Máy khác vừa sửa file trong lúc mình đang mở: báo ngay ở thanh dưới để khỏi ngồi
+    /// nhập tiếp trên số liệu cũ. Đang chỉ xem thì mời nạp lại luôn cho khỏi lạc hậu.
+    /// </summary>
+    private void NgoFileDuLieu()
+    {
+        if (_daBaoFileBiSua || !_kho.FileBiMayKhacSua())
+        {
+            return;
+        }
+
+        _daBaoFileBiSua = true;
+        _lblTrangThai.ForeColor = Theme.Do;
+        _lblTrangThai.Text =
+            "⚠  File dữ liệu vừa bị máy khác sửa. Bấm F5 để nạp lại bản mới nhất trước khi nhập tiếp.";
+    }
+
+    private void NapLaiTuFile()
+    {
+        if (!_kho.FileBiMayKhacSua() && !_kho.ChiXem)
+        {
+            _lblTrangThai.Text = "File dữ liệu vẫn đúng bản đang mở, không cần nạp lại.";
+            return;
+        }
+
+        _kho.NapLaiTuFile();
+        _daBaoFileBiSua = false;
+        _lblTrangThai.ForeColor = Theme.Xam;
+        _lblTrangThai.Text = "Đã nạp lại dữ liệu mới nhất từ file.";
     }
 
     private void Luoi_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
@@ -417,6 +483,20 @@ public sealed class MainForm : Form
 
         using var form = new DonHangForm(khach.Id, NamDangChon);
         form.ShowDialog(this);
+    }
+
+    private void ThuTienCuaKhach()
+    {
+        if (KhachDangChon is not { } khach)
+        {
+            HopThoai.CanhBao(this, "Hãy chọn khách hàng vừa đưa tiền.");
+            return;
+        }
+
+        using var form = new ThuTienForm(khach.Id);
+        form.ShowDialog(this);
+        NapDanhSach();
+        _lblTrangThai.Text = $"Đã cập nhật tiền của {khach.Ten}.";
     }
 
     private void ThemKhach()
@@ -572,6 +652,9 @@ public sealed class MainForm : Form
             case Keys.F3:
                 _txtTim.Focus();
                 _txtTim.SelectAll();
+                return true;
+            case Keys.F5:
+                NapLaiTuFile();
                 return true;
             case Keys.F6:
                 MoSoCongNo();

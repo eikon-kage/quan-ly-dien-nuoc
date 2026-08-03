@@ -177,6 +177,9 @@ public sealed class CongNoForm : Form
         var btnMo = Theme.Nut("MỞ ĐƠN HÀNG", Theme.Chinh, 220, 52);
         btnMo.Click += (_, _) => MoDonHang();
 
+        var btnThuTien = Theme.Nut("THU TIỀN", Theme.Xanh, 180, 52);
+        btnThuTien.Click += (_, _) => ThuTienCuaKhach();
+
         var btnNhac = Theme.Nut("SOẠN TIN NHẮC NỢ", Theme.Cam, 260, 52);
         btnNhac.Click += (_, _) => SoanTinNhac();
 
@@ -188,6 +191,7 @@ public sealed class CongNoForm : Form
 
         var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
         trai.Controls.Add(btnMo);
+        trai.Controls.Add(btnThuTien);
         trai.Controls.Add(btnNhac);
         trai.Controls.Add(btnXuat);
         trai.Controls.Add(btnDong);
@@ -342,6 +346,20 @@ public sealed class CongNoForm : Form
         using var form = new DonHangForm(dong.Khach.Id, nam);
         form.ShowDialog(this);
         Nap();
+    }
+
+    private void ThuTienCuaKhach()
+    {
+        if (DangChon is not { } dong)
+        {
+            HopThoai.CanhBao(this, "Hãy chọn khách hàng vừa đưa tiền.");
+            return;
+        }
+
+        using var form = new ThuTienForm(dong.Khach.Id);
+        form.ShowDialog(this);
+        Nap();
+        _lblTrangThai.Text = $"Đã cập nhật tiền của {dong.Khach.Ten}.";
     }
 
     private void SoanTinNhac()

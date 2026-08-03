@@ -44,6 +44,34 @@ public static class KiemTra
             && c.SoLuong == soLuong
             && string.Equals(c.TenHang.Trim(), tenHang.Trim(), StringComparison.CurrentCultureIgnoreCase));
 
+    /// <summary>
+    /// Số lượng một mặt hàng khách đang giữ: cộng các lần lấy hàng, trừ các dòng đã trả lại.
+    /// </summary>
+    public static decimal SoLuongDangGiu(IEnumerable<HoaDon> hoaDonCuaKhach, string tenHang, Guid? vatTuId) =>
+        hoaDonCuaKhach
+            .SelectMany(h => h.ChiTiet)
+            .Where(c => CungMatHang(c, tenHang, vatTuId))
+            .Sum(c => c.SoLuong);
+
+    /// <summary>
+    /// Trả lại nhiều hơn số khách đang giữ thì trả về số đang giữ để hỏi lại, ngược lại null.
+    /// <paramref name="soLuongTraLai"/> là số âm như trên dòng hàng.
+    /// </summary>
+    public static decimal? TraLaiQuaSoDaMua(
+        IEnumerable<HoaDon> hoaDonCuaKhach,
+        string tenHang,
+        Guid? vatTuId,
+        decimal soLuongTraLai)
+    {
+        if (soLuongTraLai >= 0m)
+        {
+            return null;
+        }
+
+        var dangGiu = SoLuongDangGiu(hoaDonCuaKhach, tenHang, vatTuId);
+        return dangGiu + soLuongTraLai < 0m ? dangGiu : null;
+    }
+
     /// <summary>Khách đã có tên gần giống (so không dấu) — tránh tạo hai lần một người.</summary>
     public static KhachHang? KhachTrungTen(IEnumerable<KhachHang> khachHangs, string ten, Guid? boQua = null)
     {

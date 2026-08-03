@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using QuanLyDienNuoc.BaoCao;
 using QuanLyDienNuoc.Data;
 using QuanLyDienNuoc.Models;
 using QuanLyDienNuoc.Ui;
@@ -183,6 +184,33 @@ public sealed class ThanhToanForm : Form
         if (HoaDon is not { } hoaDon || _luoi.CurrentRow?.DataBoundItem is not ThanhToan lan)
         {
             HopThoai.CanhBao(this, "Hãy chọn một lần trả tiền để xoá.");
+            return;
+        }
+
+        // Khoản này là một phần của lần khách đưa tiền chung cho nhiều hoá đơn: xoá lẻ một
+        // mảnh thì sổ còn lại nửa lần thu, nên xoá cả lần thu cho gọn.
+        if (lan.PhieuThuId is { } phieuThuId)
+        {
+            var hoaDonCuaKhach = _kho.HoaDonCuaKhach(hoaDon.KhachHangId);
+            var caLan = ThuTien.LichSu(hoaDonCuaKhach).FirstOrDefault(l => l.Ma == phieuThuId);
+            var tongLan = caLan?.SoTien ?? lan.SoTien;
+            var soHoaDon = caLan?.SoHoaDon ?? 1;
+
+            if (!HopThoai.Hoi(
+                    this,
+                    $"Khoản {So.Tien(lan.SoTien)} này nằm trong một lần khách đưa {So.Tien(tongLan)} " +
+                    $"ngày {lan.Ngay:dd/MM/yyyy}, chia cho {soHoaDon} hoá đơn.\n\n" +
+                    "Xoá cả lần thu đó?"))
+            {
+                return;
+            }
+
+            _kho.ThucHien(
+                $"Xoá lần thu {So.Tien(tongLan)}",
+                () => ThuTien.Xoa(hoaDonCuaKhach, phieuThuId),
+                phatSuKien: false);
+
+            Nap();
             return;
         }
 

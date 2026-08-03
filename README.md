@@ -38,7 +38,14 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   hết, dữ liệu đã lưu vẫn còn nguyên.
 - **Bảng giá riêng của khách**: khi nhập giá khác với giá đang lưu, phần mềm hỏi có dùng giá
   mới cho những lần sau không. Xem và sửa toàn bộ bảng giá của khách ở nút *Bảng giá của khách*.
+- **Khách trả lại hàng**: bấm nút *Trả lại* (hoặc gõ số lượng âm, ví dụ `-2`) là ghi được
+  dòng trả hàng — thành tiền âm, trừ thẳng vào hoá đơn, in ra có dấu trừ. Trả lại nhiều hơn
+  số đang giữ thì phần mềm hỏi lại. Trong ô nhập nhiều dòng viết `ống 27 x-2`.
 - **Thanh toán**: ghi nhiều lần trả tiền cho một hoá đơn, tự tính còn nợ.
+- **Thu tiền của khách (một lần trả cho nhiều hoá đơn)**: khách đưa 5 triệu trả cho 3 hoá đơn
+  thì gõ một số tiền, phần mềm chia sẵn từ hoá đơn cũ nhất và cho xem trước hoá đơn nào trừ
+  bao nhiêu, còn lại bao nhiêu. Ghi một lần thành một phiếu thu, muốn bỏ thì xoá cả lần thu
+  chứ không phải đi từng hoá đơn. Đưa thừa thì hỏi có ghi phần thừa thành trả trước không.
 - **Chốt hoá đơn**: hoá đơn đã chốt thì khoá không cho sửa, cần thì mở lại.
 - **Danh mục vật tư**: giá chung của cửa hàng, dùng khi khách chưa có giá riêng.
 - **In hoá đơn**: xem trước đúng như tờ giấy sẽ in rồi in thẳng ra máy in. Không cần máy
@@ -57,6 +64,12 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   thanh toán, công nợ, vật tư, bảng giá riêng, bộ hàng — kèm dòng tổng và bộ lọc sẵn.
 - **Nhật ký thay đổi**: mọi lần thêm/sửa/xoá đều ghi lại kèm giờ, ghi ra file riêng nên
   `Ctrl+Z` không xoá mất. Khách thắc mắc *"sao hôm trước giá khác"* là có chỗ tra.
+- **Hai máy dùng chung một file**: để `dulieu.json` trên thư mục mạng rồi mở ở hai máy thì
+  máy thứ hai được báo *"file đang được máy X mở"* và chỉ mở ở chế độ **CHỈ XEM** (xem, in,
+  xuất Excel bình thường; sửa gì cũng bị chặn). Ngoài ra trước mỗi lần ghi, phần mềm so lại
+  file trên đĩa: nếu máy khác vừa sửa thì hỏi ghi đè hay bỏ thay đổi và nạp lại — bản của máy
+  kia được cất thành `dulieu.json.maykhac-…json` chứ không bị đè mất. Đang mở mà file bị máy
+  khác sửa thì thanh dưới báo đỏ, bấm `F5` để nạp lại bản mới nhất.
 
 ## Phím tắt
 
@@ -69,6 +82,7 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 | `Delete` | Xoá dòng hàng đang chọn |
 | `Ctrl+D` | Nhân đôi dòng hàng đang chọn |
 | `Ctrl+N` | Thêm khách hàng (ở màn hình chính) |
+| `F5` | Nạp lại dữ liệu từ file (khi máy khác vừa sửa) |
 | `F6` | Mở sổ công nợ (ở màn hình chính) |
 | `Esc` | Đóng cửa sổ |
 
@@ -99,6 +113,8 @@ Toàn bộ dữ liệu nằm trong thư mục `%APPDATA%\QuanLyDienNuoc\`:
 |---|---|
 | `dulieu.json` | Toàn bộ khách hàng, hoá đơn, vật tư, bộ hàng |
 | `dulieu.json.bak` | Bản của lần ghi ngay trước đó |
+| `dulieu.json.khoa`, `dulieu.json.dangmo` | Đánh dấu đang có máy mở file; tự xoá khi đóng phần mềm |
+| `dulieu.json.maykhac-….json` | Bản của máy khác, cất lại trước khi mình ghi đè |
 | `caidat.json` | Cài đặt: số ngày nhắc nợ, thư mục sao lưu, ngưỡng cảnh báo giá |
 | `nhatky.jsonl` | Nhật ký thay đổi, mỗi dòng một mục |
 | `SaoLuu\` | Các bản sao lưu theo ngày (`.json` + `.xlsx`), mặc định giữ 30 bản |
@@ -121,13 +137,15 @@ QuanLyDienNuoc.sln
 src/
   QuanLyDienNuoc.Core/          thư viện nghiệp vụ, không phụ thuộc giao diện (net8.0)
     Models/                     KhachHang, VatTu, HoaDon, ChiTietHoaDon, ThanhToan, BoHang
-    Data/KhoDuLieu.cs           đọc/ghi JSON + lịch sử hoàn tác
+    Data/KhoDuLieu.cs           đọc/ghi JSON + lịch sử hoàn tác + chống hai máy ghi đè nhau
+    Data/KhoaFile.cs            khoá file dữ liệu khi đang mở, báo máy nào đang giữ
     Data/CaiDat.cs              cài đặt, lưu riêng khỏi dữ liệu
     Data/NhatKy.cs              nhật ký thay đổi, ghi nối tiếp ra file
     Data/SaoLuu.cs              tạo / liệt kê / khôi phục bản sao lưu
     BaoCao/CongNo.cs            tính công nợ và số ngày nợ từng khách
     BaoCao/TinNhacNo.cs         soạn tin nhắc nợ
-    BaoCao/KiemTra.cs           cảnh báo giá lệch, dòng trùng, khách trùng tên
+    BaoCao/ThuTien.cs           chia một lần thu tiền cho nhiều hoá đơn, cũ nhất trả trước
+    BaoCao/KiemTra.cs           cảnh báo giá lệch, dòng trùng, khách trùng tên, trả lại quá số đã mua
     Excel/MauHoaDon.cs          toạ độ các ô trên mẫu hoá đơn
     Excel/XuatHoaDon.cs         điền hoá đơn vào mẫu Excel, chia trang
     Excel/XuatToanBo.cs         xuất toàn bộ dữ liệu ra .xlsx nhiều trang
@@ -138,7 +156,7 @@ src/
     Ui/DongNhapNhanh.cs         tách "ống 27 x10, co 90 x5" thành từng món
     Ui/DocSo.cs                 đọc số tiền thành chữ
   QuanLyDienNuoc/               ứng dụng WinForms (net8.0-windows)
-    Program.cs                  điểm khởi động, đặt ngôn ngữ vi-VN, tự sao lưu
+    Program.cs                  điểm khởi động, đặt ngôn ngữ vi-VN, khoá file, tự sao lưu
     MauHoaDon/                  hai file mẫu hoá đơn giấy
     Ui/Theme.cs                 màu, phông chữ, lưới, nút dùng chung
     Ui/InHoaDon.cs              vẽ hoá đơn ra giấy để xem trước và in
@@ -147,7 +165,8 @@ src/
     Forms/CongNoForm.cs         sổ công nợ của cả cửa hàng
     Forms/KhachHangForm.cs      thêm/sửa khách
     Forms/HoaDonForm.cs         thêm/sửa thông tin hoá đơn
-    Forms/ThanhToanForm.cs      các lần trả tiền
+    Forms/ThanhToanForm.cs      các lần trả tiền của một hoá đơn
+    Forms/ThuTienForm.cs        thu một cục tiền, chia cho nhiều hoá đơn
     Forms/BangGiaForm.cs        bảng giá riêng theo khách
     Forms/VatTuForm.cs          danh mục vật tư (kèm mã tắt)
     Forms/BoHangForm.cs         bộ hàng thường dùng

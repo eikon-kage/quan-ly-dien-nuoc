@@ -10,4 +10,10 @@ public sealed class ThanhToan
     public decimal SoTien { get; set; }
 
     public string GhiChu { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Cùng một mã nghĩa là cùng một lần khách đưa tiền, được chia cho nhiều hoá đơn.
+    /// Để trống là lần trả ghi thẳng vào một hoá đơn.
+    /// </summary>
+    public Guid? PhieuThuId { get; set; }
 }
