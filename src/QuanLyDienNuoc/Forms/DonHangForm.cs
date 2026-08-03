@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using QuanLyDienNuoc.Data;
+using QuanLyDienNuoc.Excel;
 using QuanLyDienNuoc.Models;
 using QuanLyDienNuoc.Ui;
 
@@ -217,7 +218,7 @@ public sealed class DonHangForm : Form
         };
         cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
         cot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
+        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 180));
 
         var lbl = new Label
         {
@@ -285,11 +286,26 @@ public sealed class DonHangForm : Form
         _btnChot.Margin = new Padding(0, 6, 10, 6);
         _btnChot.Click += (_, _) => DoiTrangThaiChot();
 
+        var btnIn = Theme.Nut("IN / XEM TRƯỚC", Theme.Cam, 200, 44);
+        btnIn.Margin = new Padding(0, 6, 10, 6);
+        btnIn.Click += (_, _) => XemTruocVaIn();
+
+        var btnXuatExcel = Theme.NutPhu("Xuất Excel", 145, 44);
+        btnXuatExcel.Margin = new Padding(0, 6, 10, 6);
+        btnXuatExcel.Click += (_, _) => XuatExcel();
+
+        var btnNhapExcel = Theme.NutPhu("Nhập từ Excel", 175, 44);
+        btnNhapExcel.Margin = new Padding(0, 6, 10, 6);
+        btnNhapExcel.Click += (_, _) => NhapTuExcel();
+
         var nut = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = false, WrapContents = true };
         nut.Controls.Add(btnMoi);
         nut.Controls.Add(btnSua);
         nut.Controls.Add(btnXoa);
         nut.Controls.Add(_btnChot);
+        nut.Controls.Add(btnIn);
+        nut.Controls.Add(btnXuatExcel);
+        nut.Controls.Add(btnNhapExcel);
 
         cot.Controls.Add(lbl, 0, 0);
         cot.Controls.Add(Theme.Khung(_luoiHD), 0, 1);
@@ -955,6 +971,139 @@ public sealed class DonHangForm : Form
         _lblTrangThai.Text = dangChot
             ? $"Đã mở lại hoá đơn {hoaDon.MaHoaDon}."
             : $"Đã chốt hoá đơn {hoaDon.MaHoaDon}.";
+    }
+
+    // ---------------- In và Excel ----------------
+
+    private void XemTruocVaIn()
+    {
+        if (HoaDonHienTai is not { } hoaDon || Khach is not { } khach)
+        {
+            HopThoai.CanhBao(this, "Chưa có hoá đơn nào để in.");
+            return;
+        }
+
+        if (hoaDon.ChiTiet.Count == 0)
+        {
+            HopThoai.CanhBao(this, "Hoá đơn chưa có dòng hàng nào.");
+            return;
+        }
+
+        // Không có máy in nào thì bản xem trước không dựng được khổ giấy.
+        if (System.Drawing.Printing.PrinterSettings.InstalledPrinters.Count == 0)
+        {
+            HopThoai.CanhBao(
+                this,
+                "Máy tính chưa cài máy in nào nên chưa xem trước được.\n\n" +
+                "Vào Settings → Bluetooth & devices → Printers & scanners → Add device,\n" +
+                "thêm \"Microsoft Print to PDF\" là dùng được ngay (in ra file PDF).");
+            return;
+        }
+
+        try
+        {
+            using var taiLieu = new InHoaDon(hoaDon, khach, ThongTinCuaHang.DocTuMau());
+            using var form = new XemTruocForm(taiLieu);
+            form.ShowDialog(this);
+            _lblTrangThai.Text = $"Hoá đơn {hoaDon.MaHoaDon}: {taiLieu.SoTrang} trang.";
+        }
+        catch (Exception ex)
+        {
+            HopThoai.Loi(this, "Không xem trước được:\n" + ex.Message);
+        }
+    }
+
+    private void XuatExcel()
+    {
+        if (HoaDonHienTai is not { } hoaDon || Khach is not { } khach)
+        {
+            HopThoai.CanhBao(this, "Chưa có hoá đơn nào để xuất.");
+            return;
+        }
+
+        var tenGoiY = TenFileHopLe($"HoaDon {hoaDon.MaHoaDon} - {khach.Ten}.xls");
+        using var hopThoai = new SaveFileDialog
+        {
+            Title = "Xuất hoá đơn ra Excel",
+            Filter = "File Excel (*.xls)|*.xls",
+            FileName = tenGoiY,
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        };
+
+        if (hopThoai.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            XuatHoaDon.Xuat(hoaDon, khach, hopThoai.FileName, ngayIn: DateTime.Today);
+        }
+        catch (Exception ex)
+        {
+            HopThoai.Loi(this, "Không xuất được file:\n" + ex.Message);
+            return;
+        }
+
+        _lblTrangThai.Text = $"Đã xuất: {hopThoai.FileName}";
+
+        if (HopThoai.Hoi(this, $"Đã xuất xong:\n{hopThoai.FileName}\n\nMở file lên xem luôn không?"))
+        {
+            MoFile(hopThoai.FileName);
+        }
+    }
+
+    private void NhapTuExcel()
+    {
+        if (Khach is null)
+        {
+            return;
+        }
+
+        using var chonFile = new OpenFileDialog
+        {
+            Title = "Chọn file hoá đơn Excel cần nhập",
+            Filter = "File Excel (*.xls;*.xlsx)|*.xls;*.xlsx|Tất cả các file (*.*)|*.*",
+        };
+
+        if (chonFile.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        using var form = new NhapExcelForm(_khachId, NamDangChon, _hoaDonId, chonFile.FileName);
+        if (form.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        NapHoaDon(form.HoaDonDaNhap ?? _hoaDonId);
+        _lblTrangThai.Text = $"Đã nhập {form.SoDongDaNhap} dòng từ Excel. Bấm Ctrl+Z nếu muốn bỏ.";
+    }
+
+    private void MoFile(string duongDan)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(duongDan)
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            HopThoai.CanhBao(this, "Không mở được file (máy chưa cài Excel hoặc WPS?):\n" + ex.Message);
+        }
+    }
+
+    private static string TenFileHopLe(string ten)
+    {
+        foreach (var kyTu in Path.GetInvalidFileNameChars())
+        {
+            ten = ten.Replace(kyTu, ' ');
+        }
+
+        return ten;
     }
 
     private void MoThanhToan()
