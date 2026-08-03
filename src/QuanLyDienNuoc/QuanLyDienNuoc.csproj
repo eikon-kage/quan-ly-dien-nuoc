@@ -21,4 +21,11 @@
     <ProjectReference Include="..\QuanLyDienNuoc.Core\QuanLyDienNuoc.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Mẫu hoá đơn giấy: chép ra cạnh file chạy để người dùng sửa được bằng Excel. -->
+    <None Update="MauHoaDon\*.xls">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

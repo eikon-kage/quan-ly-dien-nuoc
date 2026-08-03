@@ -24,16 +24,28 @@ public sealed class KhoDuLieu
     private readonly List<BuocLichSu> _hoanTac = new();
     private readonly List<BuocLichSu> _lamLai = new();
 
-    public static KhoDuLieu Instance { get; } = new KhoDuLieu();
+    /// <summary>Kho dùng chung cho toàn ứng dụng, trỏ vào file dữ liệu thật của máy.</summary>
+    public static KhoDuLieu Instance { get; } = new KhoDuLieu(DuongDanMacDinh());
 
-    private KhoDuLieu()
+    /// <summary>
+    /// Tạo kho trỏ vào một file bất kỳ. Ứng dụng dùng <see cref="Instance"/>;
+    /// hàm dựng này để test có thể trỏ vào thư mục tạm thay vì dữ liệu thật.
+    /// </summary>
+    public KhoDuLieu(string duongDanFile)
     {
-        var thuMuc = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "QuanLyDienNuoc");
-        Directory.CreateDirectory(thuMuc);
-        DuongDanFile = Path.Combine(thuMuc, "dulieu.json");
+        DuongDanFile = duongDanFile;
+
+        var thuMuc = Path.GetDirectoryName(duongDanFile);
+        if (!string.IsNullOrEmpty(thuMuc))
+        {
+            Directory.CreateDirectory(thuMuc);
+        }
     }
+
+    private static string DuongDanMacDinh() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "QuanLyDienNuoc",
+        "dulieu.json");
 
     /// <summary>Phát ra sau khi dữ liệu đổi theo cách mà màn hình phải nạp lại (gồm cả hoàn tác).</summary>
     public event EventHandler? DuLieuThayDoi;

@@ -19,4 +19,14 @@
     <ProjectReference Include="..\..\src\QuanLyDienNuoc.Core\QuanLyDienNuoc.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Mẫu hoá đơn và các file hoá đơn cũ thật, dùng để kiểm thử xuất/nhập Excel. -->
+    <None Include="..\..\src\QuanLyDienNuoc\MauHoaDon\*.xls"
+          Link="MauHoaDon\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\hoa-don-mau\*.xls"
+          Link="HoaDonCu\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
