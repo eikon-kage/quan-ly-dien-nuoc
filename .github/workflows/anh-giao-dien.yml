@@ -27,7 +27,14 @@ jobs:
       - name: Chạy kiểm thử
         run: dotnet test QuanLyDienNuoc.sln -c Release --no-build --verbosity quiet
 
+      - name: Mở rộng màn hình máy dựng
+        continue-on-error: true
+        shell: pwsh
+        run: Set-DisplayResolution -Width 1920 -Height 1080 -Force
+
       - name: Chụp ảnh giao diện
+        # Việc chỉ mất vài giây; quá 5 phút là treo, cắt sớm cho đỡ phí phút chạy.
+        timeout-minutes: 5
         run: dotnet run --project src/QuanLyDienNuoc -c Release --no-build -- --chup-anh "${{ github.workspace }}/anh-giao-dien"
 
       - name: In nhật ký chụp ảnh

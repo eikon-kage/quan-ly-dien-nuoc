@@ -49,6 +49,25 @@ public static class ChupAnhGiaoDien
             loi += ChupForm(thuMucRa, "07-thanh-toan", () => new ThanhToanForm(hoaDon.Id));
             loi += ChupForm(thuMucRa, "08-tao-hoa-don", () => new HoaDonForm(null, "HD2026-03", 2026));
             loi += ChupForm(thuMucRa, "09-nhap-tu-excel", () => new NhapExcelForm(khach.Id, 2026, hoaDon.Id, fileExcel));
+            loi += ChupForm(thuMucRa, "11-so-cong-no", () => new CongNoForm());
+            loi += ChupForm(thuMucRa, "12-bo-hang", () => new BoHangForm());
+            loi += ChupForm(
+                thuMucRa,
+                "13-nhap-nhieu-dong",
+                () => new NhapNhieuDongForm(khach.Id, new DateTime(2026, 8, 3), "ống 27 x10, co 90 x5, keo dán ống x2, băng tan x5"));
+            loi += ChupForm(thuMucRa, "14-sao-luu", () => new SaoLuuForm());
+            loi += ChupForm(thuMucRa, "15-nhat-ky", () => new NhatKyForm());
+            loi += ChupForm(
+                thuMucRa,
+                "16-tin-nhac-no",
+                () => new VanBanForm(
+                    "Tin nhắc nợ",
+                    $"{khach.Ten} — chép rồi dán sang Zalo.",
+                    BaoCao.TinNhacNo.Soan(khach, kho.HoaDonCuaKhach(khach.Id), new DateTime(2026, 8, 3), ThongTinCuaHang.DocTuMau())));
+
+            var fileToanBo = Path.Combine(thuMucRa, "toan-bo-du-lieu.xlsx");
+            XuatToanBo.Xuat(kho.DuLieu, fileToanBo, new DateTime(2026, 8, 3));
+            Ghi($"Đã xuất Excel toàn bộ dữ liệu: {fileToanBo}");
 
             loi += ChupBanIn(thuMucRa, hoaDon, khach);
         }
@@ -74,6 +93,10 @@ public static class ChupAnhGiaoDien
             form.Size = new Size(RongAnh, CaoAnh);
             form.ShowInTaskbar = false;
             form.Show();
+
+            // Cửa sổ to hơn màn hình thì Windows co lại lúc hiện; đặt lại cỡ sau khi hiện
+            // để ảnh luôn đủ rộng dù máy dựng chỉ có màn hình 1024x768.
+            form.Size = new Size(RongAnh, CaoAnh);
 
             for (var i = 0; i < 8; i++)
             {
@@ -244,7 +267,81 @@ public static class ChupAnhGiaoDien
         rong.ChiTiet.Add(new ChiTietHoaDon { Ngay = new DateTime(2026, 5, 12), TenHang = "Ống nhựa PVC D27", DonVi = "Cây", DonGia = 45000, SoLuong = 6 });
         kho.DuLieu.HoaDons.Add(rong);
 
+        // Một khách nợ đã lâu để dải nhắc nợ và sổ công nợ có cái mà hiện.
+        var noLau = new HoaDon
+        {
+            KhachHangId = khachKhac[2].Id,
+            MaHoaDon = "HD2026-01",
+            Nam = 2026,
+            NgayMo = new DateTime(2026, 1, 8),
+        };
+        noLau.ChiTiet.Add(new ChiTietHoaDon { Ngay = new DateTime(2026, 1, 8), TenHang = "Máng đèn LED 1m2", DonVi = "Bộ", DonGia = 130000, SoLuong = 12 });
+        noLau.ChiTiet.Add(new ChiTietHoaDon { Ngay = new DateTime(2026, 1, 9), TenHang = "Dây điện Cadivi 2x2.5", DonVi = "Mét", DonGia = 18000, SoLuong = 80 });
+        noLau.ThanhToans.Add(new ThanhToan { Ngay = new DateTime(2026, 1, 20), SoTien = 1000000, GhiChu = "Trả trước" });
+        kho.DuLieu.HoaDons.Add(noLau);
+
+        // Mã tắt cho vài mặt hàng hay dùng
+        void MaTat(string ten, string ma)
+        {
+            if (kho.TimVatTuTheoTen(ten) is { } v)
+            {
+                v.MaTat = ma;
+            }
+        }
+
+        MaTat("Ống nhựa PVC D21", "o21");
+        MaTat("Ống nhựa PVC D27", "o27");
+        MaTat("Ống nhựa PVC D34", "o34");
+        MaTat("Keo dán ống 100g", "keo");
+        MaTat("Aptomat 1 pha 20A", "at20");
+
+        // Bộ hàng thường dùng
+        var boBon = new BoHang { Ten = "Bộ lắp bồn nước", GhiChu = "Hay đi cùng nhau" };
+        foreach (var (ten, soLuong) in new (string, decimal)[]
+                 {
+                     ("Ống nhựa PVC D27", 3), ("Co nối PVC D21", 6), ("Tê PVC D21", 2),
+                     ("Van khoá nước D21", 2), ("Keo dán ống 100g", 1),
+                 })
+        {
+            var vatTu = kho.TimVatTuTheoTen(ten);
+            boBon.Dong.Add(new DongBoHang
+            {
+                VatTuId = vatTu?.Id,
+                TenHang = ten,
+                DonVi = vatTu?.DonVi ?? string.Empty,
+                SoLuong = soLuong,
+            });
+        }
+
+        var boDien = new BoHang { Ten = "Bộ điện một phòng" };
+        foreach (var (ten, soLuong) in new (string, decimal)[]
+                 {
+                     ("Dây điện Cadivi 2x1.5", 30), ("Ống ruột gà D20", 20),
+                     ("Ổ cắm đôi 3 chấu", 2), ("Công tắc đơn", 2), ("Bóng đèn LED bulb 9W", 3),
+                 })
+        {
+            var vatTu = kho.TimVatTuTheoTen(ten);
+            boDien.Dong.Add(new DongBoHang
+            {
+                VatTuId = vatTu?.Id,
+                TenHang = ten,
+                DonVi = vatTu?.DonVi ?? string.Empty,
+                SoLuong = soLuong,
+            });
+        }
+
+        kho.DuLieu.BoHangs.Add(boBon);
+        kho.DuLieu.BoHangs.Add(boDien);
+
         kho.Luu();
+
+        // Một bản sao lưu và vài dòng nhật ký để hai màn hình đó có số liệu mà xem.
+        kho.NhatKy.Ghi("Thêm khách hàng " + khach.Ten, luc: new DateTime(2026, 3, 5, 8, 12, 0));
+        kho.NhatKy.Ghi("Thêm \"Ống 90\" ngày 05/03/2026", luc: new DateTime(2026, 3, 5, 8, 14, 0));
+        kho.NhatKy.Ghi("Sửa đơn giá", "Ống 21: 15.000 → 17.000", new DateTime(2026, 3, 11, 16, 40, 0));
+        kho.NhatKy.Ghi("Chốt hoá đơn HD2026-02", luc: new DateTime(2026, 6, 28, 17, 5, 0));
+        SaoLuu.Tao(kho, kho.CaiDat, new DateTime(2026, 8, 3, 8, 15, 0));
+
         return (khach, hoaDon);
     }
 

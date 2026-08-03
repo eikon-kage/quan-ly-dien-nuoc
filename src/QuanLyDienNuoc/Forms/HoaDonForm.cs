@@ -7,7 +7,7 @@ namespace QuanLyDienNuoc.Forms;
 public sealed class HoaDonForm : Form
 {
     private readonly TextBox _txtMa = Theme.O(240);
-    private readonly DateTimePicker _dtNgayMo = new() { Format = DateTimePickerFormat.Short, Font = Theme.FontNhap };
+    private readonly DateTimePicker _dtNgayMo = new() { Format = DateTimePickerFormat.Custom, CustomFormat = Theme.DangNgay, Font = Theme.FontNhap };
     private readonly TextBox _txtGhiChu = new()
     {
         Font = Theme.FontNhap,

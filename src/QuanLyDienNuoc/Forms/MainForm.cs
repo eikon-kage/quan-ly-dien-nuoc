@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using QuanLyDienNuoc.BaoCao;
 using QuanLyDienNuoc.Data;
 using QuanLyDienNuoc.Models;
 using QuanLyDienNuoc.Ui;
@@ -17,6 +18,8 @@ public sealed class MainForm : Form
     private readonly DataGridView _luoi = new();
     private readonly Label _lblTongKet = new();
     private readonly Label _lblTrangThai = new();
+    private readonly Label _lblNhacNo = new();
+    private readonly Panel _nenNhacNo = new();
     private readonly Button _btnHoanTac = Theme.NutPhu("↶  Hoàn tác", 160);
     private readonly Button _btnLamLai = Theme.NutPhu("↷  Làm lại", 150);
 
@@ -54,20 +57,22 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 5,
+            RowCount = 6,
             BackColor = Theme.Nen,
         };
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 94));
+        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 
         goc.Controls.Add(Theme.ThanhTieuDe("QUẢN LÝ ĐƠN HÀNG – CỬA HÀNG ĐIỆN NƯỚC", "Chọn năm, chọn khách hàng rồi bấm Mở đơn hàng (hoặc bấm đúp vào dòng khách)"), 0, 0);
         goc.Controls.Add(TaoThanhCongCu(), 0, 1);
-        goc.Controls.Add(TaoLuoi(), 0, 2);
-        goc.Controls.Add(TaoThanhDuoi(), 0, 3);
-        goc.Controls.Add(TaoThanhTrangThai(), 0, 4);
+        goc.Controls.Add(TaoThanhNhacNo(), 0, 2);
+        goc.Controls.Add(TaoLuoi(), 0, 3);
+        goc.Controls.Add(TaoThanhDuoi(), 0, 4);
+        goc.Controls.Add(TaoThanhTrangThai(), 0, 5);
 
         Controls.Add(goc);
     }
@@ -117,8 +122,8 @@ public sealed class MainForm : Form
         benTrai.Controls.Add(Theme.Truong("TÌM KHÁCH HÀNG (tên, số điện thoại, địa chỉ)", _txtTim, 380));
         benTrai.Controls.Add(_chkCoDon);
 
-        var btnVatTu = Theme.NutPhu("Danh mục vật tư", 190);
-        btnVatTu.Click += (_, _) => MoDanhMucVatTu();
+        var btnTienIch = Theme.NutPhu("Tiện ích  ▾", 170);
+        btnTienIch.Click += (s, _) => MoMenuTienIch((Control)s!);
 
         var btnThemKhach = Theme.Nut("+  Thêm khách hàng", Theme.Xanh, 220);
         btnThemKhach.Click += (_, _) => ThemKhach();
@@ -134,7 +139,7 @@ public sealed class MainForm : Form
             WrapContents = false,
             Padding = new Padding(0, 22, 0, 0),
         };
-        benPhai.Controls.Add(btnVatTu);
+        benPhai.Controls.Add(btnTienIch);
         benPhai.Controls.Add(btnThemKhach);
         benPhai.Controls.Add(_btnLamLai);
         benPhai.Controls.Add(_btnHoanTac);
@@ -142,6 +147,28 @@ public sealed class MainForm : Form
         nen.Controls.Add(benTrai);
         nen.Controls.Add(benPhai);
         return nen;
+    }
+
+    /// <summary>Dải nhắc nợ ngay dưới thanh công cụ: mở phần mềm lên là thấy ai đang nợ lâu.</summary>
+    private Control TaoThanhNhacNo()
+    {
+        _nenNhacNo.Dock = DockStyle.Fill;
+        _nenNhacNo.Padding = new Padding(20, 6, 20, 6);
+        _nenNhacNo.BackColor = Theme.Nen;
+
+        _lblNhacNo.Dock = DockStyle.Fill;
+        _lblNhacNo.Font = Theme.FontDam;
+        _lblNhacNo.TextAlign = ContentAlignment.MiddleLeft;
+        _lblNhacNo.Padding = new Padding(14, 0, 0, 0);
+
+        var btnSoCongNo = Theme.Nut("MỞ SỔ CÔNG NỢ", Theme.Cam, 230, 44);
+        btnSoCongNo.Dock = DockStyle.Right;
+        btnSoCongNo.Margin = new Padding(0);
+        btnSoCongNo.Click += (_, _) => MoSoCongNo();
+
+        _nenNhacNo.Controls.Add(_lblNhacNo);
+        _nenNhacNo.Controls.Add(btnSoCongNo);
+        return _nenNhacNo;
     }
 
     private Control TaoLuoi()
@@ -215,7 +242,7 @@ public sealed class MainForm : Form
         _lblTrangThai.ForeColor = Theme.Xam;
         _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
         _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
-        _lblTrangThai.Text = $"Ctrl+Z hoàn tác · Ctrl+Y làm lại · Dữ liệu: {_kho.DuongDanFile}";
+        _lblTrangThai.Text = $"Ctrl+Z hoàn tác · Ctrl+Y làm lại · F6 sổ công nợ · Dữ liệu: {_kho.DuongDanFile}";
 
         var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
         nen.Controls.Add(_lblTrangThai);
@@ -294,6 +321,38 @@ public sealed class MainForm : Form
             $"Năm {nam}   ·   {_nguon.Count} khách   ·   Tổng mua: {So.Tien(tongMua)}   ·   Còn nợ: {So.Tien(tongMua - tongTra)}";
 
         CapNhatNutLichSu();
+        CapNhatNhacNo();
+    }
+
+    /// <summary>Tính lại dải nhắc nợ trên đầu màn hình (tính tất cả các năm, không riêng năm đang xem).</summary>
+    private void CapNhatNhacNo()
+    {
+        var soNgay = _kho.CaiDat.SoNgayNhacNo;
+        var congNo = CongNo.Tinh(_kho.DuLieu, nam: null, DateTime.Today);
+        var quaHan = CongNo.QuaHan(congNo, soNgay);
+
+        if (quaHan.Count > 0)
+        {
+            var lauNhat = quaHan[0];
+            _nenNhacNo.BackColor = Color.FromArgb(255, 243, 224);
+            _lblNhacNo.ForeColor = Color.FromArgb(150, 75, 0);
+            _lblNhacNo.Text =
+                $"⚠  {quaHan.Count} khách nợ quá {soNgay} ngày — tổng {So.Tien(quaHan.Sum(d => d.ConNo))}." +
+                $"   Lâu nhất: {lauNhat.Khach.Ten} ({lauNhat.SoNgayNo} ngày, {So.Tien(lauNhat.ConNo)}).";
+        }
+        else if (congNo.Count > 0)
+        {
+            _nenNhacNo.BackColor = Theme.ChinhNhat;
+            _lblNhacNo.ForeColor = Theme.Chinh;
+            _lblNhacNo.Text =
+                $"{congNo.Count} khách đang nợ, tổng {So.Tien(congNo.Sum(d => d.ConNo))} — chưa có ai quá {soNgay} ngày.";
+        }
+        else
+        {
+            _nenNhacNo.BackColor = Color.FromArgb(232, 245, 233);
+            _lblNhacNo.ForeColor = Theme.Xanh;
+            _lblNhacNo.Text = "Không có khách nào đang nợ.";
+        }
     }
 
     private void ChonLaiKhach(Guid id)
@@ -368,6 +427,20 @@ public sealed class MainForm : Form
             return;
         }
 
+        // Dễ tạo trùng một người thành hai khách rồi chia đôi công nợ, nên hỏi lại trước.
+        if (KiemTra.KhachTrungTen(_kho.DuLieu.KhachHangs, moi.Ten) is { } daCo
+            && !HopThoai.Hoi(
+                this,
+                $"Đã có khách \"{daCo.Ten}\"" +
+                (string.IsNullOrWhiteSpace(daCo.DienThoai) ? string.Empty : $" (ĐT {daCo.DienThoai})") +
+                (string.IsNullOrWhiteSpace(daCo.DiaChi) ? string.Empty : $" — {daCo.DiaChi}") +
+                ".\n\nVẫn thêm một khách nữa cùng tên?"))
+        {
+            ChonLaiKhach(daCo.Id);
+            _lblTrangThai.Text = $"Đã có sẵn khách {daCo.Ten}, không thêm mới.";
+            return;
+        }
+
         _kho.ThucHien($"Thêm khách hàng {moi.Ten}", () => _kho.DuLieu.KhachHangs.Add(moi), phatSuKien: false);
         NapDanhSach();
         ChonLaiKhach(moi.Id);
@@ -434,6 +507,39 @@ public sealed class MainForm : Form
         form.ShowDialog(this);
     }
 
+    private void MoSoCongNo()
+    {
+        using var form = new CongNoForm(NamDangChon);
+        form.ShowDialog(this);
+        NapDanhSach();
+    }
+
+    private void MoMenuTienIch(Control nut)
+    {
+        var menu = new ContextMenuStrip { Font = Theme.FontThuong };
+        menu.Items.Add("Sổ công nợ", null, (_, _) => MoSoCongNo());
+        menu.Items.Add("Danh mục vật tư", null, (_, _) => MoDanhMucVatTu());
+        menu.Items.Add("Bộ hàng thường dùng", null, (_, _) =>
+        {
+            using var form = new BoHangForm();
+            form.ShowDialog(this);
+        });
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Sao lưu và khôi phục", null, (_, _) =>
+        {
+            using var form = new SaoLuuForm();
+            form.ShowDialog(this);
+            NapDanhSach();
+        });
+        menu.Items.Add("Nhật ký thay đổi", null, (_, _) =>
+        {
+            using var form = new NhatKyForm();
+            form.ShowDialog(this);
+        });
+
+        menu.Show(nut, new Point(0, nut.Height));
+    }
+
     private void HoanTac()
     {
         var moTa = _kho.HoanTac();
@@ -466,6 +572,9 @@ public sealed class MainForm : Form
             case Keys.F3:
                 _txtTim.Focus();
                 _txtTim.SelectAll();
+                return true;
+            case Keys.F6:
+                MoSoCongNo();
                 return true;
             case Keys.Enter when _luoi.Focused:
                 MoDonHang();

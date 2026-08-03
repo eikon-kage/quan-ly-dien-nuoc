@@ -25,7 +25,9 @@ internal static class Program
             var thuMucRa = viTri + 1 < thamSo.Length
                 ? thamSo[viTri + 1]
                 : Path.Combine(Directory.GetCurrentDirectory(), "anh-giao-dien");
-            return ChupAnhGiaoDien.Chay(thuMucRa);
+            // Thoát dứt khoát: sau khi mở form mà không chạy vòng lặp thông điệp,
+            // tiến trình vẫn còn luồng nền giữ lại, treo máy dựng cho tới lúc hết giờ.
+            Environment.Exit(ChupAnhGiaoDien.Chay(thuMucRa));
         }
 
         try
@@ -41,7 +43,29 @@ internal static class Program
             return 1;
         }
 
+        TuDongSaoLuu();
+
         Application.Run(new MainForm());
         return 0;
+    }
+
+    /// <summary>Sao lưu mỗi ngày một lần khi mở phần mềm. Lỗi sao lưu không được cản việc dùng app.</summary>
+    private static void TuDongSaoLuu()
+    {
+        var kho = KhoDuLieu.Instance;
+        try
+        {
+            if (SaoLuu.TuDongNeuCan(kho, kho.CaiDat) is { } ban)
+            {
+                kho.NhatKy.Ghi("Tự động sao lưu", ban.DuongDanJson);
+            }
+        }
+        catch (Exception ex)
+        {
+            HopThoai.CanhBao(
+                null,
+                "Không tự sao lưu được:\n" + ex.Message +
+                "\n\nVào Tiện ích → Sao lưu và khôi phục để chọn lại thư mục.");
+        }
     }
 }

@@ -21,8 +21,7 @@ public static partial class DongNhapNhanh
             return ketQua;
         }
 
-        var muc = dong.Split(new[] { ',', ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        foreach (var phan in muc)
+        foreach (var phan in MauTachMuc().Split(dong))
         {
             var chuoi = phan.Trim();
             if (chuoi.Length == 0)
@@ -66,4 +65,9 @@ public static partial class DongNhapNhanh
     // "ten" tham lam nên dấu nhân cuối cùng mới được tính: "ống 27 x10" ra tên "ống 27", số lượng 10.
     [GeneratedRegex(@"^(?<ten>.+)[x*×]\s*(?<sl>[\d.,]+)\s*(?:@\s*(?<gia>[\d.,]+))?$", RegexOptions.IgnoreCase)]
     private static partial Regex MauMuc();
+
+    // Dấu phẩy vừa là dấu ngăn món vừa là dấu thập phân kiểu Việt Nam, nên phẩy nằm giữa
+    // hai chữ số ("5,7") thì giữ nguyên, còn lại mới coi là ngăn cách món.
+    [GeneratedRegex(@"[;\r\n]+|(?<!\d),|,(?!\d)")]
+    private static partial Regex MauTachMuc();
 }

@@ -14,7 +14,7 @@ public sealed class ThanhToanForm : Form
     private readonly DataGridView _luoi = new();
     private readonly BindingList<ThanhToan> _nguon = new();
 
-    private readonly DateTimePicker _dtNgay = new() { Format = DateTimePickerFormat.Short, Font = Theme.FontNhap };
+    private readonly DateTimePicker _dtNgay = new() { Format = DateTimePickerFormat.Custom, CustomFormat = Theme.DangNgay, Font = Theme.FontNhap };
     private readonly TextBox _txtSoTien = Theme.O(200);
     private readonly TextBox _txtGhiChu = Theme.O(260);
     private readonly Label _lblTong = new();

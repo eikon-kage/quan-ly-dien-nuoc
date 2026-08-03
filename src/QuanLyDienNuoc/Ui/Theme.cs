@@ -3,6 +3,13 @@ namespace QuanLyDienNuoc.Ui;
 /// <summary>Màu, phông chữ và các mảnh giao diện dùng chung. Chữ to, dòng thưa cho dễ nhìn.</summary>
 public static class Theme
 {
+    /// <summary>
+    /// Kiểu ngày dùng cho mọi ô chọn ngày. Phải ép tay vì DateTimePicker lấy định dạng
+    /// theo Windows chứ không theo ngôn ngữ phần mềm đặt — máy cài Windows tiếng Anh sẽ
+    /// hiện 8/3/2026 thay vì 03/08/2026, rất dễ nhập nhầm ngày.
+    /// </summary>
+    public const string DangNgay = "dd/MM/yyyy";
+
     public static readonly Color Nen = Color.FromArgb(242, 245, 249);
     public static readonly Color Trang = Color.White;
     public static readonly Color Chinh = Color.FromArgb(21, 101, 192);
@@ -190,7 +197,10 @@ public static class Theme
         return cot;
     }
 
-    /// <summary>Cho phép gõ "15.000" vào các cột số trên lưới mà vẫn hiểu đúng là 15000.</summary>
+    /// <summary>
+    /// Cho phép gõ "15.000" vào các cột số trên lưới mà vẫn hiểu đúng là 15000,
+    /// và gõ được cả phép tính ngay trong ô: "3+2*4" ra 11.
+    /// </summary>
     public static void ChoPhepGoSo(DataGridView luoi, params string[] thuocTinhSo)
     {
         luoi.CellParsing += (_, e) =>
@@ -211,7 +221,7 @@ public static class Theme
                 e.Value = 0m;
                 e.ParsingApplied = true;
             }
-            else if (So.TryDoc(chuoi, out var giaTri))
+            else if (So.TryTinh(chuoi, out var giaTri))
             {
                 e.Value = giaTri;
                 e.ParsingApplied = true;
@@ -222,7 +232,9 @@ public static class Theme
         {
             e.ThrowException = false;
             e.Cancel = true;
-            HopThoai.CanhBao(luoi.FindForm(), "Giá trị vừa nhập không hợp lệ.\nVí dụ hợp lệ: 15000, 15.000, 2,5");
+            HopThoai.CanhBao(
+                luoi.FindForm(),
+                "Giá trị vừa nhập không hợp lệ.\nVí dụ hợp lệ: 15000, 15.000, 2,5 — hoặc phép tính: 3+2*4");
         };
     }
 

@@ -65,7 +65,7 @@ public static class XuatToanBo
             Tien(r, 8, tong - traRoi, kieu);
         }
 
-        ChotDong(sheet, dong, 9);
+        ChotDong(sheet, dong, 9, 5, 6, 7, 8);
     }
 
     private static void TrangHoaDon(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)
@@ -98,7 +98,7 @@ public static class XuatToanBo
             Chu(r, 9, hoaDon.GhiChu, kieu);
         }
 
-        ChotDong(sheet, dong, 10);
+        ChotDong(sheet, dong, 10, 5, 6, 7, 8);
     }
 
     private static void TrangChiTiet(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)
@@ -128,7 +128,7 @@ public static class XuatToanBo
             }
         }
 
-        ChotDong(sheet, dong, 9);
+        ChotDong(sheet, dong, 9, 7);
     }
 
     private static void TrangThanhToan(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)
@@ -151,7 +151,7 @@ public static class XuatToanBo
             }
         }
 
-        ChotDong(sheet, dong, 5);
+        ChotDong(sheet, dong, 5, 3);
     }
 
     private static void TrangCongNo(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu, DateTime homNay)
@@ -191,7 +191,7 @@ public static class XuatToanBo
             SoNguyen(r, 8, cn.SoNgayNo, kieu);
         }
 
-        ChotDong(sheet, dong, 9);
+        ChotDong(sheet, dong, 9, 2, 3, 4, 5);
     }
 
     private static void TrangVatTu(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)
@@ -305,10 +305,13 @@ public static class XuatToanBo
         return sheet;
     }
 
-    /// <summary>Dòng cuối cộng tổng các cột tiền, để mở file ra là thấy ngay con số tổng.</summary>
-    private static void ChotDong(ISheet sheet, int dongTiepTheo, int soCot)
+    /// <summary>
+    /// Dòng cuối cộng tổng, để mở file ra là thấy ngay con số tổng. Chỉ cộng những cột
+    /// nêu trong <paramref name="cotCong"/> — cộng cột "Năm" hay "Số ngày nợ" thì vô nghĩa.
+    /// </summary>
+    private static void ChotDong(ISheet sheet, int dongTiepTheo, int soCot, params int[] cotCong)
     {
-        if (dongTiepTheo <= 1)
+        if (dongTiepTheo <= 1 || cotCong.Length == 0)
         {
             return;
         }
@@ -327,15 +330,14 @@ public static class XuatToanBo
             var o = hang.CreateCell(c);
             o.CellStyle = kieuTong;
 
-            // Chỉ cộng những cột thật sự là số tiền / số lượng.
-            var mau = sheet.GetRow(1)?.GetCell(c);
             if (c == 0)
             {
                 o.SetCellValue("TỔNG CỘNG");
             }
-            else if (mau is { CellType: CellType.Numeric } && !DateUtil.IsCellDateFormatted(mau))
+            else if (Array.IndexOf(cotCong, c) >= 0)
             {
-                o.CellFormula = $"SUM({CellReference.ConvertNumToColString(c)}2:{CellReference.ConvertNumToColString(c)}{dongTiepTheo})";
+                var cot = CellReference.ConvertNumToColString(c);
+                o.CellFormula = $"SUM({cot}2:{cot}{dongTiepTheo})";
             }
         }
     }

@@ -73,13 +73,13 @@ public sealed class SaoLuuForm : Form
 
     private Control TaoBangCaiDat()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat, Padding = new Padding(20, 10, 20, 10) };
+        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat };
 
         var btnChon = Theme.NutPhu("Chọn thư mục…", 190, 32);
         btnChon.Margin = new Padding(0, 26, 0, 0);
         btnChon.Click += (_, _) => ChonThuMuc();
 
-        var hangTren = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Location = new Point(0, 0) };
+        var hangTren = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Location = new Point(20, 10) };
         hangTren.Controls.Add(Theme.Truong("THƯ MỤC SAO LƯU", _txtThuMuc, 600));
         hangTren.Controls.Add(btnChon);
 
@@ -100,7 +100,7 @@ public sealed class SaoLuuForm : Form
         _chkKemExcel.Margin = new Padding(0, 30, 0, 0);
         _chkKemExcel.CheckedChanged += (_, _) => LuuCaiDat();
 
-        var hangDuoi = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Location = new Point(0, 78) };
+        var hangDuoi = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Location = new Point(20, 88) };
         hangDuoi.Controls.Add(Theme.Truong("GIỮ LẠI BAO NHIÊU BẢN", _numGiuLai, 200));
         hangDuoi.Controls.Add(_chkTuDong);
         hangDuoi.Controls.Add(_chkKemExcel);

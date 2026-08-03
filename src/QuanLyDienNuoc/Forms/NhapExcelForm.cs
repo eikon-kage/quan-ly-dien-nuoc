@@ -22,7 +22,7 @@ public sealed class NhapExcelForm : Form
     private readonly BindingList<ChiTietHoaDon> _nguonXem = new();
 
     private readonly TextBox _txtFile = Theme.O(560);
-    private readonly DateTimePicker _dtNgay = new() { Format = DateTimePickerFormat.Short, Font = Theme.FontNhap };
+    private readonly DateTimePicker _dtNgay = new() { Format = DateTimePickerFormat.Custom, CustomFormat = Theme.DangNgay, Font = Theme.FontNhap };
     private readonly ComboBox _cboDich = new();
     private readonly Label _lblTomTat = new();
     private readonly Label _lblCanhBao = new();

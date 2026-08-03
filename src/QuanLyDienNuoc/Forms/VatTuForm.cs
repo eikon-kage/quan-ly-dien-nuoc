@@ -53,7 +53,7 @@ public sealed class VatTuForm : Form
         khung.Controls.Add(
             Theme.ThanhTieuDe(
                 "DANH MỤC VẬT TƯ",
-                "Đây là giá chung. Giá của từng khách đặt riêng trong màn hình đơn hàng của khách đó."),
+                "Giá chung của cửa hàng. Đặt \"mã tắt\" để lúc nhập hàng gõ tắt là ra, ví dụ o27 → Ống nhựa PVC D27."),
             0,
             0);
 
@@ -92,7 +92,8 @@ public sealed class VatTuForm : Form
         Theme.ApDungLuoi(_luoi);
         _luoi.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(VatTu.Ten), "TÊN HÀNG", 320, chiDoc: false),
+            Theme.Cot(nameof(VatTu.Ten), "TÊN HÀNG", 300, chiDoc: false),
+            Theme.Cot(nameof(VatTu.MaTat), "MÃ TẮT", 110, chiDoc: false),
             Theme.Cot(nameof(VatTu.DonVi), "ĐƠN VỊ", 110, chiDoc: false),
             Theme.Cot(nameof(VatTu.DonGiaMacDinh), "GIÁ CHUNG", 150, "#,##0", canPhai: true, chiDoc: false));
         Theme.ChoPhepGoSo(_luoi, nameof(VatTu.DonGiaMacDinh));
@@ -120,7 +121,7 @@ public sealed class VatTuForm : Form
         _lblTrangThai.Font = Theme.FontPhu;
         _lblTrangThai.ForeColor = Theme.Xam;
         _lblTrangThai.TextAlign = ContentAlignment.MiddleRight;
-        _lblTrangThai.Text = "Bấm đúp vào ô để sửa · Ctrl+Z hoàn tác";
+        _lblTrangThai.Text = "Bấm đúp vào ô để sửa (kể cả mã tắt) · Ctrl+Z hoàn tác";
 
         var nenDuoi = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 12, 20, 10) };
         nenDuoi.Controls.Add(traiDuoi);
@@ -144,7 +145,7 @@ public sealed class VatTuForm : Form
 
         foreach (var vatTu in _kho.DuLieu.VatTus.OrderBy(v => v.Ten, StringComparer.CurrentCultureIgnoreCase))
         {
-            if (ChuViet.Chua(vatTu.Ten, _txtTim.Text))
+            if (TimHang.Khop(vatTu.Ten, vatTu.MaTat, _txtTim.Text))
             {
                 _nguon.Add(vatTu);
             }
