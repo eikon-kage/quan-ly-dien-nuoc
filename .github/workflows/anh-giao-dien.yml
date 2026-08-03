@@ -1,0 +1,55 @@
+name: Ảnh giao diện
+
+# Dựng phần mềm trên máy Windows của GitHub rồi chụp ảnh từng màn hình,
+# để xem giao diện mà không cần máy Windows ở nhà.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, main]
+
+jobs:
+  chup-anh:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Biên dịch
+        run: dotnet build QuanLyDienNuoc.sln -c Release
+
+      - name: Chạy kiểm thử
+        run: dotnet test QuanLyDienNuoc.sln -c Release --no-build --verbosity quiet
+
+      - name: Chụp ảnh giao diện
+        run: dotnet run --project src/QuanLyDienNuoc -c Release --no-build -- --chup-anh "${{ github.workspace }}/anh-giao-dien"
+
+      - name: In nhật ký chụp ảnh
+        if: always()
+        run: Get-Content "${{ github.workspace }}/anh-giao-dien/nhat-ky.txt" -ErrorAction SilentlyContinue
+        shell: pwsh
+
+      - name: Gửi ảnh về
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anh-giao-dien
+          path: anh-giao-dien/
+          if-no-files-found: error
+
+      - name: Đóng gói bản chạy được (.exe)
+        if: always()
+        run: dotnet publish src/QuanLyDienNuoc -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ban-chay
+
+      - name: Gửi bản .exe về
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuanLyDienNuoc-win-x64
+          path: ban-chay/

@@ -42,10 +42,20 @@ public sealed class KhoDuLieu
         }
     }
 
-    private static string DuongDanMacDinh() => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "QuanLyDienNuoc",
-        "dulieu.json");
+    private static string DuongDanMacDinh()
+    {
+        // Cho phép trỏ dữ liệu sang chỗ khác, dùng khi chụp ảnh giao diện trên máy dựng tự động.
+        var chiDinh = Environment.GetEnvironmentVariable("QLDN_FILE_DULIEU");
+        if (!string.IsNullOrWhiteSpace(chiDinh))
+        {
+            return chiDinh;
+        }
+
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "QuanLyDienNuoc",
+            "dulieu.json");
+    }
 
     /// <summary>Phát ra sau khi dữ liệu đổi theo cách mà màn hình phải nạp lại (gồm cả hoàn tác).</summary>
     public event EventHandler? DuLieuThayDoi;
