@@ -34,6 +34,8 @@ public sealed class KhoDuLieu
     public KhoDuLieu(string duongDanFile)
     {
         DuongDanFile = duongDanFile;
+        NhatKy = new NhatKy(NhatKy.DuongDanBenCanh(duongDanFile));
+        CaiDat = CaiDat.Doc(CaiDat.DuongDanBenCanh(duongDanFile));
 
         var thuMuc = Path.GetDirectoryName(duongDanFile);
         if (!string.IsNullOrEmpty(thuMuc))
@@ -62,6 +64,12 @@ public sealed class KhoDuLieu
 
     public string DuongDanFile { get; }
 
+    /// <summary>Nhật ký thay đổi, ghi ra file riêng nên hoàn tác không xoá mất.</summary>
+    public NhatKy NhatKy { get; }
+
+    /// <summary>Cài đặt (nhắc nợ, sao lưu, cảnh báo nhập sai), lưu ở file riêng.</summary>
+    public CaiDat CaiDat { get; private set; }
+
     public DuLieuApp DuLieu { get; private set; } = new();
 
     public bool CoTheHoanTac => _hoanTac.Count > 0;
@@ -76,6 +84,8 @@ public sealed class KhoDuLieu
 
     public void Nap()
     {
+        CaiDat = CaiDat.Doc(CaiDat.DuongDanBenCanh(DuongDanFile));
+
         if (!File.Exists(DuongDanFile))
         {
             DuLieu = new DuLieuApp();
@@ -87,6 +97,11 @@ public sealed class KhoDuLieu
         var json = File.ReadAllText(DuongDanFile, Encoding.UTF8);
         DuLieu = JsonSerializer.Deserialize<DuLieuApp>(json, TuyChonJson) ?? new DuLieuApp();
     }
+
+    public void LuuCaiDat() => CaiDat.Luu(CaiDat.DuongDanBenCanh(DuongDanFile));
+
+    /// <summary>Báo cho các màn hình đang mở nạp lại, dùng sau khi khôi phục từ bản sao lưu.</summary>
+    public void BaoDuLieuThayDoi() => DuLieuThayDoi?.Invoke(this, EventArgs.Empty);
 
     public void Luu()
     {
@@ -130,6 +145,7 @@ public sealed class KhoDuLieu
 
         _lamLai.Clear();
         Luu();
+        NhatKy.Ghi(moTa);
 
         if (phatSuKien)
         {
@@ -150,6 +166,7 @@ public sealed class KhoDuLieu
         _lamLai.Add(new BuocLichSu(ChupNhanh(), buoc.MoTa));
 
         KhoiPhuc(buoc.AnhChup);
+        NhatKy.Ghi("Hoàn tác", buoc.MoTa);
         return buoc.MoTa;
     }
 
@@ -166,6 +183,7 @@ public sealed class KhoDuLieu
         _hoanTac.Add(new BuocLichSu(ChupNhanh(), buoc.MoTa));
 
         KhoiPhuc(buoc.AnhChup);
+        NhatKy.Ghi("Làm lại", buoc.MoTa);
         return buoc.MoTa;
     }
 
@@ -193,6 +211,12 @@ public sealed class KhoDuLieu
 
     public VatTu? TimVatTuTheoTen(string ten) => DuLieu.VatTus
         .FirstOrDefault(v => string.Equals(v.Ten, ten.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+    /// <summary>Mọi hoá đơn của khách, tính cả các năm trước — dùng để tra giá lần trước và nhắc nợ.</summary>
+    public List<HoaDon> HoaDonCuaKhach(Guid khachId) => DuLieu.HoaDons
+        .Where(h => h.KhachHangId == khachId)
+        .OrderByDescending(h => h.NgayMo)
+        .ToList();
 
     public List<HoaDon> HoaDonCuaKhach(Guid khachId, int nam) => DuLieu.HoaDons
         .Where(h => h.KhachHangId == khachId && h.Nam == nam)
