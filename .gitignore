@@ -63,3 +63,7 @@ Thumbs.db
 
 ## Hoá đơn mẫu của cửa hàng - có thông tin khách thật, giữ trên máy, không đưa lên git
 docs/hoa-don-mau/
+
+## Thư mục tạm khi chạy --chup-anh ở gốc repo (kèm dữ liệu mẫu, bản sao lưu).
+## Ảnh giao diện thật nằm ở docs/anh-giao-dien/ và có trong git.
+/anh-giao-dien/

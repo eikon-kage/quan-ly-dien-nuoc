@@ -12,6 +12,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
 
+    # Cần quyền ghi để đẩy ảnh vừa chụp ngược lên nhánh.
+    permissions:
+      contents: write
+
     steps:
       - name: Lấy mã nguồn
         uses: actions/checkout@v4
@@ -22,6 +26,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Biên dịch
+        id: bien-dich
         run: dotnet build QuanLyDienNuoc.sln -c Release
 
       - name: Chạy kiểm thử
@@ -32,7 +37,10 @@ jobs:
         shell: pwsh
         run: Set-DisplayResolution -Width 1920 -Height 1080 -Force
 
+      # Kiểm thử hỏng vẫn chụp ảnh: xem được giao diện mới là việc chính của workflow này,
+      # còn test hỏng thì cả job vẫn báo đỏ như thường.
       - name: Chụp ảnh giao diện
+        if: always() && steps.bien-dich.outcome == 'success'
         # Việc chỉ mất vài giây; quá 5 phút là treo, cắt sớm cho đỡ phí phút chạy.
         timeout-minutes: 5
         run: dotnet run --project src/QuanLyDienNuoc -c Release --no-build -- --chup-anh "${{ github.workspace }}/anh-giao-dien"
@@ -42,17 +50,49 @@ jobs:
         run: Get-Content "${{ github.workspace }}/anh-giao-dien/nhat-ky.txt" -ErrorAction SilentlyContinue
         shell: pwsh
 
-      - name: Gửi ảnh về
+      # Chép ảnh vào docs/anh-giao-dien/ để commit lên nhánh. Không dùng artifact nữa:
+      # ảnh nằm sẵn trong git thì ở nhà chỉ cần `git pull` là có, khỏi vào tab Actions tải về.
+      - name: Dọn ảnh để đưa vào git
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: anh-giao-dien
-          path: anh-giao-dien/
-          if-no-files-found: error
-          # Ảnh nhẹ nhưng cũng không giữ lâu làm gì; gói Free chỉ có 500 MB kho lưu.
-          retention-days: 14
+        shell: pwsh
+        run: |
+          $nguon = "${{ github.workspace }}/anh-giao-dien"
+          $dich = "${{ github.workspace }}/docs/anh-giao-dien"
+          if (-not (Test-Path $nguon)) {
+            Write-Host "Không chụp được ảnh nào, bỏ qua bước này."
+            exit 0
+          }
+          # Xoá ảnh cũ trước để màn hình đã bỏ đi không nằm lại trong git.
+          if (Test-Path $dich) { Remove-Item "$dich/*" -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $dich | Out-Null
+          # Chỉ lấy ảnh và nhật ký. Thư mục du-lieu-mau là dữ liệu tạm, mỗi lần chạy
+          # lại sinh mã khác nhau nên đưa vào git chỉ tổ rác lịch sử.
+          Copy-Item "$nguon/*.png" $dich -ErrorAction SilentlyContinue
+          Copy-Item "$nguon/nhat-ky.txt" $dich -ErrorAction SilentlyContinue
+          Get-ChildItem $dich | Format-Table Name, Length
 
-      # Bản .exe nặng ~163 MB, giữ mỗi lần push là 3 lần đầy kho.
+      - name: Đẩy ảnh lên nhánh
+        if: always()
+        shell: pwsh
+        run: |
+          $dich = "${{ github.workspace }}/docs/anh-giao-dien"
+          if (-not (Test-Path $dich)) {
+            Write-Host "Không có ảnh để đẩy lên."
+            exit 0
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/anh-giao-dien
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Ảnh không đổi so với lần trước, không cần commit."
+            exit 0
+          }
+          # [skip ci] để lần đẩy này không kích hoạt lại chính workflow, tránh chạy vòng tròn.
+          git commit -m "chore: ảnh giao diện mới nhất [skip ci]"
+          git push origin "HEAD:${{ github.ref_name }}"
+
+      # Bản .exe nặng ~163 MB, không nhét vào git được nên vẫn để ở mục artifact.
       # Chỉ đóng gói khi tự bấm chạy (tab Actions -> Run workflow).
       - name: Đóng gói bản chạy được (.exe)
         if: github.event_name == 'workflow_dispatch'

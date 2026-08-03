@@ -162,14 +162,23 @@ tests/
   QuanLyDienNuoc.Tests/         kiểm thử phần nghiệp vụ (xUnit): `dotnet test`
 .github/workflows/
   anh-giao-dien.yml             dựng trên máy Windows của GitHub, chụp ảnh từng màn hình
+docs/
+  anh-giao-dien/                ảnh giao diện mới nhất, do workflow tự commit lên
 ```
 
 ## Xem giao diện mà không có máy Windows
 
 Đẩy mã nguồn lên GitHub là workflow `anh-giao-dien.yml` tự chạy: dựng phần mềm trên máy
 Windows, chạy toàn bộ kiểm thử, mở lần lượt từng màn hình và chụp lại thành ảnh PNG, kèm
-cả ảnh bản in khổ A4. Vào tab **Actions** → chọn lần chạy → tải mục **anh-giao-dien** ở
-cuối trang. Cùng chỗ đó có sẵn bản `.exe` đã đóng gói.
+cả ảnh bản in khổ A4.
+
+Ảnh được chính workflow commit thẳng vào thư mục [`docs/anh-giao-dien/`](docs/anh-giao-dien/),
+nên ở nhà chỉ cần `git pull` là có ảnh mới nhất, không phải vào tab Actions tải về. Xem trên
+web cũng được: mở thư mục đó trong GitHub. Kèm theo có `nhat-ky.txt` ghi màn hình nào chụp
+được, màn hình nào lỗi.
+
+Bản `.exe` đóng gói sẵn thì vẫn nằm ở mục artifact: vào tab **Actions** → **Run workflow**
+để tự bấm chạy, xong tải ở cuối trang lần chạy đó.
 
 Chạy tay ở máy Windows cũng được:
 
