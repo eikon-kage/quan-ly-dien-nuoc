@@ -57,6 +57,8 @@ public static class XuatHoaDon
             wb = new HSSFWorkbook(doc);
         }
 
+        // File mẫu có thể còn nhiều tab khác (mẫu cũ, biểu đồ...) — chỉ giữ đúng tab cần dùng.
+        GiuLaiMotTab(wb, MauHoaDon.TimTab(wb, MauHoaDon.TenTabTrang1));
         wb.SetSheetName(0, "Trang 1");
 
         if (trang.Count > 1)
@@ -68,7 +70,7 @@ public static class XuatHoaDon
 
             using var docSau = File.OpenRead(fileTrangSau);
             var wbSau = new HSSFWorkbook(docSau);
-            var mauTrangSau = wbSau.GetSheetAt(0);
+            var mauTrangSau = wbSau.GetSheetAt(MauHoaDon.TimTab(wbSau, MauHoaDon.TenTabTrangSau));
 
             for (var i = 2; i <= trang.Count; i++)
             {
@@ -161,6 +163,18 @@ public static class XuatHoaDon
 
         LayO(sheet, viTri.DongNgay, MauHoaDon.CotNgayThang).SetCellValue(
             laTrangCuoi ? $"Ngày  {ngayIn.Day}   tháng  {ngayIn.Month}   năm {ngayIn.Year}" : string.Empty);
+    }
+
+    /// <summary>Xoá mọi tab khác trong file, chỉ chừa lại tab mẫu cần dùng.</summary>
+    private static void GiuLaiMotTab(IWorkbook wb, int chiSoGiuLai)
+    {
+        for (var i = wb.NumberOfSheets - 1; i >= 0; i--)
+        {
+            if (i != chiSoGiuLai)
+            {
+                wb.RemoveSheetAt(i);
+            }
+        }
     }
 
     /// <summary>Lấy ô để ghi, tạo mới nếu thiếu và mượn định dạng cùng dòng để không mất khung kẻ.</summary>

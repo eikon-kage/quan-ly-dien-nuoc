@@ -1,3 +1,6 @@
+using NPOI.SS.UserModel;
+using QuanLyDienNuoc.Ui;
+
 namespace QuanLyDienNuoc.Excel;
 
 /// <summary>
@@ -45,6 +48,69 @@ public static class MauHoaDon
         DongBangChu: 38,
         DongNgay: 40);
 
+    /// <summary>
+    /// Tên tab dùng làm mẫu trang đầu, xếp theo thứ tự ưu tiên. Nhờ vậy thả thẳng file
+    /// hoá đơn gốc (nhiều tab) vào thư mục mẫu vẫn lấy đúng tab.
+    /// </summary>
+    public static readonly string[] TenTabTrang1 = { "mẫu hoá đơn mối", "Trang 1" };
+
+    /// <summary>Tên tab dùng làm mẫu cho trang thứ hai trở đi.</summary>
+    public static readonly string[] TenTabTrangSau = { "mau cũ", "Trang sau" };
+
     /// <summary>Thư mục mẫu nằm cạnh file chạy của phần mềm.</summary>
     public static string ThuMucMacDinh => Path.Combine(AppContext.BaseDirectory, "MauHoaDon");
+
+    /// <summary>
+    /// Tìm tab mẫu trong file: ưu tiên đúng tên, không có thì lấy tab đầu tiên trông
+    /// giống bảng hàng (bỏ qua tab biểu đồ, tab trống).
+    /// </summary>
+    public static int TimTab(IWorkbook wb, params string[] tenUuTien)
+    {
+        foreach (var ten in tenUuTien)
+        {
+            var can = ChuViet.BoDau(ten.Trim());
+            for (var i = 0; i < wb.NumberOfSheets; i++)
+            {
+                if (ChuViet.BoDau(wb.GetSheetName(i).Trim()) == can)
+                {
+                    return i;
+                }
+            }
+        }
+
+        for (var i = 0; i < wb.NumberOfSheets; i++)
+        {
+            if (LaBangHang(wb.GetSheetAt(i)))
+            {
+                return i;
+            }
+        }
+
+        return 0;
+    }
+
+    private static bool LaBangHang(ISheet sheet)
+    {
+        var het = Math.Min(sheet.LastRowNum, 40);
+        for (var r = 0; r <= het; r++)
+        {
+            var hang = sheet.GetRow(r);
+            if (hang is null)
+            {
+                continue;
+            }
+
+            for (var c = hang.FirstCellNum; c < hang.LastCellNum && c >= 0; c++)
+            {
+                var o = hang.GetCell(c);
+                if (o?.CellType == CellType.String
+                    && ChuViet.BoDau(o.StringCellValue).Replace('\n', ' ').Contains("ten hang"))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }
