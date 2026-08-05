@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { NgayCong, ngayTrongThang, soNgayTrongThang } from '../nghiepvu/baoCao';
+import { NgayCong, ngayTrongThang } from '../nghiepvu/baoCao';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { Co, Mau, PhongChu } from './thietKe';
 
@@ -15,8 +15,6 @@ import { Co, Mau, PhongChu } from './thietKe';
  * Lịch bắt đầu từ Thứ Hai, giống lịch treo tường bán ngoài hàng, chứ không bắt đầu từ
  * Chủ Nhật kiểu Mỹ.
  */
-
-const TEN_COT = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 /** Một ngày đi đủ cả ngày là hai công: một sáng, một chiều. */
 const CONG_CA_NGAY = 2;
@@ -33,33 +31,17 @@ export function LichCong({ nam, thang, ngayCongs, ngayNghis }: Props) {
   const cong = new Map(ngayCongs.map((d) => [ngayTrongThang(d.ngay), d]));
   const nghi = new Set(ngayNghis.map(ngayTrongThang));
 
-  // Dời cột đi một để Thứ Hai đứng đầu: Chủ Nhật (0) rơi xuống cuối hàng.
-  const cotDau = (Ngay.soThu(Ngay.ghep(nam, thang, 1)) + 6) % 7;
-
-  const oLich: (number | null)[] = [
-    ...Array.from({ length: cotDau }, () => null),
-    ...Array.from({ length: soNgayTrongThang(nam, thang) }, (_, i) => i + 1),
-  ];
-  while (oLich.length % 7 !== 0) {
-    oLich.push(null);
-  }
-
-  const tuans: (number | null)[][] = [];
-  for (let i = 0; i < oLich.length; i += 7) {
-    tuans.push(oLich.slice(i, i + 7));
-  }
-
   return (
     <View style={kieu.lich}>
       <View style={kieu.hang}>
-        {TEN_COT.map((ten) => (
+        {Ngay.COT_LICH.map((ten) => (
           <Text key={ten} style={kieu.chuCot}>
             {ten}
           </Text>
         ))}
       </View>
 
-      {tuans.map((tuan, hang) => (
+      {Ngay.oLichThang(nam, thang).map((tuan, hang) => (
         <View key={`tuan-${hang}`} style={kieu.hang}>
           {tuan.map((n, cot) =>
             n === null ? (

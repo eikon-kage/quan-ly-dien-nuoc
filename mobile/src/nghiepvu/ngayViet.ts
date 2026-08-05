@@ -58,6 +58,70 @@ export function tuan(ngay: string): string[] {
   return Array.from({ length: 7 }, (_, i) => congNgay(dauTuan, i));
 }
 
+/** Số ngày của một tháng. */
+export function soNgayTrongThang(nam: number, thang: number): number {
+  return new Date(Date.UTC(nam, thang, 0)).getUTCDate();
+}
+
+/**
+ * Các tháng mà một khoảng ngày đi qua, từ cũ tới mới. Kỳ lương chốt lúc nào cũng được
+ * nên nó có thể vắt qua hai ba tháng, mà tờ lịch thì vẽ từng tháng một.
+ */
+export function cacThangTrongKhoang(
+  tuNgay: string,
+  denNgay: string,
+): { nam: number; thang: number }[] {
+  const dau = tach(tuNgay);
+  const cuoi = tach(denNgay);
+
+  const cacThang: { nam: number; thang: number }[] = [];
+  let nam = dau.nam;
+  let thang = dau.thang;
+  while (nam < cuoi.nam || (nam === cuoi.nam && thang <= cuoi.thang)) {
+    cacThang.push({ nam, thang });
+    if (thang === 12) {
+      nam += 1;
+      thang = 1;
+    } else {
+      thang += 1;
+    }
+  }
+
+  return cacThang;
+}
+
+/** Khoảng ngày viết gọn cho đầu trang: "20/07 → 05/08". */
+export function khoangGon(tuNgay: string, denNgay: string): string {
+  return `${ngayGon(tuNgay).slice(0, 5)} → ${ngayGon(denNgay).slice(0, 5)}`;
+}
+
+/** Tên bảy cột của tờ lịch, cũng kể từ Thứ Hai. */
+export const COT_LICH = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+/**
+ * Các ô của tờ lịch một tháng, xếp thành từng hàng bảy ô. Ô `null` là chỗ trống ở đầu
+ * và cuối tháng, chỗ mà tháng chưa bắt đầu hoặc đã hết.
+ */
+export function oLichThang(nam: number, thang: number): (number | null)[][] {
+  // Dời cột đi một để Thứ Hai đứng đầu: Chủ Nhật (0) rơi xuống cuối hàng.
+  const cotDau = (soThu(ghep(nam, thang, 1)) + 6) % 7;
+
+  const o: (number | null)[] = [
+    ...Array.from({ length: cotDau }, () => null),
+    ...Array.from({ length: soNgayTrongThang(nam, thang) }, (_, i) => i + 1),
+  ];
+  while (o.length % 7 !== 0) {
+    o.push(null);
+  }
+
+  const hangs: (number | null)[][] = [];
+  for (let i = 0; i < o.length; i += 7) {
+    hangs.push(o.slice(i, i + 7));
+  }
+
+  return hangs;
+}
+
 /** Kiểu hiện trên đầu màn hình chấm công: "Thứ Hai 03/08". */
 export function thuVaNgay(ngay: string): string {
   const { thang, ngay: n } = tach(ngay);

@@ -27,7 +27,9 @@ interface Props {
   banPhim?: 'number-pad' | 'decimal-pad';
   /** Trả về lời nhắc nếu số đọc được nhưng không dùng được, ví dụ lớn quá. */
   loi?: (so: number) => string | null;
-  onGhi: (so: number) => void;
+  /** Ô chữ phụ dưới ô số, ví dụ ghi chú cho lần ứng tiền. Không bắt buộc điền. */
+  oChu?: { nhan: string; goiY: string };
+  onGhi: (so: number, chuThem: string) => void;
   onDong: () => void;
 }
 
@@ -44,10 +46,12 @@ export function HopNhapSo({
   hienLai = Ngay.tien,
   banPhim = 'number-pad',
   loi = () => null,
+  oChu,
   onGhi,
   onDong,
 }: Props) {
   const [chu, datChu] = useState(giaTriDau);
+  const [chuThem, datChuThem] = useState('');
 
   const so = doc(chu);
   const loiHienTai = so === null ? null : loi(so);
@@ -66,15 +70,26 @@ export function HopNhapSo({
           <Text style={kieu.tieuDe}>{tieuDe}</Text>
           <Text style={kieu.moTa}>{moTa}</Text>
 
-          <TextInput
-            style={kieu.o}
-            value={chu}
-            onChangeText={datChu}
-            placeholder={goiY}
-            placeholderTextColor={Mau.xam}
-            keyboardType={banPhim}
-            autoFocus
-          />
+          {/*
+            Chữ gợi ý tự vẽ chứ không dùng placeholder: Android có lỗi để con nháy
+            nhảy ra sát mép phải khi ô căn giữa mà còn trống và có placeholder.
+            Ô trống thật thì con nháy nằm đúng giữa.
+          */}
+          <View>
+            <TextInput
+              style={kieu.o}
+              value={chu}
+              onChangeText={datChu}
+              accessibilityLabel={goiY}
+              keyboardType={banPhim}
+              autoFocus
+            />
+            {chu === '' && (
+              <View style={kieu.phuGoiY} pointerEvents="none">
+                <Text style={kieu.chuGoiY}>{goiY}</Text>
+              </View>
+            )}
+          </View>
 
           {/*
             Đọc lại số vừa gõ ("1.500.000 đ") để bắt lỗi thừa hoặc thiếu số 0.
@@ -84,9 +99,27 @@ export function HopNhapSo({
             {loiHienTai ?? (so !== null && so > 0 ? hienLai(so) : ' ')}
           </Text>
 
+          {/*
+            Ô chữ để trắng cũng ghi được — bắt điền thì lần nào vội cũng phải gõ bừa
+            một chữ cho xong. Chữ căn trái vì đây là câu chữ, không phải con số.
+          */}
+          {oChu !== undefined && (
+            <>
+              <Text style={kieu.nhanOChu}>{oChu.nhan}</Text>
+              <TextInput
+                style={[kieu.o, kieu.oChu]}
+                value={chuThem}
+                onChangeText={datChuThem}
+                placeholder={oChu.goiY}
+                placeholderTextColor={Mau.xam}
+                maxLength={60}
+              />
+            </>
+          )}
+
           <Pressable
             style={[kieu.nut, ghiDuoc ? kieu.nutBat : kieu.nutTat]}
-            onPress={() => ghiDuoc && onGhi(so)}
+            onPress={() => ghiDuoc && onGhi(so, chuThem.trim())}
             disabled={!ghiDuoc}
           >
             <Text style={[kieu.chuNut, { color: ghiDuoc ? Mau.trang : Mau.xam }]}>Ghi</Text>
@@ -139,6 +172,18 @@ const kieu = StyleSheet.create({
     color: Mau.chu,
     textAlign: 'center',
   },
+  phuGoiY: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chuGoiY: { fontSize: 20, fontFamily: PhongChu.vua, color: Mau.xam },
+  nhanOChu: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.xam, marginLeft: 2 },
+  oChu: { fontSize: Co.chuThuong, textAlign: 'left' },
   docLai: {
     fontSize: Co.chuPhu,
     fontFamily: PhongChu.vua,

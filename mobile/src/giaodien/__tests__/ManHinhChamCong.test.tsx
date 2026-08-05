@@ -203,7 +203,7 @@ describe('màn hình chấm công', () => {
     fireEvent.press(screen.getByText('Sửa'));
     fireEvent.press(screen.getByText('Buổi sáng'));
     fireEvent.press(screen.getByText('Gõ số công khác'));
-    fireEvent.changeText(screen.getByPlaceholderText('Ví dụ 0,75'), '0,75');
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,75'), '0,75');
     fireEvent.press(screen.getByText('Ghi'));
 
     expect(dangCham(moiNhat(), ids[0], HOM_NAY, 'Sang')?.soCong).toBe(0.75);
@@ -217,7 +217,7 @@ describe('màn hình chấm công', () => {
     fireEvent.press(screen.getByText('Buổi sáng'));
     fireEvent.press(screen.getByText('Gõ số công khác'));
     // Gõ "10" thay vì "1,0" là lỗi hay gặp, lọt qua thì tiền công sai gấp mười.
-    fireEvent.changeText(screen.getByPlaceholderText('Ví dụ 0,75'), '10');
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,75'), '10');
 
     expect(screen.getByText('Nhiều nhất 5 công một buổi.')).toBeTruthy();
 

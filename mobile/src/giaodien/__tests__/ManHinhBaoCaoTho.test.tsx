@@ -1,6 +1,5 @@
-import { render, screen, within } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
-import { baoCaoThang } from '../../nghiepvu/baoCao';
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import { cham, datCong, themTho, themUng } from '../../nghiepvu/thaoTac';
 import { ManHinhBaoCaoTho } from '../ManHinhBaoCaoTho';
@@ -14,10 +13,22 @@ function khoCoTho(tienMotCong = 300_000) {
 }
 
 function dung(duLieu: DuLieuChamCong, thoId: string, homNay = CUOI_KY) {
-  const baoCao = baoCaoThang(duLieu, thoId, 2026, 8, homNay)!;
   return render(
-    <ManHinhBaoCaoTho baoCao={baoCao} nam={2026} thang={8} onDong={() => {}} />,
+    <ManHinhBaoCaoTho
+      duLieu={duLieu}
+      thoId={thoId}
+      nam={2026}
+      thang={8}
+      homNay={homNay}
+      onDong={() => {}}
+    />,
   );
+}
+
+/** Mở tờ lịch của nút Từ hoặc Đến rồi chạm một ngày trong tháng 8. */
+function chonNgay(nut: 'Từ' | 'Đến', ngay: string, thu: string) {
+  fireEvent.press(screen.getByLabelText(new RegExp(`^${nut} ngày`)));
+  fireEvent.press(screen.getByLabelText(`${ngay} ${thu}`));
 }
 
 describe('màn hình báo cáo một thợ', () => {
@@ -133,6 +144,72 @@ describe('màn hình báo cáo một thợ', () => {
     dung(duLieu, thoId);
 
     expect(screen.getByText('Tháng này chưa có ngày công nào.')).toBeTruthy();
+  });
+
+  test('lọc khoảng hẹp thì tóm tắt và tờ lịch chỉ tính trong khoảng', () => {
+    let { duLieu, thoId } = khoCoTho(300_000);
+    duLieu = cham(duLieu, thoId, '2026-08-03', 'Sang');
+    duLieu = cham(duLieu, thoId, '2026-08-20', 'Sang');
+
+    dung(duLieu, thoId, '2026-08-31');
+    expect(screen.getByText('2 công')).toBeTruthy();
+
+    chonNgay('Đến', '15/08', 'Thứ Bảy');
+
+    expect(screen.getByText('1 công')).toBeTruthy();
+    expect(screen.getByText('01/08 – 15/08')).toBeTruthy();
+    // Ngày 20 rơi ra ngoài khoảng nên thành ô trắng, không tính là đi làm cũng không là nghỉ.
+    expect(screen.getByLabelText('20/08 Thứ Năm, chưa tính')).toBeTruthy();
+  });
+
+  test('nút Nửa cuối nhảy thẳng sang kỳ 16 tới cuối tháng', () => {
+    let { duLieu, thoId } = khoCoTho();
+    duLieu = themUng(duLieu, thoId, '2026-08-05', 500_000, 'ứng đổ xăng');
+    duLieu = themUng(duLieu, thoId, '2026-08-20', 200_000, 'ứng mua thuốc');
+
+    dung(duLieu, thoId, '2026-08-31');
+    expect(screen.getByText('Ứng tiền (2 lần)')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Nửa cuối'));
+
+    expect(screen.getByText('16/08 – 31/08')).toBeTruthy();
+    expect(screen.getByText('Ứng tiền (1 lần)')).toBeTruthy();
+    expect(screen.getByText('ứng mua thuốc')).toBeTruthy();
+    expect(screen.queryByText('ứng đổ xăng')).toBeNull();
+  });
+
+  test('bấm Cả tháng là bỏ lọc, quay về trọn tháng', () => {
+    const { duLieu, thoId } = khoCoTho();
+    dung(duLieu, thoId, '2026-08-31');
+
+    fireEvent.press(screen.getByText('Nửa đầu'));
+    expect(screen.getByText('01/08 – 15/08')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Cả tháng'));
+    expect(screen.getByText('Tháng 8/2026')).toBeTruthy();
+  });
+
+  test('chọn ngày đầu muộn hơn ngày cuối thì kéo luôn ngày cuối theo', () => {
+    const { duLieu, thoId } = khoCoTho();
+    dung(duLieu, thoId, '2026-08-31');
+
+    fireEvent.press(screen.getByText('Nửa đầu'));
+    chonNgay('Từ', '20/08', 'Thứ Năm');
+
+    // Không khoá ngày lại cho bấm không ăn, mà kéo ngày cuối theo — không có ngõ cụt.
+    expect(screen.getByText('20/08 – 20/08')).toBeTruthy();
+  });
+
+  test('khoảng chưa có công, chưa ứng thì nói rõ là của khoảng chứ không phải cả tháng', () => {
+    let { duLieu, thoId } = khoCoTho();
+    duLieu = cham(duLieu, thoId, '2026-08-03', 'Sang');
+    duLieu = themUng(duLieu, thoId, '2026-08-05', 500_000);
+
+    dung(duLieu, thoId, '2026-08-31');
+    fireEvent.press(screen.getByText('Nửa cuối'));
+
+    expect(screen.getByText('Khoảng này chưa có ngày công nào.')).toBeTruthy();
+    expect(screen.getByText('Khoảng này chưa ứng lần nào.')).toBeTruthy();
   });
 
   test('ứng quá tiền công thì còn phải trả là số âm', () => {

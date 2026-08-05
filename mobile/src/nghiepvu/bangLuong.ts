@@ -3,7 +3,7 @@
  * và còn phải trả bao nhiêu.
  */
 
-import { DuLieuChamCong, Tho } from './kieu';
+import { BuoiCong, DuLieuChamCong, Tho, UngTien } from './kieu';
 import { ghep } from './ngayViet';
 import { luongTaiNgay } from './thaoTac';
 
@@ -15,42 +15,52 @@ export interface DongLuong {
   /** Tiền công đã tính theo giá của lúc chấm từng buổi. */
   tienCong: number;
   daUng: number;
+  /**
+   * Tiền kỳ trước quyết toán còn thiếu, mang sang kỳ này. Số âm là kỳ trước trả dư,
+   * kỳ này trừ lại. Xem khoảng ngày bất kỳ (không phải kỳ lương) thì luôn là 0.
+   */
+  noKyTruoc: number;
   /** Số tiền còn phải trả thợ. Ứng quá tay thì số này âm. */
   conLai: number;
 }
 
 /**
- * Tính bảng lương trong khoảng ngày, tính cả tuNgay và denNgay.
- * Thợ đã nghỉ vẫn hiện nếu trong kỳ có công hoặc có ứng tiền. Xếp theo tên thợ.
+ * Tính bảng lương trên đúng một tập buổi công và ứng tiền đã lọc sẵn.
+ *
+ * Tách riêng khỏi `tinh` vì kỳ lương không cắt theo ngày mà cắt theo *bản ghi nào đã
+ * quyết toán* — chấm bù một ngày cũ thì buổi đó vẫn thuộc kỳ đang mở. Xếp theo tên thợ.
+ *
+ * `noTheoTho` là tiền kỳ trước còn thiếu của từng thợ; thợ nào không có thì coi như 0.
+ * Thợ chỉ có mỗi khoản nợ, kỳ này chưa làm buổi nào, vẫn phải hiện ra — nếu không thì
+ * món nợ biến mất khỏi màn hình mà vẫn nằm trong sổ.
  */
-export function tinh(duLieu: DuLieuChamCong, tuNgay: string, denNgay: string): DongLuong[] {
+export function tinhTuBanGhi(
+  duLieu: DuLieuChamCong,
+  buoiCongs: BuoiCong[],
+  ungTiens: UngTien[],
+  noTheoTho: Map<string, number> = new Map(),
+): DongLuong[] {
   const ketQua: DongLuong[] = [];
 
   for (const tho of duLieu.thos) {
-    const buoiCongs = duLieu.buoiCongs.filter(
-      (b) => b.thoId === tho.id && b.ngay >= tuNgay && b.ngay <= denNgay,
-    );
+    const cuaTho = buoiCongs.filter((b) => b.thoId === tho.id);
+    const ungCuaTho = ungTiens.filter((u) => u.thoId === tho.id);
+    const daUng = ungCuaTho.reduce((tong, u) => tong + u.soTien, 0);
+    const noKyTruoc = noTheoTho.get(tho.id) ?? 0;
 
-    const daUng = duLieu.ungTiens
-      .filter((u) => u.thoId === tho.id && u.ngay >= tuNgay && u.ngay <= denNgay)
-      .reduce((tong, u) => tong + u.soTien, 0);
-
-    if (buoiCongs.length === 0 && daUng === 0) {
+    if (cuaTho.length === 0 && daUng === 0 && noKyTruoc === 0) {
       continue;
     }
 
     const cong = (buoi: 'Sang' | 'Chieu') =>
-      buoiCongs.filter((b) => b.buoi === buoi).reduce((tong, b) => tong + b.soCong, 0);
+      cuaTho.filter((b) => b.buoi === buoi).reduce((tong, b) => tong + b.soCong, 0);
 
     const congSang = cong('Sang');
     const congChieu = cong('Chieu');
     // Giá của từng buổi lấy theo mốc lương tại đúng ngày đó, nên tăng lương giữa tháng
     // thì nửa đầu tháng vẫn tính giá cũ, nửa sau tính giá mới.
     const tienCong = Math.round(
-      buoiCongs.reduce(
-        (tong, b) => tong + b.soCong * (b.tienMotCong ?? luongTaiNgay(tho, b.ngay)),
-        0,
-      ),
+      cuaTho.reduce((tong, b) => tong + b.soCong * (b.tienMotCong ?? luongTaiNgay(tho, b.ngay)), 0),
     );
 
     ketQua.push({
@@ -60,11 +70,24 @@ export function tinh(duLieu: DuLieuChamCong, tuNgay: string, denNgay: string): D
       tongCong: congSang + congChieu,
       tienCong,
       daUng,
-      conLai: tienCong - daUng,
+      noKyTruoc,
+      conLai: tienCong - daUng + noKyTruoc,
     });
   }
 
   return ketQua.sort((a, b) => a.tho.ten.localeCompare(b.tho.ten, 'vi', { sensitivity: 'base' }));
+}
+
+/**
+ * Tính bảng lương trong khoảng ngày, tính cả tuNgay và denNgay.
+ * Thợ đã nghỉ vẫn hiện nếu trong kỳ có công hoặc có ứng tiền. Xếp theo tên thợ.
+ */
+export function tinh(duLieu: DuLieuChamCong, tuNgay: string, denNgay: string): DongLuong[] {
+  return tinhTuBanGhi(
+    duLieu,
+    duLieu.buoiCongs.filter((b) => b.ngay >= tuNgay && b.ngay <= denNgay),
+    duLieu.ungTiens.filter((u) => u.ngay >= tuNgay && u.ngay <= denNgay),
+  );
 }
 
 /** Bảng lương của trọn một tháng. */

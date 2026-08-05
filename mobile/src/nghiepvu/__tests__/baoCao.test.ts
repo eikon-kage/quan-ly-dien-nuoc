@@ -1,5 +1,6 @@
-import { baoCaoThang, daChamHomNay, soNgayTrongThang } from '../baoCao';
+import { baoCaoKhoang, baoCaoThang, daChamHomNay } from '../baoCao';
 import { DuLieuChamCong, duLieuRong } from '../kieu';
+import { soNgayTrongThang } from '../ngayViet';
 import { cham, datLuong, themTho, themUng } from '../thaoTac';
 
 const NGAY_TAO = '2026-08-01';
@@ -139,6 +140,49 @@ describe('báo cáo tháng của một thợ', () => {
 
   test('thợ không có thật thì trả về null', () => {
     expect(baoCaoThang(duLieuRong(), 'khong-co', 2026, 8, '2026-08-31')).toBeNull();
+  });
+});
+
+describe('báo cáo theo khoảng ngày', () => {
+  test('chỉ tính công và ứng tiền nằm trong khoảng', () => {
+    let { duLieu, thoId } = khoCoTho();
+    duLieu = cham(duLieu, thoId, '2026-08-03', 'Sang');
+    duLieu = cham(duLieu, thoId, '2026-08-20', 'Sang');
+    duLieu = themUng(duLieu, thoId, '2026-08-05', 500_000);
+    duLieu = themUng(duLieu, thoId, '2026-08-25', 200_000);
+
+    const bao = baoCaoKhoang(duLieu, thoId, '2026-08-01', '2026-08-15', '2026-08-31')!;
+
+    expect(bao.tongCong).toBe(1);
+    expect(bao.ungTiens).toHaveLength(1);
+    expect(bao.daUng).toBe(500_000);
+    expect(bao.tuNgay).toBe('2026-08-01');
+    expect(bao.denNgay).toBe('2026-08-15');
+  });
+
+  test('ngày nghỉ cũng chỉ đếm trong khoảng', () => {
+    let { duLieu, thoId } = khoCoTho();
+    duLieu = cham(duLieu, thoId, '2026-08-10', 'Sang');
+
+    const bao = baoCaoKhoang(duLieu, thoId, '2026-08-08', '2026-08-12', '2026-08-31')!;
+
+    expect(bao.ngayNghis).toEqual([
+      '2026-08-08',
+      '2026-08-09',
+      '2026-08-11',
+      '2026-08-12',
+    ]);
+  });
+
+  test('khoảng vắt qua hai tháng vẫn liền mạch', () => {
+    let { duLieu, thoId } = khoCoTho(300_000, '2026-07-01');
+    duLieu = cham(duLieu, thoId, '2026-07-31', 'Sang');
+    duLieu = cham(duLieu, thoId, '2026-08-01', 'Sang');
+
+    const bao = baoCaoKhoang(duLieu, thoId, '2026-07-28', '2026-08-03', '2026-08-31')!;
+
+    expect(bao.tongCong).toBe(2);
+    expect(bao.ngayNghis).toHaveLength(5);
   });
 });
 

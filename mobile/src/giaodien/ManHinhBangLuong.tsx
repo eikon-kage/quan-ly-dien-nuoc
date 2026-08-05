@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { thang } from '../nghiepvu/bangLuong';
-import { baoCaoThang } from '../nghiepvu/baoCao';
 import { DuLieuChamCong, Tho } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { themUng } from '../nghiepvu/thaoTac';
@@ -40,13 +39,13 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
     datThang(moc.getUTCMonth() + 1);
   }
 
-  function ghiUng(soTien: number) {
+  function ghiUng(soTien: number, ghiChu: string) {
     if (dangUng === null) {
       return;
     }
 
     rungNhe();
-    capNhat(themUng(duLieu, dangUng.id, Ngay.homNay(), soTien));
+    capNhat(themUng(duLieu, dangUng.id, Ngay.homNay(), soTien, ghiChu));
     datDangUng(null);
   }
 
@@ -146,23 +145,22 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
           tieuDe={`${dangUng.ten} ứng tiền`}
           moTa="Thợ ứng bao nhiêu?"
           goiY="Ví dụ 500000"
+          oChu={{ nhan: 'Ghi chú (không bắt buộc)', goiY: 'Ví dụ: ứng đổ xăng' }}
           onGhi={ghiUng}
           onDong={() => datDangUng(null)}
         />
       )}
 
-      {xemBaoCao !== null &&
-        (() => {
-          const baoCao = baoCaoThang(duLieu, xemBaoCao, nam, thangDangXem, Ngay.homNay());
-          return baoCao === null ? null : (
-            <ManHinhBaoCaoTho
-              baoCao={baoCao}
-              nam={nam}
-              thang={thangDangXem}
-              onDong={() => datXemBaoCao(null)}
-            />
-          );
-        })()}
+      {xemBaoCao !== null && (
+        <ManHinhBaoCaoTho
+          duLieu={duLieu}
+          thoId={xemBaoCao}
+          nam={nam}
+          thang={thangDangXem}
+          homNay={Ngay.homNay()}
+          onDong={() => datXemBaoCao(null)}
+        />
+      )}
     </View>
   );
 }

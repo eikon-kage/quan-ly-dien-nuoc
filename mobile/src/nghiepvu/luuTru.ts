@@ -46,6 +46,9 @@ export async function doc(): Promise<DuLieuChamCong> {
       thos: (daDoc.thos ?? []).map(chuyenDoiTho),
       buoiCongs: daDoc.buoiCongs ?? [],
       ungTiens: daDoc.ungTiens ?? [],
+      // Máy đã cài bản trước chưa có quyết toán: coi như chưa chốt kỳ nào, mọi thứ đang
+      // nằm trong kỳ đầu tiên. Không mất gì cả.
+      kyLuongs: daDoc.kyLuongs ?? [],
     };
   } catch {
     // Dữ liệu hỏng thì thà mở app lên trống còn hơn không mở được.

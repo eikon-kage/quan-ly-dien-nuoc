@@ -108,11 +108,43 @@ công thì ô đó hiện thêm `½` hoặc `1½` để nhìn là biết.
 Chọn tháng bằng `‹ ›`. Mỗi thợ một thẻ: tổng công, tiền công, đã ứng, **còn phải trả** in to
 nhất và đậm nhất — đó là con số anh cần khi móc ví. Ứng quá thì số âm và in đỏ.
 
+Nút **Ứng tiền** trên mỗi thẻ mở hộp nhập số tiền, kèm một ô **ghi chú không bắt buộc**
+(*"ứng đổ xăng"*, *"ứng mua thuốc"*). Ghi chú hiện lại ở danh sách ứng tiền trong màn hình
+chi tiết — vài tuần sau nhìn lại còn biết tiền ấy ứng vào việc gì. Không bắt điền: lúc vội
+mà ép gõ thì người dùng gõ bừa một chữ cho xong, ghi chú thành vô nghĩa.
+
 #### Xem chi tiết một thợ
 
 Bấm cả thẻ là mở màn hình chi tiết tháng đó — chỗ để tra khi thợ thắc mắc *"sao tháng này ít
 tiền thế"*. Trên cùng vẫn là bốn con số tóm tắt, dưới là **tờ lịch cả tháng**
 ([LichCong.tsx](../mobile/src/giaodien/LichCong.tsx)), cuối cùng là các lần ứng tiền.
+
+##### Lọc theo khoảng ngày
+
+Mở ra là trọn tháng, nhưng chọn hẹp lại được — nhiều nhà trả tiền theo **kỳ nửa tháng** chứ
+không đợi hết tháng, lúc ấy con số cần nhìn là của kỳ đó.
+
+```
+┌────────────────────────────────────┐
+│  Từ [ 01/08 ]  →  Đến [ 15/08 ]    │   chạm là mở tờ lịch chọn ngày
+│  [Cả tháng] [Nửa đầu] [Nửa cuối]   │   ba khoảng hay dùng, một chạm
+└────────────────────────────────────┘
+```
+
+Bốn điều đã cân nhắc ở đây:
+
+1. **Cả bốn con số tóm tắt, tờ lịch lẫn danh sách ứng tiền đều tính lại theo khoảng.** Lọc
+   mà chỉ lọc một mục thì người xem cộng nhầm lúc nào không hay.
+2. **Tờ lịch vẫn vẽ trọn tháng**, ngày ngoài khoảng thành ô trắng "chưa tính". Cắt tờ lịch
+   cho vừa khoảng thì mất chỗ dựa của mắt — nhìn vào không biết đang ở đoạn nào của tháng.
+3. **Hộp chọn ngày tự vẽ** ([HopChonNgay.tsx](../mobile/src/giaodien/HopChonNgay.tsx)) như tờ
+   lịch, chạm một cái là xong, không có nút *Đồng ý*. Hộp của hệ điều hành là ba bánh xe quay
+   chữ nhỏ, người có tuổi quay trượt tay, mà bản Android lại khác hẳn bản iOS.
+4. **Chọn ngày đầu muộn hơn ngày cuối thì kéo luôn ngày cuối theo**, chứ không khoá ngày lại
+   cho bấm không ăn. Người dùng chỉ gặp khoảng hợp lệ, không bao giờ vào ngõ cụt.
+
+Đầu trang ghi `Tháng 8/2026` khi đang xem trọn tháng, ghi `01/08 – 15/08` khi đã lọc — nhìn
+một chỗ là biết con số bên dưới đang tính cho đoạn nào.
 
 Tháng 8/2026, thợ đi đều cả tháng, riêng ngày 13 chỉ đi nửa buổi, xem vào ngày 27:
 
@@ -159,6 +191,30 @@ là một con số với một dấu tích, đọc trơn lên thì không rõ ng
 
 Danh sách tên kèm tiền một công. Thêm/sửa thợ trên một biểu mẫu chữ to. Thợ nghỉ việc thì
 tắt *Đang làm* chứ không xoá — xoá là mất luôn bảng lương các tháng trước.
+
+```
+┌────────────────────────────────────┐
+│  Thợ                [ + Thêm thợ ] │   đầu trang trắng, nút cao 44pt
+│  3 đang làm · 1 đã nghỉ            │
+├────────────────────────────────────┤
+│  Anh Tuấn                   [Sửa]  │
+│  300.000 đ một công                │
+│  ...                               │
+├────────────────────────────────────┤
+│  [   Xuất toàn bộ ra Excel   ]     │   thanh dưới cố định
+└────────────────────────────────────┘
+```
+
+**Nút Thêm thợ nằm trong đầu trang**, không phải thanh xanh chiếm hết bề ngang như bản đầu.
+Thêm thợ là việc làm vài lần rồi thôi — để nó to bằng cả màn hình thì lấn chỗ danh sách,
+thứ người dùng vào đây để xem. Vào đầu trang thì màn hình này cũng có đầu trang trắng
+giống Chấm công và Bảng lương, ba màn hình nhìn ra một bộ.
+
+Nút cao 44pt chứ không phải 48pt như nút thường — bằng mũi tên đổi tháng bên Bảng lương,
+vẫn đúng mức tối thiểu Apple khuyên. Đừng hạ thêm.
+
+Dòng đếm dưới tiêu đề (*3 đang làm · 1 đã nghỉ*) để khỏi ngồi đếm danh sách; chưa có ai thì
+ghi thẳng *Chưa có ai* chứ không bỏ trống.
 
 Dưới đáy màn hình có nút **Xuất toàn bộ ra Excel** — xem mục dưới đây.
 

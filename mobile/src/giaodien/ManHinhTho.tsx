@@ -27,6 +27,15 @@ export function ManHinhTho({ duLieu, capNhat }: Props) {
   const homNay = Ngay.homNay();
   const coDuLieu = duLieu.buoiCongs.length > 0 || duLieu.ungTiens.length > 0 || thos.length > 0;
 
+  const soDangLam = thos.filter((tho) => tho.dangLam).length;
+  const soDaNghi = thos.length - soDangLam;
+  const demTho =
+    thos.length === 0
+      ? 'Chưa có ai'
+      : soDaNghi === 0
+        ? `${soDangLam} đang làm`
+        : `${soDangLam} đang làm · ${soDaNghi} đã nghỉ`;
+
   async function xuatExcel() {
     if (dangXuat === 'dangLam') {
       return;
@@ -45,10 +54,23 @@ export function ManHinhTho({ duLieu, capNhat }: Props) {
 
   return (
     <View style={kieu.khung}>
-      <Pressable style={kieu.nutThem} onPress={() => datDangMo('them')}>
-        <Feather name="plus" size={17} color={Mau.trang} />
-        <Text style={kieu.chuNutThem}>Thêm thợ</Text>
-      </Pressable>
+      {/*
+        Nút Thêm thợ nằm trong đầu trang chứ không phải thanh xanh chiếm hết bề ngang như
+        trước. Thêm thợ là việc làm vài lần rồi thôi, để nó to bằng cả màn hình thì lấn chỗ
+        danh sách — thứ người dùng vào đây để xem. Vào đầu trang thì màn hình này cũng có
+        đầu trang trắng giống Chấm công và Bảng lương, ba màn hình nhìn ra một bộ.
+      */}
+      <View style={kieu.dauTrang}>
+        <View style={kieu.giuaDauTrang}>
+          <Text style={kieu.chuTieuDe}>Thợ</Text>
+          <Text style={kieu.chuDem}>{demTho}</Text>
+        </View>
+
+        <Pressable style={kieu.nutThem} onPress={() => datDangMo('them')}>
+          <Feather name="plus" size={16} color={Mau.trang} />
+          <Text style={kieu.chuNutThem}>Thêm thợ</Text>
+        </Pressable>
+      </View>
 
       <FlatList
         data={thos}
@@ -130,14 +152,28 @@ export function ManHinhTho({ duLieu, capNhat }: Props) {
 const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
+  dauTrang: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Mau.trang,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Mau.vien,
+  },
+  giuaDauTrang: { flex: 1, gap: 2 },
+  chuTieuDe: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
+  chuDem: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+
+  // Cao 44 bằng mũi tên đổi tháng bên Bảng lương — vẫn đúng mức tối thiểu Apple khuyên.
   nutThem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    height: Co.caoNut,
-    marginHorizontal: 14,
-    marginTop: 14,
+    gap: 7,
+    height: 44,
+    paddingHorizontal: 16,
     borderRadius: Co.bo,
     backgroundColor: Mau.chinh,
   },

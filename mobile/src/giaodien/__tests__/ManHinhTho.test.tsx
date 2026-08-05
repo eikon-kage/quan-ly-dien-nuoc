@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import { chiaSeExcel } from '../../nghiepvu/chiaSeExcel';
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import * as Ngay from '../../nghiepvu/ngayViet';
-import { cham, themTho } from '../../nghiepvu/thaoTac';
+import { cham, luuTho, themTho } from '../../nghiepvu/thaoTac';
 import { ManHinhTho } from '../ManHinhTho';
 
 // Máy chạy kiểm thử không có bảng chia sẻ của điện thoại.
@@ -26,6 +26,48 @@ function dung(duLieu: DuLieuChamCong) {
 beforeEach(() => {
   chiaSe.mockClear();
   chiaSe.mockResolvedValue('file:///tam/Cham-cong.xlsx');
+});
+
+describe('đầu trang màn hình Thợ', () => {
+  test('nút Thêm thợ nằm trên đầu trang, kèm icon theo điều 8', () => {
+    dung(duLieuRong());
+
+    expect(screen.getByText('Thợ')).toBeTruthy();
+    expect(screen.getByText('Thêm thợ')).toBeTruthy();
+    expect(screen.getByText('icon:plus')).toBeTruthy();
+  });
+
+  test('bấm là mở hộp thêm thợ', () => {
+    dung(duLieuRong());
+
+    fireEvent.press(screen.getByText('Thêm thợ'));
+
+    // Hộp thoại cũng mang tên "Thêm thợ" nên nhận ra nó bằng ô nhập bên trong.
+    expect(screen.getByText('Tên thợ')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Ví dụ: Anh Tuấn')).toBeTruthy();
+  });
+
+  test('đếm số thợ ngay dưới tiêu đề', () => {
+    const { duLieu } = themTho(duLieuRong(), 'Anh Tuấn', 300_000, HOM_NAY);
+    const them = themTho(duLieu, 'Anh Bình', 300_000, HOM_NAY);
+    dung(them.duLieu);
+
+    expect(screen.getByText('2 đang làm')).toBeTruthy();
+  });
+
+  test('thợ đã nghỉ đếm riêng chứ không cộng chung', () => {
+    const mot = themTho(duLieuRong(), 'Anh Tuấn', 300_000, HOM_NAY);
+    const hai = themTho(mot.duLieu, 'Anh Bình', 300_000, HOM_NAY);
+    dung(luuTho(hai.duLieu, { ...hai.tho, dangLam: false }));
+
+    expect(screen.getByText('1 đang làm · 1 đã nghỉ')).toBeTruthy();
+  });
+
+  test('chưa có thợ nào thì nói rõ chứ không để trống chỗ đếm', () => {
+    dung(duLieuRong());
+
+    expect(screen.getByText('Chưa có ai')).toBeTruthy();
+  });
 });
 
 describe('xuất Excel ở màn hình Thợ', () => {
