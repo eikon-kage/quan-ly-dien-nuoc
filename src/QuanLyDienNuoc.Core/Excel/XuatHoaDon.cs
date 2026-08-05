@@ -11,10 +11,7 @@ public static class XuatHoaDon
     /// <summary>Chia các dòng hàng theo sức chứa của từng trang. Luôn trả về ít nhất một trang.</summary>
     public static List<List<ChiTietHoaDon>> ChiaTrang(IEnumerable<ChiTietHoaDon> chiTiet)
     {
-        var dong = chiTiet
-            .OrderBy(c => c.Ngay)
-            .ThenBy(c => c.TenHang, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
+        var dong = ThuTuDong.TheoThuTu(chiTiet);
 
         var trang = new List<List<ChiTietHoaDon>>();
         var daLay = 0;
