@@ -2,7 +2,8 @@ import { unzipSync, strFromU8 } from 'fflate';
 
 import { BuoiLam, DuLieuChamCong, Tho, duLieuRong } from '../kieu';
 import { taoId } from '../thaoTac';
-import { cacThangCoDuLieu, cacTrangExcel, tenFileExcel, xuatExcel } from '../xuatExcel';
+import { quyetToan } from '../ky';
+import { cacTrangExcel, tenFileExcel, xuatExcel } from '../xuatExcel';
 import { soNgayExcel, tenCot, tenTrangHopLe } from '../xlsx';
 
 function themTho(duLieu: DuLieuChamCong, ten: string, tienMotCong: number): Tho {
@@ -105,29 +106,13 @@ describe('tên trang', () => {
   });
 });
 
-describe('các tháng có dữ liệu', () => {
-  it('gom cả tháng chỉ có ứng tiền, xếp từ cũ tới mới', () => {
-    const duLieu = duLieuMau();
-    ung(duLieu, duLieu.thos[0], '2026-06-15', 100000);
-
-    expect(cacThangCoDuLieu(duLieu)).toEqual([
-      { nam: 2026, thang: 6 },
-      { nam: 2026, thang: 7 },
-      { nam: 2026, thang: 8 },
-    ]);
-  });
-
-  it('dữ liệu rỗng thì không có tháng nào', () => {
-    expect(cacThangCoDuLieu(duLieuRong())).toEqual([]);
-  });
-});
-
 describe('nội dung các trang', () => {
   const trangs = cacTrangExcel(duLieuMau(), '2026-08-05');
 
-  it('đủ năm trang, bảng lương đứng đầu', () => {
+  it('đủ sáu trang, quyết toán đứng đầu vì đó là sổ tiền đã trả', () => {
     expect(trangs.map((t) => t.ten)).toEqual([
-      'Bảng lương',
+      'Quyết toán',
+      'Kỳ này',
       'Buổi công',
       'Ứng tiền',
       'Thợ',
@@ -135,35 +120,75 @@ describe('nội dung các trang', () => {
     ]);
   });
 
-  it('bảng lương tách theo từng tháng và tính đúng tiền', () => {
-    const [bangLuong] = trangs;
+  it('trang Kỳ này khớp đúng màn hình Bảng lương, không cắt theo tháng', () => {
+    const kyNay = trangs[1];
 
-    // Tháng 7 chỉ có một công của anh Tuấn.
-    expect(bangLuong.dongs[0]).toEqual(['07/2026', 'Anh Tuấn', 1, 0, 1, 300000, 0, 300000]);
-
-    // Tháng 8: anh Bình một công, ứng 500.000 nên còn phải trả âm.
-    expect(bangLuong.dongs[1]).toEqual([
-      '08/2026',
+    // Kỳ chạy từ buổi sớm nhất chưa quyết toán tới hôm nay, vắt qua hai tháng.
+    // Xếp theo tên tiếng Việt nên anh Bình đứng trước.
+    expect(kyNay.dongs[0]).toEqual([
+      '2026-07-30',
+      '2026-08-05',
       'Anh Bình',
       1,
       0,
       1,
       250000,
       500000,
+      0,
       -250000,
     ]);
 
-    // Anh Tuấn: sáng 1 công, chiều nửa công, thành 450.000.
-    expect(bangLuong.dongs[2]).toEqual(['08/2026', 'Anh Tuấn', 1, 0.5, 1.5, 450000, 0, 450000]);
+    // Anh Tuấn: hai buổi sáng ở hai tháng khác nhau vẫn nằm chung một dòng, cộng thêm
+    // nửa công chiều — đúng con số màn hình Bảng lương đang hiện.
+    expect(kyNay.dongs[1]).toEqual([
+      '2026-07-30',
+      '2026-08-05',
+      'Anh Tuấn',
+      2,
+      0.5,
+      2.5,
+      750000,
+      0,
+      0,
+      750000,
+    ]);
   });
 
   it('dòng tổng cộng cộng đúng cả cột tiền lẫn cột công', () => {
-    const [bangLuong] = trangs;
-    expect(bangLuong.dongTong).toEqual(['Tổng cộng', null, 3, 0.5, 3.5, 1000000, 500000, 500000]);
+    const kyNay = trangs[1];
+    expect(kyNay.dongTong).toEqual([
+      'Tổng cộng',
+      null,
+      null,
+      3,
+      0.5,
+      3.5,
+      1000000,
+      500000,
+      0,
+      500000,
+    ]);
+  });
+
+  it('chốt kỳ thì tiền chuyển từ trang Kỳ này sang trang Quyết toán', () => {
+    const truoc = duLieuMau();
+    const daChot = quyetToan(truoc, { denNgay: '2026-08-05' });
+    const [quyet, kyNay] = cacTrangExcel(daChot, '2026-08-05');
+
+    // Cả hai thợ nằm trong tờ quyết toán, tổng tiền công y nguyên 1.000.000 — đúng bằng
+    // tổng của trang Kỳ này trước lúc chốt.
+    expect(quyet.dongs).toHaveLength(2);
+    expect(quyet.dongTong?.[6]).toBe(1000000);
+
+    // Trang Kỳ này chỉ còn anh Bình vì anh ấy ứng quá tay 250.000, kỳ sau trừ lại.
+    // Công đã trả tiền thì không quay lại nữa: không còn dòng nào có tiền công.
+    expect(kyNay.dongs.map((dong) => [dong[2], dong[6], dong[9]])).toEqual([
+      ['Anh Bình', 0, -250000],
+    ]);
   });
 
   it('buổi công xếp theo ngày rồi tên thợ, sáng trước chiều sau', () => {
-    const buoiCong = trangs[1];
+    const buoiCong = trangs[2];
     expect(buoiCong.dongs.map((dong) => [dong[0], dong[2], dong[3]])).toEqual([
       ['2026-07-30', 'Anh Tuấn', 'Sáng'],
       ['2026-08-03', 'Anh Bình', 'Sáng'],
@@ -173,7 +198,7 @@ describe('nội dung các trang', () => {
   });
 
   it('buổi công ghi đủ thứ, số công và thành tiền', () => {
-    const buoiCong = trangs[1];
+    const buoiCong = trangs[2];
     expect(buoiCong.dongs[0]).toEqual([
       '2026-07-30',
       'Thứ Năm',
@@ -198,7 +223,7 @@ describe('nội dung các trang', () => {
   });
 
   it('ứng tiền có đủ ngày, tên thợ và ghi chú', () => {
-    expect(trangs[2].dongs).toEqual([
+    expect(trangs[3].dongs).toEqual([
       ['2026-08-04', 'Thứ Ba', 'Anh Bình', 500000, 'ứng đi chợ'],
     ]);
   });
@@ -206,7 +231,7 @@ describe('nội dung các trang', () => {
   it('thợ đã bị xoá khỏi danh sách thì buổi công vẫn còn, chỉ mất tên', () => {
     const duLieu = duLieuMau();
     duLieu.thos = [];
-    const buoiCong = cacTrangExcel(duLieu, '2026-08-05')[1];
+    const buoiCong = cacTrangExcel(duLieu, '2026-08-05')[2];
     expect(buoiCong.dongs[0][2]).toBe('(thợ đã bị xoá)');
   });
 
@@ -214,7 +239,7 @@ describe('nội dung các trang', () => {
     const duLieu = duLieuMau();
     duLieu.thos[0].mocLuong.push({ tuNgay: '2026-08-01', tienMotCong: 350000 });
 
-    const mocLuong = cacTrangExcel(duLieu, '2026-08-05')[4];
+    const mocLuong = cacTrangExcel(duLieu, '2026-08-05')[5];
     expect(mocLuong.dongs).toEqual([
       ['Anh Bình', '2026-01-01', 250000],
       ['Anh Tuấn', '2026-01-01', 300000],
@@ -224,7 +249,7 @@ describe('nội dung các trang', () => {
 
   it('chưa có dữ liệu thì vẫn ra đủ trang, chỉ không có dòng tổng', () => {
     const trong = cacTrangExcel(duLieuRong(), '2026-08-05');
-    expect(trong).toHaveLength(5);
+    expect(trong).toHaveLength(6);
     expect(trong[0].dongs).toEqual([]);
     expect(trong[0].dongTong).toBeUndefined();
   });
@@ -246,29 +271,30 @@ describe('file .xlsx dựng ra', () => {
       'xl/worksheets/sheet3.xml',
       'xl/worksheets/sheet4.xml',
       'xl/worksheets/sheet5.xml',
+      'xl/worksheets/sheet6.xml',
     ]);
   });
 
   it('tên trang tiếng Việt giữ nguyên dấu', () => {
     const workbook = strFromU8(unzipSync(file)['xl/workbook.xml']);
-    expect(workbook).toContain('name="Bảng lương"');
+    expect(workbook).toContain('name="Kỳ này"');
     expect(workbook).toContain('name="Ứng tiền"');
   });
 
   it('ngày ghi thành số của Excel chứ không phải chữ', () => {
-    const trang = docTrang(file, 2);
+    const trang = docTrang(file, 3);
     expect(trang).toContain(`<v>${soNgayExcel('2026-07-30')}</v>`);
     expect(trang).not.toContain('2026-07-30');
   });
 
   it('tiền ghi thành số để Excel còn cộng được', () => {
-    expect(docTrang(file, 1)).toContain('<v>450000</v>');
+    expect(docTrang(file, 2)).toContain('<v>750000</v>');
   });
 
   it('chữ có dấu và ký tự đặc biệt không làm hỏng XML', () => {
     const duLieu = duLieuMau();
     duLieu.thos[0].ten = 'Anh Tuấn <con> & "bé"';
-    const trang = docTrang(xuatExcel(duLieu, '2026-08-05'), 4);
+    const trang = docTrang(xuatExcel(duLieu, '2026-08-05'), 5);
 
     expect(trang).toContain('Anh Tuấn &lt;con&gt; &amp; &quot;bé&quot;');
     expect(trang).not.toContain('<con>');
@@ -277,15 +303,15 @@ describe('file .xlsx dựng ra', () => {
   it('chữ nằm trong cột ngày vẫn là chữ', () => {
     // Dòng cuối trang Buổi công có chữ "Tổng cộng" ngay dưới cột Ngày. Ép nó thành ngày
     // thì ô ra số vô nghĩa và Excel kêu file hỏng.
-    const trang = docTrang(file, 2);
+    const trang = docTrang(file, 3);
     expect(trang).toContain('<t xml:space="preserve">Tổng cộng</t>');
     expect(trang).not.toContain('NaN');
   });
 
   it('dòng tiêu đề được khoá lại và có nút lọc', () => {
-    const trang = docTrang(file, 1);
+    const trang = docTrang(file, 2);
     expect(trang).toContain('state="frozen"');
-    expect(trang).toContain('<autoFilter ref="A1:H4"/>');
+    expect(trang).toContain('<autoFilter ref="A1:J3"/>');
   });
 });
 

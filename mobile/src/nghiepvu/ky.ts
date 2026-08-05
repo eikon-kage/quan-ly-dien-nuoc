@@ -125,9 +125,11 @@ export function khoangKyHienTai(
       : (somNhat ?? sauKyTruoc ?? homNay);
 
   // Chấm trước cho ngày mai thì cuối kỳ phải chạy tới ngày mai, không dừng ở hôm nay.
-  const denNgay = muonNhat !== undefined && muonNhat > homNay ? muonNhat : homNay;
+  const cuoi = muonNhat !== undefined && muonNhat > homNay ? muonNhat : homNay;
 
-  return { tuNgay, denNgay };
+  // Chốt kỳ hôm nay thì kỳ mới bắt đầu từ mai, mà "mai" lại muộn hơn hôm nay — không kẹp
+  // lại thì màn hình ghi ngược thành "06/08 → 05/08".
+  return { tuNgay, denNgay: cuoi < tuNgay ? tuNgay : cuoi };
 }
 
 /** Bảng lương của kỳ đang mở: phần chưa trả, cộng nợ mang sang từ kỳ trước. */
@@ -246,23 +248,35 @@ export function banGhiCuaKy(
   };
 }
 
-/** Chi tiết từng ngày của một thợ trong kỳ đang mở. */
+/**
+ * Chi tiết từng ngày của một thợ trong kỳ đang mở.
+ *
+ * Xem hẹp hơn cả kỳ cũng được — nhiều nhà trả một phần giữa chừng rồi mới chốt. Lúc ấy
+ * *không* cộng nợ kỳ trước vào: món nợ ấy thuộc về cả kỳ chứ không thuộc riêng mấy ngày
+ * đang xem, cộng vào thì con số dưới đáy không còn nghĩa gì.
+ */
 export function baoCaoKyHienTai(
   duLieu: DuLieuChamCong,
   thoId: string,
   homNay: string,
+  tuNgay?: string,
+  denNgay?: string,
 ): BaoCaoTho | null {
   const { buoiCongs, ungTiens } = banGhiChuaChot(duLieu);
-  const { tuNgay, denNgay } = khoangKyHienTai(duLieu, homNay);
+  const caKy = khoangKyHienTai(duLieu, homNay);
+  const tu = tuNgay ?? caKy.tuNgay;
+  const den = denNgay ?? caKy.denNgay;
+  const laCaKy = tu === caKy.tuNgay && den === caKy.denNgay;
+
   return baoCaoTuBanGhi(
     duLieu,
     thoId,
-    buoiCongs,
-    ungTiens,
-    tuNgay,
-    denNgay,
+    buoiCongs.filter((b) => b.ngay >= tu && b.ngay <= den),
+    ungTiens.filter((u) => u.ngay >= tu && u.ngay <= den),
+    tu,
+    den,
     homNay,
-    noDauKy(duLieu).get(thoId) ?? 0,
+    laCaKy ? (noDauKy(duLieu).get(thoId) ?? 0) : 0,
   );
 }
 
@@ -274,18 +288,24 @@ export function baoCaoTrongKy(
   duLieu: DuLieuChamCong,
   ky: KyLuong,
   thoId: string,
+  tuNgay?: string,
+  denNgay?: string,
 ): BaoCaoTho | null {
   const { buoiCongs, ungTiens } = banGhiCuaKy(duLieu, ky);
+  const tu = tuNgay ?? ky.tuNgay;
+  const den = denNgay ?? ky.denNgay;
+  const laCaKy = tu === ky.tuNgay && den === ky.denNgay;
   const dong = ky.dongs.find((d) => d.thoId === thoId);
+
   return baoCaoTuBanGhi(
     duLieu,
     thoId,
-    buoiCongs,
-    ungTiens,
-    ky.tuNgay,
+    buoiCongs.filter((b) => b.ngay >= tu && b.ngay <= den),
+    ungTiens.filter((u) => u.ngay >= tu && u.ngay <= den),
+    tu,
+    den,
     ky.denNgay,
-    ky.denNgay,
-    dong?.noKyTruoc ?? 0,
+    laCaKy ? (dong?.noKyTruoc ?? 0) : 0,
   );
 }
 

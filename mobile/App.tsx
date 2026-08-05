@@ -11,17 +11,23 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ManHinhBangLuong } from './src/giaodien/ManHinhBangLuong';
 import { ManHinhChamCong } from './src/giaodien/ManHinhChamCong';
+import { ManHinhLichSuKy } from './src/giaodien/ManHinhLichSuKy';
 import { ManHinhTho } from './src/giaodien/ManHinhTho';
 import { Co, Mau, PhongChu } from './src/giaodien/thietKe';
 import { DuLieuChamCong } from './src/nghiepvu/kieu';
 import * as LuuTru from './src/nghiepvu/luuTru';
 
-type Muc = 'cham' | 'luong' | 'tho';
+type Muc = 'cham' | 'luong' | 'ky' | 'tho';
 
-/** Chỉ ba mục. Thêm mục nào là thêm một chỗ để người dùng lạc. */
+/**
+ * Bốn mục. Ba mục đầu là việc hằng ngày, mục *Kỳ đã chốt* là chỗ tra sổ cũ — thêm vào
+ * khi có quyết toán, vì nhét sổ cũ vào Bảng lương thì màn hình dùng hằng ngày bị chen chỗ.
+ * Đừng thêm mục thứ năm: mỗi mục là một chỗ để người dùng lạc.
+ */
 const CAC_MUC: { ma: Muc; nhan: string; icon: keyof typeof Feather.glyphMap }[] = [
   { ma: 'cham', nhan: 'Chấm công', icon: 'check-square' },
   { ma: 'luong', nhan: 'Bảng lương', icon: 'credit-card' },
+  { ma: 'ky', nhan: 'Kỳ đã chốt', icon: 'archive' },
   { ma: 'tho', nhan: 'Thợ', icon: 'users' },
 ];
 
@@ -57,6 +63,7 @@ export default function App() {
             <View style={kieu.thanTrang}>
               {muc === 'cham' && <ManHinhChamCong duLieu={duLieu} capNhat={capNhat} />}
               {muc === 'luong' && <ManHinhBangLuong duLieu={duLieu} capNhat={capNhat} />}
+              {muc === 'ky' && <ManHinhLichSuKy duLieu={duLieu} capNhat={capNhat} />}
               {muc === 'tho' && <ManHinhTho duLieu={duLieu} capNhat={capNhat} />}
             </View>
 

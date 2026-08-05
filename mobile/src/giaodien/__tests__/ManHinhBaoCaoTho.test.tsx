@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
+import { baoCaoKhoang } from '../../nghiepvu/baoCao';
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import { cham, datCong, themTho, themUng } from '../../nghiepvu/thaoTac';
 import { ManHinhBaoCaoTho } from '../ManHinhBaoCaoTho';
@@ -12,14 +13,13 @@ function khoCoTho(tienMotCong = 300_000) {
   return { duLieu, thoId: tho.id };
 }
 
+/** Kỳ dùng trong bộ kiểm thử này trùng đúng tháng 8 — khoảng quen mắt nhất. */
 function dung(duLieu: DuLieuChamCong, thoId: string, homNay = CUOI_KY) {
   return render(
     <ManHinhBaoCaoTho
-      duLieu={duLieu}
-      thoId={thoId}
-      nam={2026}
-      thang={8}
-      homNay={homNay}
+      dungBaoCao={(tu, den) => baoCaoKhoang(duLieu, thoId, tu, den, homNay)}
+      tuNgayDau="2026-08-01"
+      denNgayDau="2026-08-31"
       onDong={() => {}}
     />,
   );
@@ -32,12 +32,12 @@ function chonNgay(nut: 'Từ' | 'Đến', ngay: string, thu: string) {
 }
 
 describe('màn hình báo cáo một thợ', () => {
-  test('hiện tên thợ và tháng đang xem', () => {
+  test('hiện tên thợ và khoảng đang xem', () => {
     const { duLieu, thoId } = khoCoTho();
     dung(duLieu, thoId);
 
     expect(screen.getByText('Anh Tuấn')).toBeTruthy();
-    expect(screen.getByText('Tháng 8/2026')).toBeTruthy();
+    expect(screen.getByText('Cả kỳ · 01/08 → 31/08')).toBeTruthy();
   });
 
   test('tóm tắt số công, tiền công và còn phải trả', () => {
@@ -136,14 +136,14 @@ describe('màn hình báo cáo một thợ', () => {
     const { duLieu, thoId } = khoCoTho();
     dung(duLieu, thoId);
 
-    expect(screen.getByText('Tháng này chưa ứng lần nào.')).toBeTruthy();
+    expect(screen.getByText('Kỳ này chưa ứng lần nào.')).toBeTruthy();
   });
 
-  test('tháng chưa có công nào thì nói rõ chứ không để bảng trống', () => {
+  test('kỳ chưa có công nào thì nói rõ chứ không để bảng trống', () => {
     const { duLieu, thoId } = khoCoTho();
     dung(duLieu, thoId);
 
-    expect(screen.getByText('Tháng này chưa có ngày công nào.')).toBeTruthy();
+    expect(screen.getByText('Kỳ này chưa có ngày công nào.')).toBeTruthy();
   });
 
   test('lọc khoảng hẹp thì tóm tắt và tờ lịch chỉ tính trong khoảng', () => {
@@ -157,7 +157,7 @@ describe('màn hình báo cáo một thợ', () => {
     chonNgay('Đến', '15/08', 'Thứ Bảy');
 
     expect(screen.getByText('1 công')).toBeTruthy();
-    expect(screen.getByText('01/08 – 15/08')).toBeTruthy();
+    expect(screen.getByText('01/08 → 15/08')).toBeTruthy();
     // Ngày 20 rơi ra ngoài khoảng nên thành ô trắng, không tính là đi làm cũng không là nghỉ.
     expect(screen.getByLabelText('20/08 Thứ Năm, chưa tính')).toBeTruthy();
   });
@@ -172,21 +172,21 @@ describe('màn hình báo cáo một thợ', () => {
 
     fireEvent.press(screen.getByText('Nửa cuối'));
 
-    expect(screen.getByText('16/08 – 31/08')).toBeTruthy();
+    expect(screen.getByText('16/08 → 31/08')).toBeTruthy();
     expect(screen.getByText('Ứng tiền (1 lần)')).toBeTruthy();
     expect(screen.getByText('ứng mua thuốc')).toBeTruthy();
     expect(screen.queryByText('ứng đổ xăng')).toBeNull();
   });
 
-  test('bấm Cả tháng là bỏ lọc, quay về trọn tháng', () => {
+  test('bấm Cả tháng là bỏ lọc, quay về trọn kỳ', () => {
     const { duLieu, thoId } = khoCoTho();
     dung(duLieu, thoId, '2026-08-31');
 
     fireEvent.press(screen.getByText('Nửa đầu'));
-    expect(screen.getByText('01/08 – 15/08')).toBeTruthy();
+    expect(screen.getByText('01/08 → 15/08')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Cả tháng'));
-    expect(screen.getByText('Tháng 8/2026')).toBeTruthy();
+    expect(screen.getByText('Cả kỳ · 01/08 → 31/08')).toBeTruthy();
   });
 
   test('chọn ngày đầu muộn hơn ngày cuối thì kéo luôn ngày cuối theo', () => {
@@ -197,7 +197,7 @@ describe('màn hình báo cáo một thợ', () => {
     chonNgay('Từ', '20/08', 'Thứ Năm');
 
     // Không khoá ngày lại cho bấm không ăn, mà kéo ngày cuối theo — không có ngõ cụt.
-    expect(screen.getByText('20/08 – 20/08')).toBeTruthy();
+    expect(screen.getByText('20/08 → 20/08')).toBeTruthy();
   });
 
   test('khoảng chưa có công, chưa ứng thì nói rõ là của khoảng chứ không phải cả tháng', () => {

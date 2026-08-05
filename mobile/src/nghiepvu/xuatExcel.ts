@@ -1,13 +1,19 @@
 /**
  * Dựng nội dung file Excel xuất ra từ toàn bộ dữ liệu chấm công.
  *
- * Năm trang, xếp theo thứ tự cần dùng: bảng lương từng tháng trước (thứ chủ cần nhất),
- * rồi mới tới số liệu thô để tự lọc tự cộng. Đây vừa là cách lấy số liệu ra khỏi điện
- * thoại, vừa là bản sao lưu đọc được bằng Excel/WPS mà không cần cài gì.
+ * Sáu trang, xếp theo thứ tự cần dùng: các kỳ đã quyết toán trước (sổ tiền đã trả), rồi
+ * kỳ đang mở (số tiền sắp phải trả), rồi mới tới số liệu thô để tự lọc tự cộng. Đây vừa
+ * là cách lấy số liệu ra khỏi điện thoại, vừa là bản sao lưu đọc được bằng Excel/WPS mà
+ * không cần cài gì.
+ *
+ * **Hai trang đầu phải khớp từng đồng với hai màn hình Kỳ đã chốt và Bảng lương.** Trước
+ * đây trang này cắt theo tháng trong khi app cắt theo kỳ — cùng một khoản tiền mà file và
+ * máy ra hai bức tranh khác nhau, đối chiếu là loạn. Cắt theo tháng thì để trang Buổi công
+ * lo, ở đó có sẵn cột ngày để tự lọc.
  */
 
-import { thang as bangLuongThang } from './bangLuong';
 import { DuLieuChamCong } from './kieu';
+import { kyHienTai } from './ky';
 import { tach, thu } from './ngayViet';
 import { luongTaiNgay, tatCaTho } from './thaoTac';
 import { Cot, TrangTinh, taoFileExcel } from './xlsx';
@@ -21,64 +27,130 @@ export function tenFileExcel(homNay: string): string {
   return `Cham-cong-${hai(ngay)}-${hai(thang)}-${nam}.xlsx`;
 }
 
-/** Các tháng có dữ liệu, xếp từ cũ tới mới, dạng { nam, thang }. */
-export function cacThangCoDuLieu(duLieu: DuLieuChamCong): { nam: number; thang: number }[] {
-  const moc = new Set<string>();
-  for (const buoi of duLieu.buoiCongs) {
-    moc.add(buoi.ngay.slice(0, 7));
-  }
-  for (const ung of duLieu.ungTiens) {
-    moc.add(ung.ngay.slice(0, 7));
-  }
-
-  return [...moc].sort().map((chuoi) => ({
-    nam: Number(chuoi.slice(0, 4)),
-    thang: Number(chuoi.slice(5, 7)),
-  }));
-}
-
 function cot(nhan: string, rong: number, kieu: Cot['kieu'] = 'chu'): Cot {
   return { nhan, rong, kieu };
 }
 
-/** Trang 1 — mỗi thợ một dòng cho mỗi tháng, giống hệt màn hình Bảng lương. */
-function trangBangLuong(duLieu: DuLieuChamCong): TrangTinh {
-  const dongs = cacThangCoDuLieu(duLieu).flatMap(({ nam, thang }) =>
-    bangLuongThang(duLieu, nam, thang).map((dong) => [
-      `${String(thang).padStart(2, '0')}/${nam}`,
-      dong.tho.ten,
+/**
+ * Trang 1 — các kỳ đã quyết toán, mỗi thợ một dòng cho mỗi kỳ.
+ *
+ * Đứng đầu vì đây là sổ tiền đã trả: con số đã chốt, đã đưa tận tay, không tính lại nữa.
+ * Mấy trang sau là số liệu để tự lọc tự cộng. Lấy thẳng từ bản chụp lúc chốt kỳ chứ
+ * không tính lại từ buổi công — sau này có tăng lương thợ thì tờ cũ vẫn y nguyên.
+ */
+function trangQuyetToan(duLieu: DuLieuChamCong): TrangTinh {
+  const dongs = duLieu.kyLuongs.flatMap((ky) =>
+    ky.dongs.map((dong) => [
+      ky.tuNgay,
+      ky.denNgay,
+      dong.tenTho,
       dong.congSang,
       dong.congChieu,
       dong.tongCong,
       dong.tienCong,
       dong.daUng,
-      dong.conLai,
+      dong.noKyTruoc,
+      dong.phaiTra,
+      dong.daTra,
+      dong.chuyenKySau,
     ]),
   );
 
   const cong = (cot: number) => dongs.reduce((tong, dong) => tong + (dong[cot] as number), 0);
 
   return {
-    ten: 'Bảng lương',
+    ten: 'Quyết toán',
     cots: [
-      cot('Tháng', 10),
+      cot('Từ ngày', 13, 'ngay'),
+      cot('Đến ngày', 13, 'ngay'),
       cot('Thợ', 26),
       cot('Công sáng', 11, 'so'),
       cot('Công chiều', 11, 'so'),
       cot('Tổng công', 11, 'so'),
       cot('Tiền công', 15, 'tien'),
       cot('Đã ứng', 15, 'tien'),
+      cot('Nợ kỳ trước', 15, 'tien'),
+      cot('Phải trả', 15, 'tien'),
+      cot('Đã trả', 15, 'tien'),
+      cot('Chuyển kỳ sau', 15, 'tien'),
+    ],
+    dongs,
+    dongTong:
+      dongs.length === 0
+        ? undefined
+        : [
+            'Tổng cộng',
+            null,
+            null,
+            cong(3),
+            cong(4),
+            cong(5),
+            cong(6),
+            cong(7),
+            cong(8),
+            cong(9),
+            cong(10),
+            cong(11),
+          ],
+  };
+}
+
+/**
+ * Trang 2 — kỳ đang mở, mỗi thợ một dòng. Giống hệt màn hình Bảng lương, kể cả cột nợ
+ * kỳ trước: xuất file lúc chưa chốt kỳ thì đây là số tiền sắp phải móc ví.
+ */
+function trangKyNay(duLieu: DuLieuChamCong, homNay: string): TrangTinh {
+  const ky = kyHienTai(duLieu, homNay);
+
+  const dongs = ky.dongs.map((dong) => [
+    ky.tuNgay,
+    ky.denNgay,
+    dong.tho.ten,
+    dong.congSang,
+    dong.congChieu,
+    dong.tongCong,
+    dong.tienCong,
+    dong.daUng,
+    dong.noKyTruoc,
+    dong.conLai,
+  ]);
+
+  const cong = (cot: number) => dongs.reduce((tong, dong) => tong + (dong[cot] as number), 0);
+
+  return {
+    ten: 'Kỳ này',
+    cots: [
+      cot('Từ ngày', 13, 'ngay'),
+      cot('Đến ngày', 13, 'ngay'),
+      cot('Thợ', 26),
+      cot('Công sáng', 11, 'so'),
+      cot('Công chiều', 11, 'so'),
+      cot('Tổng công', 11, 'so'),
+      cot('Tiền công', 15, 'tien'),
+      cot('Đã ứng', 15, 'tien'),
+      cot('Nợ kỳ trước', 15, 'tien'),
       cot('Còn phải trả', 15, 'tien'),
     ],
     dongs,
     dongTong:
       dongs.length === 0
         ? undefined
-        : ['Tổng cộng', null, cong(2), cong(3), cong(4), cong(5), cong(6), cong(7)],
+        : [
+            'Tổng cộng',
+            null,
+            null,
+            cong(3),
+            cong(4),
+            cong(5),
+            cong(6),
+            cong(7),
+            cong(8),
+            cong(9),
+          ],
   };
 }
 
-/** Trang 2 — từng buổi đã chấm. Đây là chỗ tra khi thợ thắc mắc "hôm ấy tôi có đi mà". */
+/** Trang 3 — từng buổi đã chấm. Đây là chỗ tra khi thợ thắc mắc "hôm ấy tôi có đi mà". */
 function trangBuoiCong(duLieu: DuLieuChamCong): TrangTinh {
   const tenTho = new Map(duLieu.thos.map((tho) => [tho.id, tho]));
 
@@ -132,7 +204,7 @@ function trangBuoiCong(duLieu: DuLieuChamCong): TrangTinh {
   };
 }
 
-/** Trang 3 — các lần ứng tiền. */
+/** Trang 4 — các lần ứng tiền. */
 function trangUngTien(duLieu: DuLieuChamCong): TrangTinh {
   const tenTho = new Map(duLieu.thos.map((tho) => [tho.id, tho.ten]));
 
@@ -169,7 +241,7 @@ function trangUngTien(duLieu: DuLieuChamCong): TrangTinh {
   };
 }
 
-/** Trang 4 — danh sách thợ. */
+/** Trang 5 — danh sách thợ. */
 function trangTho(duLieu: DuLieuChamCong, homNay: string): TrangTinh {
   return {
     ten: 'Thợ',
@@ -193,7 +265,7 @@ function trangTho(duLieu: DuLieuChamCong, homNay: string): TrangTinh {
 }
 
 /**
- * Trang 5 — lịch sử tăng lương. Tách riêng vì một thợ có nhiều mốc; nhét vào trang Thợ
+ * Trang 6 — lịch sử tăng lương. Tách riêng vì một thợ có nhiều mốc; nhét vào trang Thợ
  * thì một thợ chiếm nhiều dòng, nhìn rối.
  */
 function trangMocLuong(duLieu: DuLieuChamCong): TrangTinh {
@@ -211,7 +283,8 @@ function trangMocLuong(duLieu: DuLieuChamCong): TrangTinh {
 /** Toàn bộ dữ liệu, dựng thành các trang của file Excel. */
 export function cacTrangExcel(duLieu: DuLieuChamCong, homNay: string): TrangTinh[] {
   return [
-    trangBangLuong(duLieu),
+    trangQuyetToan(duLieu),
+    trangKyNay(duLieu, homNay),
     trangBuoiCong(duLieu),
     trangUngTien(duLieu),
     trangTho(duLieu, homNay),

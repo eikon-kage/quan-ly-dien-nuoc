@@ -2,12 +2,13 @@ import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { thang } from '../nghiepvu/bangLuong';
 import { DuLieuChamCong, Tho } from '../nghiepvu/kieu';
+import { baoCaoKyHienTai, kyHienTai } from '../nghiepvu/ky';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { themUng } from '../nghiepvu/thaoTac';
 import { HopNhapSo } from './HopNhapSo';
 import { ManHinhBaoCaoTho } from './ManHinhBaoCaoTho';
+import { ManHinhQuyetToan } from './ManHinhQuyetToan';
 import { rungNhe } from './rungNhe';
 import { Co, Mau, PhongChu } from './thietKe';
 
@@ -16,28 +17,20 @@ interface Props {
   capNhat: (moi: DuLieuChamCong) => void;
 }
 
+/**
+ * Bảng lương của **kỳ đang mở**: từ sau lần quyết toán trước tới hôm nay.
+ *
+ * Trước đây màn hình này xem theo tháng, đổi tháng bằng hai mũi tên. Bỏ đi vì tiền công
+ * ngoài công trình không chạy theo tháng: xong việc là trả, có khi mười ngày, có khi
+ * sáu tuần. Muốn xem lại tháng nào đã trả bao nhiêu thì sang mục *Kỳ đã chốt*.
+ */
 export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
-  const homNay = Ngay.tach(Ngay.homNay());
-  const [nam, datNam] = useState(homNay.nam);
-  const [thangDangXem, datThang] = useState(homNay.thang);
+  const homNay = Ngay.homNay();
   const [dangUng, datDangUng] = useState<Tho | null>(null);
   const [xemBaoCao, datXemBaoCao] = useState<string | null>(null);
+  const [dangQuyetToan, datDangQuyetToan] = useState(false);
 
-  const bang = thang(duLieu, nam, thangDangXem);
-  const tongConLai = bang.reduce((tong, d) => tong + d.conLai, 0);
-
-  /**
-   * Nút ứng tiền chỉ hiện ở tháng hiện tại. Ứng thì ghi vào ngày hôm nay, bấm ở tháng cũ
-   * sẽ thấy tiền "biến mất" sang tháng khác — rất khó hiểu.
-   */
-  const laThangNay = nam === homNay.nam && thangDangXem === homNay.thang;
-
-  function doiThang(soThang: number) {
-    rungNhe();
-    const moc = new Date(Date.UTC(nam, thangDangXem - 1 + soThang, 1));
-    datNam(moc.getUTCFullYear());
-    datThang(moc.getUTCMonth() + 1);
-  }
+  const ky = kyHienTai(duLieu, homNay);
 
   function ghiUng(soTien: number, ghiChu: string) {
     if (dangUng === null) {
@@ -45,40 +38,33 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
     }
 
     rungNhe();
-    capNhat(themUng(duLieu, dangUng.id, Ngay.homNay(), soTien, ghiChu));
+    capNhat(themUng(duLieu, dangUng.id, homNay, soTien, ghiChu));
     datDangUng(null);
   }
 
   return (
     <View style={kieu.khung}>
+      {/*
+        Không còn mũi tên đổi tháng: chỉ có đúng một kỳ đang mở, không có gì để đổi qua
+        đổi lại. Khoảng ngày ghi ngay dưới tiêu đề để biết đang tính từ hôm nào.
+      */}
       <View style={kieu.dauTrang}>
-        <Pressable
-          style={kieu.nutMuiTen}
-          onPress={() => doiThang(-1)}
-          accessibilityLabel="Tháng trước"
-        >
-          <Feather name="chevron-left" size={22} color={Mau.chinh} />
-        </Pressable>
-        <Text style={kieu.chuThang}>
-          Tháng {thangDangXem}/{nam}
+        <Text style={kieu.chuTieuDe}>Kỳ này</Text>
+        <Text style={kieu.chuKhoang}>
+          {ky.dongs.length === 0
+            ? 'Chưa có công nào'
+            : `${Ngay.khoangGon(ky.tuNgay, ky.denNgay)} · ${Ngay.thu(ky.denNgay)}`}
         </Text>
-        <Pressable
-          style={kieu.nutMuiTen}
-          onPress={() => doiThang(1)}
-          accessibilityLabel="Tháng sau"
-        >
-          <Feather name="chevron-right" size={22} color={Mau.chinh} />
-        </Pressable>
       </View>
 
       <FlatList
-        data={bang}
+        data={ky.dongs}
         keyExtractor={(dong) => dong.tho.id}
         contentContainerStyle={kieu.danhSach}
         ListEmptyComponent={
           <View style={kieu.trong}>
             <Feather name="credit-card" size={34} color={Mau.xam} />
-            <Text style={kieu.chuTrongTo}>Tháng này chưa có công nào</Text>
+            <Text style={kieu.chuTrongTo}>Kỳ này chưa có công nào</Text>
             <Text style={kieu.chuTrong}>Sang mục Chấm công để chấm cho thợ.</Text>
           </View>
         }
@@ -89,12 +75,10 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
               <Text style={kieu.chuTen} numberOfLines={1}>
                 {dong.tho.ten}
               </Text>
-              {laThangNay && (
-                <Pressable style={kieu.nutUng} onPress={() => datDangUng(dong.tho)}>
-                  <Feather name="arrow-up-right" size={12} color={Mau.chinh} />
-                  <Text style={kieu.chuNutUng}>Ứng tiền</Text>
-                </Pressable>
-              )}
+              <Pressable style={kieu.nutUng} onPress={() => datDangUng(dong.tho)}>
+                <Feather name="arrow-up-right" size={12} color={Mau.chinh} />
+                <Text style={kieu.chuNutUng}>Ứng tiền</Text>
+              </Pressable>
             </View>
 
             <Text style={kieu.chuPhu}>
@@ -111,6 +95,21 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
               <View style={kieu.dongSo}>
                 <Text style={kieu.chuNhan}>Đã ứng</Text>
                 <Text style={kieu.chuSo}>{Ngay.tienTru(dong.daUng)}</Text>
+              </View>
+            )}
+
+            {/*
+              Nợ kỳ trước đứng thành một dòng riêng, không cộng thầm vào tiền công — thợ
+              hỏi "sao kỳ này nhiều thế" thì chỉ đúng vào dòng này mà trả lời.
+            */}
+            {dong.noKyTruoc !== 0 && (
+              <View style={kieu.dongSo}>
+                <Text style={kieu.chuNhan}>
+                  {dong.noKyTruoc > 0 ? 'Nợ kỳ trước' : 'Kỳ trước trả dư'}
+                </Text>
+                <Text style={kieu.chuSo}>
+                  {dong.noKyTruoc > 0 ? Ngay.tien(dong.noKyTruoc) : Ngay.tienTru(dong.noKyTruoc)}
+                </Text>
               </View>
             )}
 
@@ -132,11 +131,26 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
         )}
       />
 
-      {bang.length > 0 && (
+      {ky.chotDuoc && (
         <View style={kieu.chanTrang}>
           <Text style={kieu.chuTong}>
-            Cả tổ còn phải trả: <Text style={kieu.chuTongSo}>{Ngay.tien(tongConLai)}</Text>
+            Cả tổ còn phải trả: <Text style={kieu.chuTongSo}>{Ngay.tien(ky.tongPhaiTra)}</Text>
           </Text>
+
+          {/*
+            Nút quyết toán không chốt luôn mà mở ra màn hình đếm tiền — chốt kỳ là việc
+            nặng nhất trong app, phải nhìn thấy từng người bao nhiêu trước khi gật đầu.
+          */}
+          <Pressable
+            style={kieu.nutQuyetToan}
+            onPress={() => {
+              rungNhe();
+              datDangQuyetToan(true);
+            }}
+          >
+            <Feather name="check-circle" size={17} color={Mau.trang} />
+            <Text style={kieu.chuNutQuyetToan}>Quyết toán kỳ này</Text>
+          </Pressable>
         </View>
       )}
 
@@ -153,12 +167,19 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
 
       {xemBaoCao !== null && (
         <ManHinhBaoCaoTho
-          duLieu={duLieu}
-          thoId={xemBaoCao}
-          nam={nam}
-          thang={thangDangXem}
-          homNay={Ngay.homNay()}
+          dungBaoCao={(tu, den) => baoCaoKyHienTai(duLieu, xemBaoCao, homNay, tu, den)}
+          tuNgayDau={ky.tuNgay}
+          denNgayDau={ky.denNgay}
           onDong={() => datXemBaoCao(null)}
+        />
+      )}
+
+      {dangQuyetToan && (
+        <ManHinhQuyetToan
+          duLieu={duLieu}
+          homNay={homNay}
+          capNhat={capNhat}
+          onDong={() => datDangQuyetToan(false)}
         />
       )}
     </View>
@@ -169,29 +190,15 @@ const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
   dauTrang: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: Mau.trang,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: Mau.vien,
   },
-  nutMuiTen: {
-    width: 44,
-    height: 44,
-    borderRadius: Co.bo,
-    backgroundColor: Mau.chinhNhat,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chuThang: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: Co.chuTieuDe,
-    fontFamily: PhongChu.dam,
-    color: Mau.chu,
-  },
+  chuTieuDe: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
+  chuKhoang: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam, marginTop: 2 },
 
   danhSach: { padding: 14, paddingBottom: 20 },
   the: {
@@ -246,11 +253,23 @@ const kieu = StyleSheet.create({
 
   chanTrang: {
     backgroundColor: Mau.trang,
-    paddingVertical: 12,
+    padding: 12,
+    gap: 10,
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: Mau.vien,
   },
   chuTong: { fontSize: Co.chuThuong, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuTongSo: { fontFamily: PhongChu.dam, color: Mau.chu },
+  nutQuyetToan: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    alignSelf: 'stretch',
+    height: Co.caoNut,
+    borderRadius: Co.bo,
+    backgroundColor: Mau.chinh,
+  },
+  chuNutQuyetToan: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, color: Mau.trang },
 });

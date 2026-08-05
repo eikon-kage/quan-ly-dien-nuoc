@@ -3,8 +3,7 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { baoCaoKhoang } from '../nghiepvu/baoCao';
-import { DuLieuChamCong } from '../nghiepvu/kieu';
+import { BaoCaoTho } from '../nghiepvu/baoCao';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { HopChonNgay } from './HopChonNgay';
 import { LichCong } from './LichCong';
@@ -12,12 +11,15 @@ import { rungNhe } from './rungNhe';
 import { Co, Mau, PhongChu } from './thietKe';
 
 interface Props {
-  duLieu: DuLieuChamCong;
-  thoId: string;
-  nam: number;
-  thang: number;
-  /** Hôm nay, để ngày chưa tới không bị tính là nghỉ. */
-  homNay: string;
+  /**
+   * Dựng báo cáo cho một khoảng ngày. Truyền hàm vào chứ không truyền thẳng dữ liệu:
+   * kỳ đang mở và kỳ đã chốt lấy buổi công theo hai cách khác nhau (theo bản ghi nào đã
+   * quyết toán), màn hình này không cần biết chuyện đó.
+   */
+  dungBaoCao: (tuNgay: string, denNgay: string) => BaoCaoTho | null;
+  /** Khoảng mở ra lúc đầu — trọn kỳ đang xem. */
+  tuNgayDau: string;
+  denNgayDau: string;
   onDong: () => void;
 }
 
@@ -28,27 +30,34 @@ function ngayNgan(ngay: string): string {
 
 /**
  * Chi tiết một thợ: đi làm ngày nào, nghỉ ngày nào, ứng tiền ngày nào. Đây là chỗ tra
- * khi thợ thắc mắc "sao tháng này ít tiền thế".
+ * khi thợ thắc mắc "sao kỳ này ít tiền thế".
  *
- * Mở ra là cả tháng, nhưng chọn được khoảng hẹp hơn — nhiều nhà trả tiền theo kỳ nửa
- * tháng chứ không đợi hết tháng, lúc ấy con số cần nhìn là của kỳ đó chứ không phải
- * của cả tháng.
+ * Mở ra là trọn kỳ, nhưng chọn được khoảng hẹp hơn — nhiều nhà trả một phần giữa chừng
+ * chứ không đợi chốt kỳ, lúc ấy con số cần nhìn là của mấy ngày đó chứ không phải cả kỳ.
+ *
+ * Kỳ chốt lúc nào cũng được nên nó hay vắt qua hai tháng. Mỗi tháng vẽ một tờ lịch riêng
+ * xếp dọc, có tên tháng ở trên — gộp hai tháng vào một tờ thì không còn là tờ lịch treo
+ * tường nữa, mà đó mới là thứ làm người xem nhìn ra ngay chỗ nghỉ nằm ở đâu.
  */
-export function ManHinhBaoCaoTho({ duLieu, thoId, nam, thang, homNay, onDong }: Props) {
-  const dauThang = Ngay.ghep(nam, thang, 1);
-  const cuoiThang = Ngay.ghep(nam, thang, Ngay.soNgayTrongThang(nam, thang));
-
-  const [tuNgay, datTuNgay] = useState(dauThang);
-  const [denNgay, datDenNgay] = useState(cuoiThang);
+export function ManHinhBaoCaoTho({ dungBaoCao, tuNgayDau, denNgayDau, onDong }: Props) {
+  const [tuNgay, datTuNgay] = useState(tuNgayDau);
+  const [denNgay, datDenNgay] = useState(denNgayDau);
   const [dangChon, datDangChon] = useState<'tu' | 'den' | null>(null);
 
-  const baoCao = baoCaoKhoang(duLieu, thoId, tuNgay, denNgay, homNay);
+  const baoCao = dungBaoCao(tuNgay, denNgay);
   if (baoCao === null) {
     return null;
   }
 
+  // Tờ lịch và hộp chọn ngày làm việc theo tháng, lấy tháng của ngày cuối khoảng.
+  const { nam, thang } = Ngay.tach(denNgay);
+  const dauThang = Ngay.ghep(nam, thang, 1);
+  const cuoiThang = Ngay.ghep(nam, thang, Ngay.soNgayTrongThang(nam, thang));
+
   const { tho, ngayCongs, ngayNghis, ungTiens } = baoCao;
+  const laCaKy = tuNgay === tuNgayDau && denNgay === denNgayDau;
   const laCaThang = tuNgay === dauThang && denNgay === cuoiThang;
+  const cacThang = Ngay.cacThangTrongKhoang(tuNgay, denNgay);
 
   function datKhoang(tu: string, den: string) {
     rungNhe();
@@ -90,15 +99,16 @@ export function ManHinhBaoCaoTho({ duLieu, thoId, nam, thang, homNay, onDong }: 
               {tho.ten}
             </Text>
             <Text style={kieu.chuPhu}>
-              {laCaThang ? `Tháng ${thang}/${nam}` : `${ngayNgan(tuNgay)} – ${ngayNgan(denNgay)}`}
+              {laCaKy ? `Cả kỳ · ${Ngay.khoangGon(tuNgay, denNgay)}` : Ngay.khoangGon(tuNgay, denNgay)}
             </Text>
           </View>
           <View style={kieu.nutDong} />
         </View>
 
         {/*
-          Hai nút ngày mở tờ lịch, ba nút tắt bên dưới cho ba khoảng hay dùng. Có nút tắt
-          vì kỳ nửa tháng là chuyện lặp đi lặp lại — bắt chọn tay hai lần mỗi tháng thì phí.
+          Hai nút ngày mở tờ lịch, mấy nút tắt bên dưới cho những khoảng hay dùng. Có nút
+          tắt vì kỳ nửa tháng là chuyện lặp đi lặp lại — bắt chọn tay hai lần mỗi tháng
+          thì phí. Nút "Cả kỳ" luôn đứng đầu: lỡ lọc hẹp rồi thì đó là đường về.
         */}
         <View style={kieu.hangLoc}>
           <View style={kieu.dongNgay}>
@@ -108,6 +118,11 @@ export function ManHinhBaoCaoTho({ duLieu, thoId, nam, thang, homNay, onDong }: 
           </View>
 
           <View style={kieu.dongChip}>
+            <Chip
+              nhan="Cả kỳ"
+              dangDung={laCaKy}
+              onPress={() => datKhoang(tuNgayDau, denNgayDau)}
+            />
             <Chip
               nhan="Cả tháng"
               dangDung={laCaThang}
@@ -127,11 +142,25 @@ export function ManHinhBaoCaoTho({ duLieu, thoId, nam, thang, homNay, onDong }: 
         </View>
 
         <ScrollView contentContainerStyle={kieu.trong}>
-          {/* Bốn con số tóm tắt, để khỏi phải cộng lại từ bảng bên dưới. */}
+          {/* Mấy con số tóm tắt, để khỏi phải cộng lại từ bảng bên dưới. */}
           <View style={kieu.the}>
             <Dong nhan="Số công" gia={`${Ngay.soCong(baoCao.tongCong)} công`} />
             <Dong nhan="Tiền công" gia={Ngay.tien(baoCao.tienCong)} />
             {baoCao.daUng > 0 && <Dong nhan="Đã ứng" gia={Ngay.tienTru(baoCao.daUng)} />}
+            {/*
+              Kỳ trước trả thiếu thì phần thiếu nằm ở đây, không lẫn vào tiền công kỳ này —
+              nhìn ra ngay đâu là công mới làm, đâu là nợ cũ mang sang.
+            */}
+            {baoCao.noKyTruoc !== 0 && (
+              <Dong
+                nhan={baoCao.noKyTruoc > 0 ? 'Nợ kỳ trước' : 'Kỳ trước trả dư'}
+                gia={
+                  baoCao.noKyTruoc > 0
+                    ? Ngay.tien(baoCao.noKyTruoc)
+                    : Ngay.tienTru(baoCao.noKyTruoc)
+                }
+              />
+            )}
             <View style={kieu.gach} />
             <Dong
               nhan="Còn phải trả"
@@ -151,12 +180,30 @@ export function ManHinhBaoCaoTho({ duLieu, thoId, nam, thang, homNay, onDong }: 
               Vẫn vẽ trọn tháng dù đang lọc hẹp: ngày ngoài khoảng thành ô trắng, nhìn ra
               ngay phần nào đang tính. Cắt tờ lịch cho vừa khoảng thì mất chỗ dựa của mắt.
             */}
-            <LichCong nam={nam} thang={thang} ngayCongs={ngayCongs} ngayNghis={ngayNghis} />
+            {cacThang.map(({ nam: namLich, thang: thangLich }, thuTu) => {
+              // So bằng đoạn đầu "2026-08" của chuỗi ngày: so mỗi số tháng thì kỳ vắt qua
+              // đúng một năm sẽ trộn tháng 8 năm nay với tháng 8 năm ngoái.
+              const moc = Ngay.ghep(namLich, thangLich, 1).slice(0, 7);
+              return (
+                <View key={moc} style={thuTu > 0 && kieu.lichSau}>
+                  {/* Kỳ vắt qua nhiều tháng mới ghi tên tháng; một tháng thì đã có trên đầu rồi. */}
+                  {cacThang.length > 1 && (
+                    <Text style={kieu.chuThangLich}>
+                      Tháng {thangLich}/{namLich}
+                    </Text>
+                  )}
+                  <LichCong
+                    nam={namLich}
+                    thang={thangLich}
+                    ngayCongs={ngayCongs.filter((d) => d.ngay.slice(0, 7) === moc)}
+                    ngayNghis={ngayNghis.filter((n) => n.slice(0, 7) === moc)}
+                  />
+                </View>
+              );
+            })}
             {ngayCongs.length === 0 && (
               <Text style={kieu.chuTrong}>
-                {laCaThang
-                  ? 'Tháng này chưa có ngày công nào.'
-                  : 'Khoảng này chưa có ngày công nào.'}
+                {laCaKy ? 'Kỳ này chưa có ngày công nào.' : 'Khoảng này chưa có ngày công nào.'}
               </Text>
             )}
           </View>
@@ -167,7 +214,7 @@ export function ManHinhBaoCaoTho({ duLieu, thoId, nam, thang, homNay, onDong }: 
           <View style={[kieu.the, kieu.theCuoi]}>
             {ungTiens.length === 0 ? (
               <Text style={kieu.chuTrong}>
-                {laCaThang ? 'Tháng này chưa ứng lần nào.' : 'Khoảng này chưa ứng lần nào.'}
+                {laCaKy ? 'Kỳ này chưa ứng lần nào.' : 'Khoảng này chưa ứng lần nào.'}
               </Text>
             ) : (
               ungTiens.map((ung) => (
@@ -299,7 +346,7 @@ const kieu = StyleSheet.create({
   chuNhanNgay: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuNgayLoc: { fontSize: Co.chuThuong, fontFamily: PhongChu.dam, color: Mau.chu },
 
-  dongChip: { flexDirection: 'row', gap: 8 },
+  dongChip: { flexDirection: 'row', gap: 6 },
   chip: {
     flex: 1,
     height: Co.caoNutNho,
@@ -331,6 +378,14 @@ const kieu = StyleSheet.create({
     gap: 6,
   },
   theCuoi: { marginBottom: 8 },
+
+  lichSau: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: Mau.vien },
+  chuThangLich: {
+    fontSize: Co.chuThuong,
+    fontFamily: PhongChu.dam,
+    color: Mau.chu,
+    marginBottom: 8,
+  },
 
   dongSo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chuNhan: { fontSize: Co.chuThuong, fontFamily: PhongChu.thuong, color: Mau.xam },

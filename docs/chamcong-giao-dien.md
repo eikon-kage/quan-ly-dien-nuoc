@@ -30,10 +30,15 @@ ngoài sân. Mọi quyết định giao diện dưới đây đều xuất phát
 9. **Số tiền viết đủ chữ số**: `1.500.000 đ`, không viết tắt `1,5tr`. Ngày viết `03/08`
    kèm thứ, không viết `3/8`. Rung nhẹ mỗi khi chạm trúng.
 
-## Ba màn hình, không hơn
+## Bốn màn hình, không hơn
 
-Thanh dưới chỉ có ba mục: **Chấm công · Bảng lương · Thợ**. Mỗi mục thêm vào là một chỗ để
-người dùng lạc.
+Thanh dưới có bốn mục: **Chấm công · Bảng lương · Kỳ đã chốt · Thợ**. Mỗi mục thêm vào là
+một chỗ để người dùng lạc — đừng thêm mục thứ năm.
+
+> **Trước đây chỉ có ba mục.** Mục *Kỳ đã chốt* thêm vào cùng lúc với quyết toán. Đã cân
+> nhắc nhét sổ cũ vào ngay trong Bảng lương, nhưng bỏ: ba mục đầu là chỗ **làm việc hằng
+> ngày**, mục thứ tư là chỗ **tra sổ cũ**. Hai việc khác nhau, gộp lại thì màn hình dùng
+> mỗi ngày bị sổ của mấy tháng trước chen chỗ.
 
 Thanh tab này **tự vẽ** ([App.tsx](../mobile/App.tsx)) chứ không dùng thanh mặc định của iOS.
 Thanh mặc định chữ khoảng 10pt và chủ yếu là hình — người có tuổi không đọc ra. Bản tự vẽ
@@ -105,8 +110,17 @@ công thì ô đó hiện thêm `½` hoặc `1½` để nhìn là biết.
 
 ### 2. Bảng lương
 
-Chọn tháng bằng `‹ ›`. Mỗi thợ một thẻ: tổng công, tiền công, đã ứng, **còn phải trả** in to
-nhất và đậm nhất — đó là con số anh cần khi móc ví. Ứng quá thì số âm và in đỏ.
+Màn hình này luôn hiện đúng **kỳ đang mở**: từ sau lần quyết toán trước tới hôm nay. Mỗi thợ
+một thẻ: tổng công, tiền công, đã ứng, **còn phải trả** in to nhất và đậm nhất — đó là con số
+anh cần khi móc ví. Ứng quá thì số âm và in đỏ.
+
+> **Trước đây màn hình này xem theo tháng**, đổi tháng bằng hai mũi tên `‹ ›`. Bỏ đi vì tiền
+> công ngoài công trình không chạy theo tháng: xong việc là trả, có khi mười ngày, có khi sáu
+> tuần. Bây giờ chỉ có đúng một kỳ đang mở nên không còn gì để đổi qua đổi lại — hai mũi tên
+> mất luôn. Muốn xem lại kỳ đã trả thì sang mục *Kỳ đã chốt*.
+
+Kỳ trước trả thiếu thì phần thiếu hiện thành **một dòng riêng** *Nợ kỳ trước*, không cộng
+thầm vào tiền công. Thợ hỏi *"sao kỳ này nhiều thế"* thì chỉ đúng vào dòng đó mà trả lời.
 
 Nút **Ứng tiền** trên mỗi thẻ mở hộp nhập số tiền, kèm một ô **ghi chú không bắt buộc**
 (*"ứng đổ xăng"*, *"ứng mua thuốc"*). Ghi chú hiện lại ở danh sách ứng tiền trong màn hình
@@ -115,23 +129,30 @@ mà ép gõ thì người dùng gõ bừa một chữ cho xong, ghi chú thành 
 
 #### Xem chi tiết một thợ
 
-Bấm cả thẻ là mở màn hình chi tiết tháng đó — chỗ để tra khi thợ thắc mắc *"sao tháng này ít
-tiền thế"*. Trên cùng vẫn là bốn con số tóm tắt, dưới là **tờ lịch cả tháng**
+Bấm cả thẻ là mở màn hình chi tiết cả kỳ — chỗ để tra khi thợ thắc mắc *"sao kỳ này ít tiền
+thế"*. Trên cùng vẫn là mấy con số tóm tắt, dưới là **tờ lịch**
 ([LichCong.tsx](../mobile/src/giaodien/LichCong.tsx)), cuối cùng là các lần ứng tiền.
+
+Kỳ chốt lúc nào cũng được nên nó hay **vắt qua hai tháng**. Lúc ấy mỗi tháng vẽ một tờ lịch
+riêng xếp dọc, có tên tháng ở trên. Gộp hai tháng vào một tờ thì không còn là tờ lịch treo
+tường nữa, mà chính hình dáng tờ lịch mới là thứ làm người xem nhìn ra ngay chỗ nghỉ nằm đâu.
 
 ##### Lọc theo khoảng ngày
 
-Mở ra là trọn tháng, nhưng chọn hẹp lại được — nhiều nhà trả tiền theo **kỳ nửa tháng** chứ
-không đợi hết tháng, lúc ấy con số cần nhìn là của kỳ đó.
+Mở ra là trọn kỳ, nhưng chọn hẹp lại được — nhiều nhà trả một phần giữa chừng chứ không đợi
+chốt kỳ, lúc ấy con số cần nhìn là của mấy ngày đó.
 
 ```
-┌────────────────────────────────────┐
-│  Từ [ 01/08 ]  →  Đến [ 15/08 ]    │   chạm là mở tờ lịch chọn ngày
-│  [Cả tháng] [Nửa đầu] [Nửa cuối]   │   ba khoảng hay dùng, một chạm
-└────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  Từ [ 01/08 ]  →  Đến [ 15/08 ]          │   chạm là mở tờ lịch chọn ngày
+│  [Cả kỳ] [Cả tháng] [Nửa đầu] [Nửa cuối] │   bốn khoảng hay dùng, một chạm
+└──────────────────────────────────────────┘
 ```
 
-Bốn điều đã cân nhắc ở đây:
+**Nút *Cả kỳ* luôn đứng đầu**: lỡ lọc hẹp rồi thì đó là đường về. Kỳ trùng đúng một tháng thì
+*Cả kỳ* và *Cả tháng* cùng sáng — đúng vậy, hai nút đang trỏ về một khoảng.
+
+Năm điều đã cân nhắc ở đây:
 
 1. **Cả bốn con số tóm tắt, tờ lịch lẫn danh sách ứng tiền đều tính lại theo khoảng.** Lọc
    mà chỉ lọc một mục thì người xem cộng nhầm lúc nào không hay.
@@ -142,9 +163,11 @@ Bốn điều đã cân nhắc ở đây:
    chữ nhỏ, người có tuổi quay trượt tay, mà bản Android lại khác hẳn bản iOS.
 4. **Chọn ngày đầu muộn hơn ngày cuối thì kéo luôn ngày cuối theo**, chứ không khoá ngày lại
    cho bấm không ăn. Người dùng chỉ gặp khoảng hợp lệ, không bao giờ vào ngõ cụt.
+5. **Lọc hẹp thì bỏ dòng *Nợ kỳ trước* ra.** Món nợ ấy thuộc về cả kỳ, không thuộc riêng mấy
+   ngày đang xem; cộng vào thì con số dưới đáy chẳng còn nghĩa gì.
 
-Đầu trang ghi `Tháng 8/2026` khi đang xem trọn tháng, ghi `01/08 – 15/08` khi đã lọc — nhìn
-một chỗ là biết con số bên dưới đang tính cho đoạn nào.
+Đầu trang ghi `Cả kỳ · 01/08 → 31/08` khi đang xem trọn kỳ, ghi `01/08 → 15/08` khi đã lọc —
+nhìn một chỗ là biết con số bên dưới đang tính cho đoạn nào.
 
 Tháng 8/2026, thợ đi đều cả tháng, riêng ngày 13 chỉ đi nửa buổi, xem vào ngày 27:
 
@@ -187,7 +210,75 @@ Số đó suy ra được từ số công nhân đơn giá, mà tổng tiền c�
 Mỗi ô có nhãn cho trình đọc màn hình dạng `03/08 Thứ Hai, đi làm 2 công`, vì bản thân ô chỉ
 là một con số với một dấu tích, đọc trơn lên thì không rõ nghĩa.
 
-### 3. Thợ
+#### Quyết toán kỳ
+
+Nút **Quyết toán kỳ này** nằm ở chân màn hình Bảng lương, ngay dưới dòng tổng. Bấm không chốt
+luôn mà **mở ra màn hình đếm tiền** — chốt kỳ là việc nặng nhất trong app, phải nhìn thấy
+từng người bao nhiêu trước khi gật đầu.
+
+```
+┌────────────────────────────────────┐
+│  ‹      Quyết toán kỳ              │
+│         03/08 → 05/08              │
+├────────────────────────────────────┤
+│  Anh Tuấn                  2 công  │
+│  Tiền công            600.000 đ    │
+│  Đã ứng              −200.000 đ    │
+│  ────────────────────────────────  │
+│  Phải trả             400.000 đ    │
+│ ┌────────────────────────────────┐ │
+│ │ Thực trả        400.000 đ   ✎  │ │   điền sẵn, chạm để sửa
+│ └────────────────────────────────┘ │
+│  [  Trả đủ  ]  [ Không trả ]       │   hai nút tắt
+├────────────────────────────────────┤
+│  Tổng phải trả        650.000 đ    │
+│  Đưa cho thợ hôm nay  650.000 đ    │
+│  [   Chốt kỳ, đã trả tiền    ]     │
+│  Chốt xong dữ liệu cũ vẫn còn      │
+│  nguyên. Bấm nhầm thì vào mục Kỳ   │
+│  đã chốt bỏ ra.                    │
+└────────────────────────────────────┘
+```
+
+Sáu điều đã cân nhắc, đừng đổi mà không đọc lại:
+
+1. **Điền sẵn là trả đủ.** Chín trên mười lần là trả đủ — mở ra bấm một nút là xong.
+2. **Không có ô tích chọn từng người.** Chốt là chốt cả tổ. Muốn khất hẳn một người thì bấm
+   *Không trả*: người đó **vẫn nằm trong tờ quyết toán** với số nợ chuyển sang, chứ không
+   biến mất khỏi sổ.
+3. **Sổ khớp với tiền thật trong ví, không khớp với tiền đáng lẽ phải trả.** Trả thiếu thì
+   phần thiếu thành *nợ đầu kỳ* của kỳ sau; trả dư thì thành số âm, kỳ sau trừ lại.
+4. **Tách rõ tiền công, tiền đã ứng và nợ cũ** trên từng thẻ. Gộp thành một số "phải trả"
+   thì thợ hỏi vì sao ra con số ấy là chịu, không giải thích được.
+5. **Thợ đang cầm dư tiền thì mặc định trả 0**, không phải đi đòi lại. Đòi hay không là
+   chuyện của người, không phải của máy.
+6. **Nói trước là gỡ lại được**, ngay dưới cái nút đáng sợ nhất app. Người dùng ngần ngại ở
+   đây thì gọi điện hỏi, mà hỏi thì mất cả buổi.
+
+### 3. Kỳ đã chốt
+
+Các kỳ đã quyết toán, **kỳ mới nhất lên đầu**. Mỗi kỳ một thẻ: khoảng ngày, số thợ, số công,
+tiền đã trả. Bấm mở ra **tờ quyết toán** của kỳ đó — từng thợ làm bao nhiêu công, cầm về bao
+nhiêu tiền.
+
+Tờ quyết toán là **bản chụp lúc chốt, không tính lại bao giờ nữa**. Sau này tăng lương thợ
+hay sửa tên thợ thì tờ cũ vẫn y nguyên như hôm trả tiền — kể cả tên: mỗi dòng giữ lại tên
+của lúc ấy chứ không tra ngược theo id.
+
+#### Bỏ chốt
+
+Kỳ mới nhất có nhãn *Mới nhất* và có nút **Bỏ chốt kỳ này**, để tận đáy tờ quyết toán, sau
+khi đã cuộn qua hết — không phải thứ bấm trúng lúc đang xem. Viền đỏ, và **hỏi lại ngay trên
+chính cái nút**: bấm lần đầu nút đổi thành *"Chắc chưa? Bấm lần nữa để bỏ chốt"*, kèm nút
+*Thôi, giữ nguyên* hiện ra bên dưới.
+
+Chỉ kỳ mới nhất mới bỏ chốt được. Gỡ một kỳ ở giữa thì nợ đầu kỳ của các kỳ sau nó thành sai.
+
+Bỏ chốt **không mất buổi công nào** — công và tiền ứng quay về mục Bảng lương y như cũ. Thứ
+duy nhất mất là con số *đã trả* đã ghi, phải nhập lại lúc chốt sau. Dòng chữ ngay trên nút
+nói đúng như vậy.
+
+### 4. Thợ
 
 Danh sách tên kèm tiền một công. Thêm/sửa thợ trên một biểu mẫu chữ to. Thợ nghỉ việc thì
 tắt *Đang làm* chứ không xoá — xoá là mất luôn bảng lương các tháng trước.
@@ -208,7 +299,7 @@ tắt *Đang làm* chứ không xoá — xoá là mất luôn bảng lương cá
 **Nút Thêm thợ nằm trong đầu trang**, không phải thanh xanh chiếm hết bề ngang như bản đầu.
 Thêm thợ là việc làm vài lần rồi thôi — để nó to bằng cả màn hình thì lấn chỗ danh sách,
 thứ người dùng vào đây để xem. Vào đầu trang thì màn hình này cũng có đầu trang trắng
-giống Chấm công và Bảng lương, ba màn hình nhìn ra một bộ.
+giống Chấm công và Bảng lương, các màn hình nhìn ra một bộ.
 
 Nút cao 44pt chứ không phải 48pt như nút thường — bằng mũi tên đổi tháng bên Bảng lương,
 vẫn đúng mức tối thiểu Apple khuyên. Đừng hạ thêm.
@@ -225,31 +316,38 @@ Nút nằm ở chân màn hình **Thợ**, không nằm ở Bảng lương: đâ
 nút chưa hiện — xuất ra một file rỗng chỉ làm người dùng hoang mang.
 
 Bấm một cái là dựng file rồi mở thẳng bảng chia sẻ của máy: gửi Zalo, gửi mail, hay lưu vào
-Files/Drive. Không có màn hình chọn tháng, chọn cột, chọn nơi lưu — mỗi bước chọn là một chỗ
-để phân vân. Xuất là xuất hết, mọi tháng.
+Files/Drive. Không có màn hình chọn kỳ, chọn cột, chọn nơi lưu — mỗi bước chọn là một chỗ
+để phân vân. Xuất là xuất hết, mọi kỳ.
 
-File có năm trang, xếp theo thứ tự cần dùng:
+File có sáu trang, xếp theo thứ tự cần dùng:
 
 | Trang | Nội dung |
 |---|---|
-| Bảng lương | Mỗi thợ một dòng cho mỗi tháng: công sáng, công chiều, tiền công, đã ứng, còn phải trả |
+| Quyết toán | Các kỳ đã chốt, mỗi thợ một dòng cho mỗi kỳ: công, tiền công, đã ứng, nợ kỳ trước, đã trả, chuyển kỳ sau |
+| Kỳ này | Kỳ đang mở, mỗi thợ một dòng — giống hệt màn hình Bảng lương |
 | Buổi công | Từng buổi đã chấm: ngày, thứ, thợ, buổi, số công, thành tiền |
 | Ứng tiền | Từng lần ứng |
 | Thợ | Danh sách thợ và tiền một công hiện tại |
 | Mốc lương | Lịch sử tăng lương của từng thợ |
 
+**Hai trang đầu phải khớp từng đồng với hai màn hình Kỳ đã chốt và Bảng lương.** Trước đây
+trang đầu cắt theo tháng trong khi app cắt theo kỳ — cùng một khoản tiền mà file và máy ra
+hai bức tranh khác nhau, đối chiếu là loạn. Muốn xem theo tháng thì lọc cột *Ngày* ở trang
+Buổi công, Excel làm việc đó giỏi hơn app.
+
 Vừa là cách lấy số liệu ra khỏi điện thoại, vừa là **bản sao lưu đọc được** — máy hỏng mà
 còn file này thì vẫn còn sổ sách, dù đọc bằng Excel chứ không nạp ngược vào app được.
 
-Ba điều đã cân nhắc khi làm, đừng đổi mà không đọc lại:
+Bốn điều đã cân nhắc khi làm, đừng đổi mà không đọc lại:
 
-1. **File .xlsx thật, không phải CSV.** CSV mở bằng Excel thì tiếng Việt hay vỡ chữ, ngày
+1. **File cắt theo kỳ, giống hệt app.** Xem bảng trên: hai trang đầu là hai màn hình.
+2. **File .xlsx thật, không phải CSV.** CSV mở bằng Excel thì tiếng Việt hay vỡ chữ, ngày
    bị hiểu thành tháng, và không có nổi một dòng tiêu đề in đậm.
-2. **Tự dựng file** ([xlsx.ts](../mobile/src/nghiepvu/xlsx.ts)) chứ không lấy thư viện Excel
+3. **Tự dựng file** ([xlsx.ts](../mobile/src/nghiepvu/xlsx.ts)) chứ không lấy thư viện Excel
    có sẵn. Các thư viện đó nặng vài trăm KB vì mang theo cả phần *đọc* file — app này chỉ
    ghi — và bản miễn phí của chúng không kẻ được nét đậm hay định dạng số. Ở đây chỉ cần
    nén zip ([fflate](https://www.npmjs.com/package/fflate)) và mấy đoạn XML.
-3. **Ngày và tiền ghi thành số, không ghi thành chữ.** Có vậy trong Excel mới lọc theo
+4. **Ngày và tiền ghi thành số, không ghi thành chữ.** Có vậy trong Excel mới lọc theo
    khoảng ngày và cộng cột tiền được. Riêng chữ *Tổng cộng* của dòng cuối nằm ngay dưới cột
    Ngày — chỗ này phải ghi thành chữ, ép thành ngày là Excel kêu file hỏng.
 
