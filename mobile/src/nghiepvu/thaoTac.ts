@@ -1,0 +1,255 @@
+/**
+ * Thao tác trên dữ liệu chấm công. Mọi hàm đều trả về dữ liệu mới chứ không sửa tại chỗ,
+ * để React biết là có thay đổi mà vẽ lại màn hình.
+ */
+
+import { BuoiCong, BuoiLam, DuLieuChamCong, MocLuong, Tho, UngTien } from './kieu';
+
+/**
+ * Tiền một công của thợ tại một ngày: lấy mốc lương gần nhất có hiệu lực trước hoặc
+ * đúng ngày đó. Buổi công chấm trước cả mốc đầu tiên thì lấy chính mốc đầu tiên —
+ * thà tính theo giá cũ nhất còn hơn tính thành 0 đồng.
+ */
+export function luongTaiNgay(tho: Tho, ngay: string): number {
+  if (tho.mocLuong.length === 0) {
+    return 0;
+  }
+
+  let ketQua = tho.mocLuong[0].tienMotCong;
+  for (const moc of tho.mocLuong) {
+    if (moc.tuNgay > ngay) {
+      break;
+    }
+    ketQua = moc.tienMotCong;
+  }
+
+  return ketQua;
+}
+
+/** Tiền một công đang áp dụng hôm nay. */
+export function luongHienTai(tho: Tho, homNay: string): number {
+  return luongTaiNgay(tho, homNay);
+}
+
+/** Các mốc lương, mốc mới nhất lên đầu — đúng thứ tự người ta muốn đọc. */
+export function lichSuLuong(tho: Tho): MocLuong[] {
+  return [...tho.mocLuong].reverse();
+}
+
+/**
+ * Đặt tiền công áp dụng từ một ngày. Đã có mốc đúng ngày đó thì sửa đè, chưa có thì
+ * thêm mốc mới. Đây là cách tăng lương: mốc cũ giữ nguyên nên tháng trước không bị tính lại.
+ */
+export function datLuong(
+  duLieu: DuLieuChamCong,
+  thoId: string,
+  tuNgay: string,
+  tienMotCong: number,
+): DuLieuChamCong {
+  if (tienMotCong <= 0) {
+    throw new Error('Tiền một công phải lớn hơn 0.');
+  }
+
+  const tho = timTho(duLieu, thoId);
+  if (!tho) {
+    throw new Error('Không có thợ này.');
+  }
+
+  const conLai = tho.mocLuong.filter((m) => m.tuNgay !== tuNgay);
+  const mocLuong = [...conLai, { tuNgay, tienMotCong }].sort((a, b) =>
+    a.tuNgay < b.tuNgay ? -1 : a.tuNgay > b.tuNgay ? 1 : 0,
+  );
+
+  return luuTho(duLieu, { ...tho, mocLuong });
+}
+
+/** Xoá một mốc lương đặt nhầm. Không cho xoá mốc cuối cùng — thợ phải còn một giá. */
+export function xoaMocLuong(
+  duLieu: DuLieuChamCong,
+  thoId: string,
+  tuNgay: string,
+): DuLieuChamCong {
+  const tho = timTho(duLieu, thoId);
+  if (!tho) {
+    throw new Error('Không có thợ này.');
+  }
+
+  const mocLuong = tho.mocLuong.filter((m) => m.tuNgay !== tuNgay);
+  if (mocLuong.length === 0) {
+    throw new Error('Thợ phải còn ít nhất một mốc tiền công.');
+  }
+
+  return luuTho(duLieu, { ...tho, mocLuong });
+}
+
+export function taoId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function bayGio(): string {
+  return new Date().toISOString();
+}
+
+/** Xếp tên theo kiểu tiếng Việt (à, ă, â... đúng chỗ). */
+function soSanhTen(a: string, b: string): number {
+  return a.localeCompare(b, 'vi', { sensitivity: 'base' });
+}
+
+/** Thợ đang còn làm — đây là danh sách của màn hình chấm công. */
+export function thoDangLam(duLieu: DuLieuChamCong): Tho[] {
+  return duLieu.thos.filter((t) => t.dangLam).sort((a, b) => soSanhTen(a.ten, b.ten));
+}
+
+/**
+ * Tất cả thợ, người đang làm xếp trước rồi mới tới người đã nghỉ.
+ * Không có hàm xoá thợ: xoá là mất luôn bảng lương các tháng trước, nghỉ việc thì tắt dangLam.
+ */
+export function tatCaTho(duLieu: DuLieuChamCong): Tho[] {
+  return [...duLieu.thos].sort((a, b) => {
+    if (a.dangLam !== b.dangLam) {
+      return a.dangLam ? -1 : 1;
+    }
+    return soSanhTen(a.ten, b.ten);
+  });
+}
+
+export function timTho(duLieu: DuLieuChamCong, thoId: string): Tho | undefined {
+  return duLieu.thos.find((t) => t.id === thoId);
+}
+
+export function themTho(
+  duLieu: DuLieuChamCong,
+  ten: string,
+  tienMotCong: number,
+  ngayTao: string,
+): { duLieu: DuLieuChamCong; tho: Tho } {
+  const tho: Tho = {
+    id: taoId(),
+    ten: ten.trim(),
+    dienThoai: '',
+    // Mốc lương đầu tiên tính từ ngày thêm thợ, không phải từ hôm nay — nhập thợ cũ
+    // vào sau vẫn tính đúng các buổi công trước đó.
+    mocLuong: [{ tuNgay: ngayTao, tienMotCong }],
+    dangLam: true,
+    ghiChu: '',
+    ngayTao,
+    suaLuc: bayGio(),
+  };
+
+  return { duLieu: { ...duLieu, thos: [...duLieu.thos, tho] }, tho };
+}
+
+/** Ghi lại thợ sau khi sửa tên, tiền công hay đánh dấu đã nghỉ. */
+export function luuTho(duLieu: DuLieuChamCong, tho: Tho): DuLieuChamCong {
+  const daSua: Tho = { ...tho, ten: tho.ten.trim(), suaLuc: bayGio() };
+  return {
+    ...duLieu,
+    thos: duLieu.thos.map((t) => (t.id === daSua.id ? daSua : t)),
+  };
+}
+
+/** Buổi công đã chấm của một thợ trong một buổi, chưa chấm thì trả về undefined. */
+export function dangCham(
+  duLieu: DuLieuChamCong,
+  thoId: string,
+  ngay: string,
+  buoi: BuoiLam,
+): BuoiCong | undefined {
+  return duLieu.buoiCongs.find((b) => b.thoId === thoId && b.ngay === ngay && b.buoi === buoi);
+}
+
+/**
+ * Chấm một buổi cho thợ. Chấm lại buổi đã chấm thì sửa số công chứ không thêm dòng mới —
+ * bấm nhầm hai lần không thành hai công.
+ * Tiền một công được chụp lại theo giá hiện tại của thợ.
+ */
+export function cham(
+  duLieu: DuLieuChamCong,
+  thoId: string,
+  ngay: string,
+  buoi: BuoiLam,
+  soCong = 1,
+  ghiChu = '',
+): DuLieuChamCong {
+  if (soCong <= 0) {
+    throw new Error('Số công phải lớn hơn 0. Muốn bỏ chấm thì dùng boCham.');
+  }
+
+  const tho = timTho(duLieu, thoId);
+  if (!tho) {
+    throw new Error('Không có thợ này.');
+  }
+
+  const cu = dangCham(duLieu, thoId, ngay, buoi);
+  const moi: BuoiCong = {
+    id: cu?.id ?? taoId(),
+    thoId,
+    ngay,
+    buoi,
+    soCong,
+    // Không chụp giá vào đây nữa: giá lấy từ mốc lương của thợ tại ngày đó. Nhờ vậy
+    // sửa lại mốc lương (tăng lương tính từ đầu tháng chẳng hạn) là cả tháng tự tính lại,
+    // không phải sửa tay từng buổi. Giữ lại giá cũ nếu buổi này vốn có giá riêng.
+    tienMotCong: cu?.tienMotCong ?? null,
+    ghiChu,
+    suaLuc: bayGio(),
+  };
+
+  return {
+    ...duLieu,
+    buoiCongs: cu
+      ? duLieu.buoiCongs.map((b) => (b.id === cu.id ? moi : b))
+      : [...duLieu.buoiCongs, moi],
+  };
+}
+
+/** Bỏ chấm một buổi. Buổi vốn chưa chấm thì dữ liệu giữ nguyên. */
+export function boCham(
+  duLieu: DuLieuChamCong,
+  thoId: string,
+  ngay: string,
+  buoi: BuoiLam,
+): DuLieuChamCong {
+  return {
+    ...duLieu,
+    buoiCongs: duLieu.buoiCongs.filter(
+      (b) => !(b.thoId === thoId && b.ngay === ngay && b.buoi === buoi),
+    ),
+  };
+}
+
+/** Đặt số công cho một buổi. soCong là null nghĩa là cho nghỉ buổi đó. */
+export function datCong(
+  duLieu: DuLieuChamCong,
+  thoId: string,
+  ngay: string,
+  buoi: BuoiLam,
+  soCong: number | null,
+): DuLieuChamCong {
+  return soCong === null
+    ? boCham(duLieu, thoId, ngay, buoi)
+    : cham(duLieu, thoId, ngay, buoi, soCong);
+}
+
+export function themUng(
+  duLieu: DuLieuChamCong,
+  thoId: string,
+  ngay: string,
+  soTien: number,
+  ghiChu = '',
+): DuLieuChamCong {
+  if (soTien <= 0) {
+    throw new Error('Số tiền ứng phải lớn hơn 0.');
+  }
+
+  const ung: UngTien = {
+    id: taoId(),
+    thoId,
+    ngay,
+    soTien,
+    ghiChu: ghiChu.trim(),
+    suaLuc: bayGio(),
+  };
+
+  return { ...duLieu, ungTiens: [...duLieu.ungTiens, ung] };
+}
