@@ -3,6 +3,7 @@ using NPOI.SS.Util;
 using NPOI.XSSF.UserModel;
 using QuanLyDienNuoc.BaoCao;
 using QuanLyDienNuoc.Models;
+using QuanLyDienNuoc.Ui;
 
 namespace QuanLyDienNuoc.Excel;
 
@@ -111,9 +112,7 @@ public static class XuatToanBo
         foreach (var hoaDon in SapXepHoaDon(duLieu))
         {
             var tenKhach = TenKhach(duLieu, hoaDon.KhachHangId);
-            foreach (var ct in hoaDon.ChiTiet
-                         .OrderBy(c => c.Ngay)
-                         .ThenBy(c => c.TenHang, StringComparer.CurrentCultureIgnoreCase))
+            foreach (var ct in ThuTuDong.TheoThuTu(hoaDon.ChiTiet))
             {
                 var r = sheet.CreateRow(dong++);
                 Ngay(r, 0, ct.Ngay, kieu);

@@ -559,19 +559,55 @@ public sealed class DonHangForm : Form
             }
         };
 
+        _luoiCT.ContextMenuStrip = TaoMenuChuot();
+
+        // Bấm chuột phải lên dòng nào thì chọn luôn dòng đó, để lệnh trong menu áp vào đúng dòng
+        // người dùng đang trỏ tới chứ không phải dòng đang chọn từ trước.
+        _luoiCT.CellMouseDown += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Right && e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            {
+                _luoiCT.CurrentCell = _luoiCT.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            }
+        };
+
         _luoiCT.DataSource = _nguonCT;
         return _luoiCT;
+    }
+
+    /// <summary>Menu chuột phải trên lưới chi tiết: chèn, nhân đôi, đổi chỗ, xoá dòng.</summary>
+    private ContextMenuStrip TaoMenuChuot()
+    {
+        var menu = new ContextMenuStrip { Font = Theme.FontThuong };
+
+        void Them(string chu, Action lam) => menu.Items.Add(chu, null, (_, _) => lam());
+
+        Them("Chèn dòng lên trên          Ctrl+Enter", () => ThemDong(chen: true));
+        Them("Chèn dòng xuống dưới     Ctrl+Shift+Enter", () => ThemDong(chen: true, chenDuoi: true));
+        menu.Items.Add(new ToolStripSeparator());
+        Them("Nhân đôi dòng                 Ctrl+D", NhanDoiDong);
+        Them("Chuyển lên                        Alt+↑", () => ChuyenDong(xuong: false));
+        Them("Chuyển xuống                   Alt+↓", () => ChuyenDong(xuong: true));
+        menu.Items.Add(new ToolStripSeparator());
+        Them("Xoá dòng                            Delete", XoaDong);
+
+        return menu;
     }
 
     private Control TaoThanhTongTien()
     {
         var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(0, 8, 0, 0) };
 
+        var btnChen = Theme.NutPhu("⤒  Chèn dòng (Ctrl+Enter)", 260, 46);
+        btnChen.Margin = new Padding(0, 0, 10, 0);
+        btnChen.Click += (_, _) => ThemDong(chen: true);
+
         var btnXoaDong = Theme.NutPhu("Xoá dòng (Delete)", 210, 46);
         btnXoaDong.ForeColor = Theme.Do;
         btnXoaDong.Click += (_, _) => XoaDong();
 
         var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
+        trai.Controls.Add(btnChen);
         trai.Controls.Add(btnXoaDong);
 
         void SetNhan(Label lbl, Color mau)
@@ -612,7 +648,8 @@ public sealed class DonHangForm : Form
         _lblTrangThai.ForeColor = Theme.Xam;
         _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
         _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
-        _lblTrangThai.Text = "Enter thêm dòng · F3 về ô Tên hàng · Bấm đúp để sửa · Ctrl+D nhân đôi dòng · Delete xoá dòng · Ctrl+Z hoàn tác · Ctrl+Y làm lại";
+        _lblTrangThai.Text = "Enter thêm dòng vào cuối · Ctrl+Enter chèn lên trên dòng đang chọn · Alt+↑/↓ đổi chỗ dòng · "
+            + "F3 về ô Tên hàng · Bấm đúp để sửa · Ctrl+D nhân đôi · Delete xoá dòng · Ctrl+Z hoàn tác · Ctrl+Y làm lại";
 
         var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
         nen.Controls.Add(_lblTrangThai);
@@ -727,10 +764,9 @@ public sealed class DonHangForm : Form
     private void NapChiTiet(Guid? chonDong = null)
     {
         var hoaDon = HoaDonHienTai;
-        var dong = hoaDon?.ChiTiet
-            .OrderBy(c => c.Ngay)
-            .ThenBy(c => c.TenHang, StringComparer.CurrentCultureIgnoreCase)
-            .ToList() ?? new List<ChiTietHoaDon>();
+        var dong = hoaDon is null
+            ? new List<ChiTietHoaDon>()
+            : ThuTuDong.TheoThuTu(hoaDon.ChiTiet);
 
         _dangNap = true;
         _nguonCT = new BindingList<ChiTietHoaDon>(dong);
@@ -819,8 +855,12 @@ public sealed class DonHangForm : Form
     /// <summary>
     /// Thêm một dòng hàng. <paramref name="traLai"/> là khách trả hàng về: số lượng ghi số âm
     /// nên thành tiền trừ bớt vào hoá đơn, in ra có dấu trừ.
+    /// <para>
+    /// <paramref name="chen"/> thì dòng mới nằm ngay cạnh dòng đang chọn trên lưới thay vì
+    /// xuống cuối bảng, và lấy luôn ngày của dòng đó — có vậy nó mới đứng yên đúng chỗ.
+    /// </para>
     /// </summary>
-    private void ThemDong(bool traLai = false)
+    private void ThemDong(bool traLai = false, bool chen = false, bool chenDuoi = false)
     {
         if (Khach is not { } khach || HopThoai.ChanKhiChiXem(this, _kho))
         {
@@ -855,7 +895,10 @@ public sealed class DonHangForm : Form
 
         var donGia = So.Tinh(_txtDonGia.Text);
         var donVi = _txtDonVi.Text.Trim();
-        var ngay = _dtNgay.Value.Date;
+
+        // Chèn thì dòng mới lấy ngày của dòng đang chọn, nếu không nó sẽ bị xếp sang chỗ khác.
+        var moc = chen ? _luoiCT.CurrentRow?.DataBoundItem as ChiTietHoaDon : null;
+        var ngay = moc?.Ngay.Date ?? _dtNgay.Value.Date;
 
         var hoaDonDangChon = HoaDonHienTai;
         if (hoaDonDangChon is { DaChot: true })
@@ -971,9 +1014,13 @@ public sealed class DonHangForm : Form
             SoLuong = soLuong,
         };
 
-        var moTa = soLuong < 0
-            ? $"Trả lại \"{ten}\" ngày {ngay:dd/MM/yyyy}"
-            : $"Thêm \"{ten}\" ngày {ngay:dd/MM/yyyy}";
+        var moTa = (soLuong, moc) switch
+        {
+            ( < 0, null) => $"Trả lại \"{ten}\" ngày {ngay:dd/MM/yyyy}",
+            ( < 0, not null) => $"Chèn dòng trả lại \"{ten}\" ngày {ngay:dd/MM/yyyy}",
+            (_, null) => $"Thêm \"{ten}\" ngày {ngay:dd/MM/yyyy}",
+            _ => $"Chèn \"{ten}\" ngày {ngay:dd/MM/yyyy}",
+        };
 
         _kho.ThucHien(moTa, () =>
         {
@@ -999,7 +1046,14 @@ public sealed class DonHangForm : Form
                 _kho.DuLieu.HoaDons.Add(hoaDon);
             }
 
-            hoaDon.ChiTiet.Add(dongMoi);
+            if (moc is null)
+            {
+                hoaDon.ChiTiet.Add(dongMoi);
+            }
+            else
+            {
+                ThuTuDong.Chen(hoaDon.ChiTiet, dongMoi, moc.Id, chenDuoi);
+            }
         }, phatSuKien: false);
 
         if (vatTuMoi)
@@ -1011,9 +1065,18 @@ public sealed class DonHangForm : Form
         NapHoaDon(hoaDon.Id);
         NapChiTiet(dongMoi.Id);
 
-        _lblTrangThai.Text = (soLuong < 0
-                ? $"Đã ghi trả lại: {ten} × {So.Luong(Math.Abs(soLuong))} = {So.Tien(dongMoi.ThanhTien)}"
-                : $"Đã thêm: {ten} × {So.Luong(soLuong)} = {So.Tien(dongMoi.ThanhTien)}")
+        var viecDaLam = (soLuong < 0, moc is not null) switch
+        {
+            (true, false) => "Đã ghi trả lại",
+            (true, true) => "Đã chèn dòng trả lại",
+            (false, false) => "Đã thêm",
+            _ => "Đã chèn",
+        };
+
+        _lblTrangThai.Text = $"{viecDaLam}: {ten} × {So.Luong(Math.Abs(soLuong))} = {So.Tien(dongMoi.ThanhTien)}"
+            + (moc is null
+                ? string.Empty
+                : $" — {(chenDuoi ? "ngay dưới" : "ngay trên")} dòng \"{moc.TenHang}\", ngày {ngay:dd/MM/yyyy}")
             + (taoHoaDonMoi ? $" (tự tạo hoá đơn {hoaDon.MaHoaDon})" : string.Empty);
 
         // Sẵn sàng cho dòng tiếp theo, giữ nguyên ngày để nhập nhanh nhiều dòng cùng ngày.
@@ -1097,9 +1160,18 @@ public sealed class DonHangForm : Form
             return;
         }
 
+        // Nhớ trước dòng liền kề để xoá xong con trỏ đứng ngay chỗ cũ, khỏi nhảy về đầu bảng —
+        // xoá mấy dòng ở giữa một hoá đơn dài mới đỡ phải cuộn lại từ đầu mỗi lần.
+        var thuTu = ThuTuDong.TheoThuTu(hoaDon.ChiTiet);
+        var viTri = thuTu.FindIndex(c => c.Id == dong.Id);
+        var dongKe = viTri + 1 < thuTu.Count ? thuTu[viTri + 1]
+            : viTri > 0 ? thuTu[viTri - 1]
+            : null;
+
         _kho.ThucHien($"Xoá dòng \"{dong.TenHang}\"", () => hoaDon.ChiTiet.RemoveAll(c => c.Id == dong.Id), phatSuKien: false);
 
         NapHoaDon(_hoaDonId);
+        NapChiTiet(dongKe?.Id);
         _lblTrangThai.Text = $"Đã xoá dòng {dong.TenHang}. Bấm Ctrl+Z để lấy lại.";
     }
 
@@ -1299,10 +1371,52 @@ public sealed class DonHangForm : Form
             GhiChu = dong.GhiChu,
         };
 
-        _kho.ThucHien($"Nhân đôi dòng \"{dong.TenHang}\"", () => hoaDon.ChiTiet.Add(ban), phatSuKien: false);
+        // Bản sao nằm ngay dưới dòng gốc cho dễ nhìn, khỏi phải mò xuống cuối bảng.
+        _kho.ThucHien(
+            $"Nhân đôi dòng \"{dong.TenHang}\"",
+            () => ThuTuDong.Chen(hoaDon.ChiTiet, ban, dong.Id, chenDuoi: true),
+            phatSuKien: false);
+
         NapHoaDon(hoaDon.Id);
         NapChiTiet(ban.Id);
         _lblTrangThai.Text = $"Đã nhân đôi dòng {dong.TenHang}. Sửa lại số lượng nếu cần.";
+    }
+
+    /// <summary>Đổi chỗ dòng đang chọn với dòng liền kề, để xếp lại thứ tự in ra giấy.</summary>
+    private void ChuyenDong(bool xuong)
+    {
+        if (HoaDonHienTai is not { } hoaDon || HopThoai.ChanKhiChiXem(this, _kho))
+        {
+            return;
+        }
+
+        if (hoaDon.DaChot)
+        {
+            HopThoai.CanhBao(this, "Hoá đơn đã chốt, không đổi thứ tự dòng được.");
+            return;
+        }
+
+        if (_luoiCT.CurrentRow?.DataBoundItem is not ChiTietHoaDon dong)
+        {
+            HopThoai.CanhBao(this, "Hãy chọn dòng muốn chuyển.");
+            return;
+        }
+
+        // Chuyển thử trước rồi mới ghi lịch sử, để không đẻ ra bước hoàn tác rỗng khi dòng
+        // đã nằm ở đầu / cuối ngày của nó.
+        var truoc = _kho.ChupNhanh();
+        if (!ThuTuDong.Chuyen(hoaDon.ChiTiet, dong.Id, xuong))
+        {
+            _lblTrangThai.Text = $"Dòng \"{dong.TenHang}\" đã ở {(xuong ? "cuối" : "đầu")} ngày "
+                + $"{dong.Ngay:dd/MM/yyyy} rồi. Muốn sang ngày khác thì sửa ô NGÀY.";
+            return;
+        }
+
+        _kho.GhiNhan(truoc, $"Chuyển dòng \"{dong.TenHang}\" {(xuong ? "xuống" : "lên")}", phatSuKien: false);
+
+        NapChiTiet(dong.Id);
+        _lblTrangThai.Text = $"Đã chuyển dòng {dong.TenHang} {(xuong ? "xuống dưới" : "lên trên")}. "
+            + "Bấm Ctrl+Z nếu muốn quay lại.";
     }
 
     private void SoanTinNhacNo()
@@ -1642,6 +1756,19 @@ public sealed class DonHangForm : Form
                 return true;
             case Keys.Control | Keys.D when !dangSuaO:
                 NhanDoiDong();
+                return true;
+            case Keys.Control | Keys.Enter when !dangSuaO:
+                ThemDong(chen: true);
+                return true;
+            case Keys.Control | Keys.Shift | Keys.Enter when !dangSuaO:
+                ThemDong(chen: true, chenDuoi: true);
+                return true;
+            // Chỉ nhận khi đang đứng ở lưới, để Alt+↑/↓ vẫn mở được danh sách gợi ý tên hàng.
+            case Keys.Alt | Keys.Up when !dangSuaO && _luoiCT.Focused:
+                ChuyenDong(xuong: false);
+                return true;
+            case Keys.Alt | Keys.Down when !dangSuaO && _luoiCT.Focused:
+                ChuyenDong(xuong: true);
                 return true;
             case Keys.F3:
                 _cboHang.Focus();
