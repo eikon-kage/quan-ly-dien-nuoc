@@ -18,10 +18,9 @@ public sealed class MainForm : Form
     private readonly DataGridView _luoi = new();
     private readonly Label _lblTongKet = new();
     private readonly Label _lblTrangThai = new();
+    private readonly Label _lblPhimTat = new();
     private readonly Label _lblNhacNo = new();
     private readonly Panel _nenNhacNo = new();
-    private readonly Button _btnHoanTac = Theme.NutPhu("↶  Hoàn tác", 160);
-    private readonly Button _btnLamLai = Theme.NutPhu("↷  Làm lại", 150);
 
     /// <summary>Thỉnh thoảng ngó lại file dữ liệu xem máy khác có sửa không.</summary>
     private readonly System.Windows.Forms.Timer _dongHoNgoFile = new() { Interval = 20_000 };
@@ -68,33 +67,44 @@ public sealed class MainForm : Form
 
     private void TaoGiaoDien()
     {
+        // Không có thanh tiêu đề xanh như các cửa sổ con: đây là cửa sổ mở suốt ngày, tên
+        // phần mềm đã nằm sẵn trên thanh cửa sổ của Windows, nhắc lại chỉ ăn mất một dải
+        // màn hình mà không thêm thông tin gì.
         var goc = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 6,
+            RowCount = 5,
             BackColor = Theme.Nen,
         };
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 94));
+        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 98));
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 
-        goc.Controls.Add(Theme.ThanhTieuDe("QUẢN LÝ ĐƠN HÀNG – CỬA HÀNG ĐIỆN NƯỚC", "Chọn năm, chọn khách hàng rồi bấm Mở đơn hàng (hoặc bấm đúp vào dòng khách)"), 0, 0);
-        goc.Controls.Add(TaoThanhCongCu(), 0, 1);
-        goc.Controls.Add(TaoThanhNhacNo(), 0, 2);
-        goc.Controls.Add(TaoLuoi(), 0, 3);
-        goc.Controls.Add(TaoThanhDuoi(), 0, 4);
-        goc.Controls.Add(TaoThanhTrangThai(), 0, 5);
+        goc.Controls.Add(TaoThanhCongCu(), 0, 0);
+        goc.Controls.Add(TaoThanhNhacNo(), 0, 1);
+        goc.Controls.Add(TaoLuoi(), 0, 2);
+        goc.Controls.Add(TaoThanhDuoi(), 0, 3);
+        goc.Controls.Add(TaoThanhTrangThai(), 0, 4);
 
         Controls.Add(goc);
     }
 
+    /// <summary>
+    /// Thanh trên cùng: chọn năm, tìm khách, và các nút mở thêm cửa sổ. Nền trắng kẻ một
+    /// vạch dưới để vẫn ra dáng thanh công cụ khi không còn dải tiêu đề đè lên trên.
+    /// </summary>
     private Control TaoThanhCongCu()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 12, 20, 8) };
+        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Trang, Padding = new Padding(20, 14, 20, 10) };
+        nen.Paint += (s, e) =>
+        {
+            var p = (Panel)s!;
+            using var but = new Pen(Theme.Vien);
+            e.Graphics.DrawLine(but, 0, p.Height - 1, p.Width, p.Height - 1);
+        };
 
         _cboNam.DropDownStyle = ComboBoxStyle.DropDownList;
         _cboNam.Font = Theme.FontNhap;
@@ -143,9 +153,6 @@ public sealed class MainForm : Form
         var btnThemKhach = Theme.Nut("+  Thêm khách hàng", Theme.Xanh, 220);
         btnThemKhach.Click += (_, _) => ThemKhach();
 
-        _btnHoanTac.Click += (_, _) => HoanTac();
-        _btnLamLai.Click += (_, _) => LamLai();
-
         var benPhai = new FlowLayoutPanel
         {
             Dock = DockStyle.Right,
@@ -156,8 +163,6 @@ public sealed class MainForm : Form
         };
         benPhai.Controls.Add(btnTienIch);
         benPhai.Controls.Add(btnThemKhach);
-        benPhai.Controls.Add(_btnLamLai);
-        benPhai.Controls.Add(_btnHoanTac);
 
         nen.Controls.Add(benTrai);
         nen.Controls.Add(benPhai);
@@ -254,6 +259,12 @@ public sealed class MainForm : Form
         return nen;
     }
 
+    /// <summary>
+    /// Thanh dưới cùng chia đôi: bên trái là câu báo việc vừa làm (bị viết đè liên tục),
+    /// bên phải là mấy phím tắt, cố định không ai đè lên. Từ khi bỏ hai nút Hoàn tác /
+    /// Làm lại thì Ctrl+Z và Ctrl+Y chỉ còn được nhắc ở đây, mà nhắc thì phải nhắc suốt —
+    /// để chung một dòng thì thêm một khách hàng là câu nhắc bay mất.
+    /// </summary>
     private Control TaoThanhTrangThai()
     {
         _lblTrangThai.Dock = DockStyle.Fill;
@@ -262,19 +273,30 @@ public sealed class MainForm : Form
         _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
         _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
 
+        _lblPhimTat.Dock = DockStyle.Right;
+        // Tự co theo chữ: đặt cứng bề rộng thì máy để cỡ chữ Windows lớn là cụt mất phím tắt.
+        _lblPhimTat.AutoSize = true;
+        _lblPhimTat.Font = Theme.FontPhu;
+        _lblPhimTat.ForeColor = Theme.Xam;
+        _lblPhimTat.TextAlign = ContentAlignment.MiddleRight;
+        _lblPhimTat.Padding = new Padding(0, 0, 22, 0);
+        _lblPhimTat.Text = _kho.ChiXem
+            ? "Bấm đúp dòng khách để xem đơn hàng · F5 nạp lại · F6 sổ công nợ"
+            : "Bấm đúp dòng khách để mở đơn hàng · Ctrl+Z hoàn tác · Ctrl+Y làm lại · F5 nạp lại · F6 sổ công nợ";
+
         if (_kho.ChiXem)
         {
             _lblTrangThai.ForeColor = Theme.Do;
-            _lblTrangThai.Text = $"CHỈ XEM — {_kho.LyDoChiXem} · F5 nạp lại · Dữ liệu: {_kho.DuongDanFile}";
+            _lblTrangThai.Text = $"CHỈ XEM — {_kho.LyDoChiXem} · Dữ liệu: {_kho.DuongDanFile}";
         }
         else
         {
-            _lblTrangThai.Text =
-                $"Ctrl+Z hoàn tác · Ctrl+Y làm lại · F5 nạp lại · F6 sổ công nợ · Dữ liệu: {_kho.DuongDanFile}";
+            _lblTrangThai.Text = $"Dữ liệu: {_kho.DuongDanFile}";
         }
 
         var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
         nen.Controls.Add(_lblTrangThai);
+        nen.Controls.Add(_lblPhimTat);
         return nen;
     }
 
@@ -349,7 +371,6 @@ public sealed class MainForm : Form
         _lblTongKet.Text =
             $"Năm {nam}   ·   {_nguon.Count} khách   ·   Tổng mua: {So.Tien(tongMua)}   ·   Còn nợ: {So.Tien(tongMua - tongTra)}";
 
-        CapNhatNutLichSu();
         CapNhatNhacNo();
     }
 
@@ -394,14 +415,6 @@ public sealed class MainForm : Form
                 return;
             }
         }
-    }
-
-    private void CapNhatNutLichSu()
-    {
-        _btnHoanTac.Enabled = _kho.CoTheHoanTac;
-        _btnLamLai.Enabled = _kho.CoTheLamLai;
-        _btnHoanTac.ForeColor = _btnHoanTac.Enabled ? Theme.Chinh : Theme.Xam;
-        _btnLamLai.ForeColor = _btnLamLai.Enabled ? Theme.Chinh : Theme.Xam;
     }
 
     private void Kho_DuLieuThayDoi(object? sender, EventArgs e)
