@@ -1,38 +1,10 @@
 /** Đọc và ghi dữ liệu chấm công xuống bộ nhớ của điện thoại. */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DuLieuChamCong, Tho, duLieuRong } from './kieu';
+import { chuanHoa, DuLieuChamCong, duLieuRong } from './kieu';
 
 /** Có số phiên bản trong khoá để sau này đổi cấu trúc dữ liệu còn biết đường chuyển đổi. */
 const KHOA = 'chamcong.dulieu.v1';
-
-/** Dáng cũ của Tho: một mức tiền công duy nhất, chưa có lịch sử. */
-interface ThoBanCu extends Partial<Tho> {
-  tienMotCong?: number;
-}
-
-/**
- * Chuyển dữ liệu đã lưu trên máy sang cấu trúc mới.
- * Thợ bản cũ chỉ có một mức `tienMotCong` — biến nó thành mốc lương đầu tiên, tính từ
- * ngày thêm thợ, để mọi buổi công cũ vẫn tính ra đúng số tiền như trước.
- */
-function chuyenDoiTho(tho: ThoBanCu): Tho {
-  const mocLuong =
-    tho.mocLuong && tho.mocLuong.length > 0
-      ? tho.mocLuong
-      : [{ tuNgay: tho.ngayTao ?? '2000-01-01', tienMotCong: tho.tienMotCong ?? 0 }];
-
-  return {
-    id: tho.id ?? '',
-    ten: tho.ten ?? '',
-    dienThoai: tho.dienThoai ?? '',
-    mocLuong,
-    dangLam: tho.dangLam ?? true,
-    ghiChu: tho.ghiChu ?? '',
-    ngayTao: tho.ngayTao ?? '2000-01-01',
-    suaLuc: tho.suaLuc ?? new Date().toISOString(),
-  };
-}
 
 export async function doc(): Promise<DuLieuChamCong> {
   try {
@@ -41,15 +13,7 @@ export async function doc(): Promise<DuLieuChamCong> {
       return duLieuRong();
     }
 
-    const daDoc = JSON.parse(noiDung) as Partial<DuLieuChamCong> & { thos?: ThoBanCu[] };
-    return {
-      thos: (daDoc.thos ?? []).map(chuyenDoiTho),
-      buoiCongs: daDoc.buoiCongs ?? [],
-      ungTiens: daDoc.ungTiens ?? [],
-      // Máy đã cài bản trước chưa có quyết toán: coi như chưa chốt kỳ nào, mọi thứ đang
-      // nằm trong kỳ đầu tiên. Không mất gì cả.
-      kyLuongs: daDoc.kyLuongs ?? [],
-    };
+    return chuanHoa(JSON.parse(noiDung));
   } catch {
     // Dữ liệu hỏng thì thà mở app lên trống còn hơn không mở được.
     return duLieuRong();

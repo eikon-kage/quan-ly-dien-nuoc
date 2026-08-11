@@ -1,0 +1,105 @@
+import { dongGoi, GoiHong, moGoi, ngayTuTenFile, PHIEN_BAN, tenFileSaoLuu, tomTat } from '../goiSaoLuu';
+import { duLieuRong } from '../kieu';
+import { cham, themUng, themTho } from '../thaoTac';
+
+function khoDayDu() {
+  const them = themTho(duLieuRong(), 'Anh Tuấn', 300_000, '2026-08-01');
+  const daCham = cham(them.duLieu, them.tho.id, '2026-08-03', 'Sang');
+  return themUng(daCham, them.tho.id, '2026-08-04', 500_000, 'mua xăng');
+}
+
+describe('tên file sao lưu', () => {
+  test('mỗi ngày một tên, ngày viết kiểu yyyy-MM-dd để sắp xếp ra đúng thứ tự', () => {
+    expect(tenFileSaoLuu('2026-08-05')).toBe('Cham-cong-2026-08-05.json');
+
+    const cacTen = ['2026-01-09', '2026-08-05', '2025-12-31'].map(tenFileSaoLuu);
+    expect([...cacTen].sort()).toEqual([
+      'Cham-cong-2025-12-31.json',
+      'Cham-cong-2026-01-09.json',
+      'Cham-cong-2026-08-05.json',
+    ]);
+  });
+
+  test('đọc ngược lại ra ngày', () => {
+    expect(ngayTuTenFile('Cham-cong-2026-08-05.json')).toBe('2026-08-05');
+  });
+
+  test('file lạ trên Drive thì trả null chứ không đoán bừa', () => {
+    expect(ngayTuTenFile('Cham-cong-05-08-2026.xlsx')).toBeNull();
+    expect(ngayTuTenFile('Bang luong.json')).toBeNull();
+    expect(ngayTuTenFile('Cham-cong-2026-08-05.json.bak')).toBeNull();
+  });
+});
+
+describe('đóng gói và mở gói', () => {
+  test('gói rồi mở ra được đúng dữ liệu ban đầu', () => {
+    const kho = khoDayDu();
+
+    const daMo = moGoi(dongGoi(kho, '2026-08-05T09:00:00.000Z'));
+
+    expect(daMo.duLieu).toEqual(kho);
+    expect(daMo.taoLuc).toBe('2026-08-05T09:00:00.000Z');
+    expect(daMo.phienBan).toBe(PHIEN_BAN);
+  });
+
+  test('gói giữ nguyên cả kỳ đã chốt lẫn ứng tiền, không cắt bớt như file Excel', () => {
+    const kho = khoDayDu();
+
+    const daMo = moGoi(dongGoi(kho, '2026-08-05T09:00:00.000Z'));
+
+    expect(tomTat(daMo.duLieu)).toEqual({ soTho: 1, soBuoiCong: 1, soUngTien: 1, soKy: 0 });
+  });
+});
+
+describe('từ chối file không phải bản sao lưu', () => {
+  test('không phải JSON', () => {
+    expect(() => moGoi('không phải json')).toThrow(GoiHong);
+  });
+
+  test('JSON của app khác', () => {
+    expect(() => moGoi(JSON.stringify({ app: 'app-khac', phienBan: 1, duLieu: {} }))).toThrow(
+      GoiHong,
+    );
+  });
+
+  test('mảng hoặc số trần', () => {
+    expect(() => moGoi('[1,2,3]')).toThrow(GoiHong);
+    expect(() => moGoi('42')).toThrow(GoiHong);
+  });
+
+  test('thiếu hẳn phần dữ liệu', () => {
+    expect(() => moGoi(JSON.stringify({ app: 'cham-cong', phienBan: 1 }))).toThrow(GoiHong);
+  });
+
+  /**
+   * Quan trọng: app cũ nuốt gói của app mới thì cấu trúc lệch nhau, khôi phục xong dữ
+   * liệu hỏng mà không ai biết. Thà báo "hãy cập nhật app".
+   */
+  test('gói của phiên bản app mới hơn', () => {
+    const goiMoi = JSON.stringify({ app: 'cham-cong', phienBan: PHIEN_BAN + 1, duLieu: {} });
+
+    expect(() => moGoi(goiMoi)).toThrow(/phiên bản app mới hơn/);
+  });
+});
+
+describe('vá dữ liệu thiếu', () => {
+  test('gói thiếu mảng nào thì mảng ấy thành rỗng, không nổ', () => {
+    const goiThieu = JSON.stringify({ app: 'cham-cong', phienBan: 1, duLieu: { thos: [] } });
+
+    expect(moGoi(goiThieu).duLieu).toEqual(duLieuRong());
+  });
+
+  /** Bản sao lưu làm từ app đời trước, thợ còn để một mức tiền công duy nhất. */
+  test('thợ bản cũ được chuyển thành mốc lương đầu tiên', () => {
+    const goiCu = JSON.stringify({
+      app: 'cham-cong',
+      phienBan: 1,
+      duLieu: {
+        thos: [{ id: 't1', ten: 'Anh Tuấn', tienMotCong: 250_000, ngayTao: '2026-01-01' }],
+      },
+    });
+
+    const tho = moGoi(goiCu).duLieu.thos[0];
+    expect(tho.mocLuong).toEqual([{ tuNgay: '2026-01-01', tienMotCong: 250_000 }]);
+  });
+});

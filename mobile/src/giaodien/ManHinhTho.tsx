@@ -6,6 +6,8 @@ import { chiaSeExcel } from '../nghiepvu/chiaSeExcel';
 import { DuLieuChamCong, Tho } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { luongTaiNgay, tatCaTho } from '../nghiepvu/thaoTac';
+import { DieuKhienSaoLuu } from './dungSaoLuu';
+import { HopSaoLuu } from './HopSaoLuu';
 import { HopSuaTho } from './HopSuaTho';
 import { rungNhe } from './rungNhe';
 import { Co, Mau, PhongChu } from './thietKe';
@@ -13,15 +15,17 @@ import { Co, Mau, PhongChu } from './thietKe';
 interface Props {
   duLieu: DuLieuChamCong;
   capNhat: (moi: DuLieuChamCong) => void;
+  saoLuu: DieuKhienSaoLuu;
 }
 
 /** Trạng thái của nút xuất Excel. */
 type TrangThaiXuat = 'ranh' | 'dangLam' | 'loi';
 
-export function ManHinhTho({ duLieu, capNhat }: Props) {
+export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
   /** null = đang đóng, 'them' = thêm mới, còn lại là thợ đang sửa. */
   const [dangMo, datDangMo] = useState<Tho | 'them' | null>(null);
   const [dangXuat, datDangXuat] = useState<TrangThaiXuat>('ranh');
+  const [moSaoLuu, datMoSaoLuu] = useState(false);
 
   const thos = tatCaTho(duLieu);
   const homNay = Ngay.homNay();
@@ -35,6 +39,28 @@ export function ManHinhTho({ duLieu, capNhat }: Props) {
       : soDaNghi === 0
         ? `${soDangLam} đang làm`
         : `${soDangLam} đang làm · ${soDaNghi} đã nghỉ`;
+
+  const { hoTro, taiKhoan, dangChay, lucCuoi, loi } = saoLuu.trangThai;
+
+  /**
+   * Một dòng cho biết dữ liệu đang an toàn tới đâu. Xếp theo mức khẩn: máy không nối được
+   * → chưa nối → đang lỗi → đang chạy → xong lúc mấy giờ.
+   */
+  const chuDrive = !hoTro
+    ? 'Cần bản app cài thẳng vào máy'
+    : taiKhoan === null
+      ? 'Chưa nối — dữ liệu chỉ nằm trong máy này'
+      : loi !== null
+        ? loi
+        : dangChay
+          ? 'Đang đẩy lên…'
+          : lucCuoi !== null
+            ? `Đã sao lưu lúc ${Ngay.gioPhut(lucCuoi)}`
+            : 'Đã nối, chưa sao lưu lần nào';
+
+  const daAn = hoTro && taiKhoan !== null && loi === null;
+  const iconDrive = daAn ? 'cloud' : 'cloud-off';
+  const mauDrive = daAn ? Mau.xanhLa : loi !== null ? Mau.do : Mau.xam;
 
   async function xuatExcel() {
     if (dangXuat === 'dangLam') {
@@ -108,11 +134,30 @@ export function ManHinhTho({ duLieu, capNhat }: Props) {
       />
 
       {/*
-        Xuất Excel để ở đây chứ không ở Bảng lương: đây là việc thỉnh thoảng mới làm,
-        để cạnh bảng lương thì lấn chỗ con số cần nhìn hằng ngày.
+        Xuất Excel và Sao lưu Drive để ở đây chứ không ở Bảng lương: đây là việc thỉnh
+        thoảng mới làm, để cạnh bảng lương thì lấn chỗ con số cần nhìn hằng ngày.
       */}
       {coDuLieu && (
         <View style={kieu.chanTrang}>
+          {/*
+            Sao lưu là một dòng chữ nhỏ có mũi tên chứ không phải nút to như Xuất Excel:
+            bình thường nó tự chạy, người dùng chỉ ghé vào lúc muốn xem "đã lên Drive
+            chưa". Để thành nút to thì hai nút cạnh nhau, nhìn như hai việc ngang nhau
+            trong khi một cái phải bấm còn một cái thì không.
+          */}
+          <Pressable
+            style={kieu.dongDrive}
+            onPress={() => datMoSaoLuu(true)}
+            accessibilityRole="button"
+          >
+            <Feather name={iconDrive} size={16} color={mauDrive} />
+            <View style={kieu.giuaDongDrive}>
+              <Text style={kieu.chuDrive}>Sao lưu Google Drive</Text>
+              <Text style={kieu.chuTrangThaiDrive}>{chuDrive}</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={Mau.xam} />
+          </Pressable>
+
           <Pressable
             style={[kieu.nutXuat, dangXuat === 'dangLam' && kieu.nutXuatMo]}
             onPress={xuatExcel}
@@ -135,6 +180,10 @@ export function ManHinhTho({ duLieu, capNhat }: Props) {
               : 'Gửi qua Zalo, gửi mail hoặc lưu vào máy tính để mở bằng Excel.'}
           </Text>
         </View>
+      )}
+
+      {moSaoLuu && (
+        <HopSaoLuu saoLuu={saoLuu} capNhat={capNhat} onDong={() => datMoSaoLuu(false)} />
       )}
 
       {dangMo !== null && (
@@ -212,6 +261,18 @@ const kieu = StyleSheet.create({
     padding: 14,
     gap: 8,
   },
+  dongDrive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    height: Co.caoNut,
+    paddingHorizontal: 12,
+    borderRadius: Co.bo,
+    backgroundColor: Mau.nen,
+  },
+  giuaDongDrive: { flex: 1, gap: 2 },
+  chuDrive: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, color: Mau.chu },
+  chuTrangThaiDrive: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
   nutXuat: {
     flexDirection: 'row',
     alignItems: 'center',

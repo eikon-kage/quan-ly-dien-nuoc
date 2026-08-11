@@ -1,5 +1,10 @@
 /** Chuẩn bị cho kiểm thử giao diện: thay các thứ chạm vào phần cứng bằng hàng giả. */
 
+// Bộ nhớ của điện thoại: dùng bản giả sẵn có của thư viện, lưu vào RAM.
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
+
 // Máy chạy kiểm thử không có mô-tơ rung.
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(() => Promise.resolve()),

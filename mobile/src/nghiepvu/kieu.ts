@@ -124,3 +124,52 @@ export interface DuLieuChamCong {
 export function duLieuRong(): DuLieuChamCong {
   return { thos: [], buoiCongs: [], ungTiens: [], kyLuongs: [] };
 }
+
+/** Dáng cũ của Tho: một mức tiền công duy nhất, chưa có lịch sử. */
+interface ThoBanCu extends Partial<Tho> {
+  tienMotCong?: number;
+}
+
+/**
+ * Thợ bản cũ chỉ có một mức `tienMotCong` — biến nó thành mốc lương đầu tiên, tính từ
+ * ngày thêm thợ, để mọi buổi công cũ vẫn tính ra đúng số tiền như trước.
+ */
+function chuyenDoiTho(tho: ThoBanCu): Tho {
+  const mocLuong =
+    tho.mocLuong && tho.mocLuong.length > 0
+      ? tho.mocLuong
+      : [{ tuNgay: tho.ngayTao ?? '2000-01-01', tienMotCong: tho.tienMotCong ?? 0 }];
+
+  return {
+    id: tho.id ?? '',
+    ten: tho.ten ?? '',
+    dienThoai: tho.dienThoai ?? '',
+    mocLuong,
+    dangLam: tho.dangLam ?? true,
+    ghiChu: tho.ghiChu ?? '',
+    ngayTao: tho.ngayTao ?? '2000-01-01',
+    suaLuc: tho.suaLuc ?? new Date().toISOString(),
+  };
+}
+
+/**
+ * Vá dữ liệu đọc từ ngoài vào cho đủ hình đủ dạng, và chuyển các dáng cũ sang dáng mới.
+ *
+ * Dùng chung cho cả hai đường vào: đọc từ bộ nhớ máy, và khôi phục từ file sao lưu trên
+ * Drive. Hai đường ấy phải chuyển đổi y hệt nhau — tách ra làm hai bản thì sớm muộn một
+ * bên quên vá một chỗ, và bản khôi phục về sẽ khác bản đã sao lưu đi.
+ *
+ * Nằm ở đây, cạnh các kiểu dữ liệu, chứ không nằm trong luuTru: thêm một mảng mới vào
+ * `DuLieuChamCong` là phải vá thêm ở đây, để hai chỗ cạnh nhau thì khó quên.
+ */
+export function chuanHoa(daDoc: unknown): DuLieuChamCong {
+  const khoi = (daDoc ?? {}) as Partial<DuLieuChamCong> & { thos?: ThoBanCu[] };
+  return {
+    thos: (khoi.thos ?? []).map(chuyenDoiTho),
+    buoiCongs: khoi.buoiCongs ?? [],
+    ungTiens: khoi.ungTiens ?? [],
+    // Máy đã cài bản trước chưa có quyết toán: coi như chưa chốt kỳ nào, mọi thứ đang
+    // nằm trong kỳ đầu tiên. Không mất gì cả.
+    kyLuongs: khoi.kyLuongs ?? [],
+  };
+}

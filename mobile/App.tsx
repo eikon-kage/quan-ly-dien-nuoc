@@ -13,6 +13,7 @@ import { ManHinhBangLuong } from './src/giaodien/ManHinhBangLuong';
 import { ManHinhChamCong } from './src/giaodien/ManHinhChamCong';
 import { ManHinhLichSuKy } from './src/giaodien/ManHinhLichSuKy';
 import { ManHinhTho } from './src/giaodien/ManHinhTho';
+import { dungSaoLuu } from './src/giaodien/dungSaoLuu';
 import { Co, Mau, PhongChu } from './src/giaodien/thietKe';
 import { DuLieuChamCong } from './src/nghiepvu/kieu';
 import * as LuuTru from './src/nghiepvu/luuTru';
@@ -36,6 +37,13 @@ export default function App() {
   const [muc, datMuc] = useState<Muc>('cham');
 
   const [fontDaNap] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold });
+
+  /**
+   * Sao lưu Drive đặt ở đây chứ không trong màn hình Thợ: nó phải theo dõi *mọi* thay đổi
+   * dữ liệu, mà dữ liệu thì nằm ở đây. Để trong màn hình Thợ thì lúc người dùng đang ở
+   * màn hình Chấm công — tức là lúc dữ liệu đổi nhiều nhất — nó không chạy.
+   */
+  const saoLuu = dungSaoLuu(duLieu);
 
   useEffect(() => {
     LuuTru.doc().then(datDuLieu);
@@ -64,7 +72,9 @@ export default function App() {
               {muc === 'cham' && <ManHinhChamCong duLieu={duLieu} capNhat={capNhat} />}
               {muc === 'luong' && <ManHinhBangLuong duLieu={duLieu} capNhat={capNhat} />}
               {muc === 'ky' && <ManHinhLichSuKy duLieu={duLieu} capNhat={capNhat} />}
-              {muc === 'tho' && <ManHinhTho duLieu={duLieu} capNhat={capNhat} />}
+              {muc === 'tho' && (
+                <ManHinhTho duLieu={duLieu} capNhat={capNhat} saoLuu={saoLuu} />
+              )}
             </View>
 
             {/*

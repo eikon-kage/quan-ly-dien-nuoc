@@ -4,12 +4,30 @@ import { chiaSeExcel } from '../../nghiepvu/chiaSeExcel';
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import * as Ngay from '../../nghiepvu/ngayViet';
 import { cham, luuTho, themTho } from '../../nghiepvu/thaoTac';
+import { DieuKhienSaoLuu, TrangThaiSaoLuu } from '../dungSaoLuu';
 import { ManHinhTho } from '../ManHinhTho';
 
 // Máy chạy kiểm thử không có bảng chia sẻ của điện thoại.
 jest.mock('../../nghiepvu/chiaSeExcel', () => ({
   chiaSeExcel: jest.fn(() => Promise.resolve('file:///tam/Cham-cong.xlsx')),
 }));
+
+/** Trạng thái sao lưu giả. Mặc định: máy nối được nhưng người dùng chưa nối Drive. */
+function saoLuuGia(sua: Partial<TrangThaiSaoLuu> = {}): DieuKhienSaoLuu {
+  return {
+    trangThai: {
+      hoTro: true,
+      taiKhoan: null,
+      dangChay: false,
+      lucCuoi: null,
+      loi: null,
+      ...sua,
+    },
+    noiDrive: jest.fn(() => Promise.resolve()),
+    ngatDrive: jest.fn(() => Promise.resolve()),
+    saoLuuNgay: jest.fn(() => Promise.resolve()),
+  };
+}
 
 const chiaSe = chiaSeExcel as jest.MockedFunction<typeof chiaSeExcel>;
 const HOM_NAY = Ngay.homNay();
@@ -19,8 +37,8 @@ function khoCoCong(): DuLieuChamCong {
   return cham(them.duLieu, them.tho.id, HOM_NAY, 'Sang');
 }
 
-function dung(duLieu: DuLieuChamCong) {
-  return render(<ManHinhTho duLieu={duLieu} capNhat={jest.fn()} />);
+function dung(duLieu: DuLieuChamCong, saoLuu: DieuKhienSaoLuu = saoLuuGia()) {
+  return render(<ManHinhTho duLieu={duLieu} capNhat={jest.fn()} saoLuu={saoLuu} />);
 }
 
 beforeEach(() => {
@@ -129,5 +147,62 @@ describe('xuất Excel ở màn hình Thợ', () => {
     // Bấm lại lần nữa là chạy lại thật, không kẹt ở trạng thái lỗi.
     fireEvent.press(screen.getByText('Xuất toàn bộ ra Excel'));
     await waitFor(() => expect(chiaSe).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe('dòng sao lưu Drive ở màn hình Thợ', () => {
+  test('chưa có dữ liệu thì chưa hiện — không có gì để sao lưu', () => {
+    dung(duLieuRong());
+
+    expect(screen.queryByText('Sao lưu Google Drive')).toBeNull();
+  });
+
+  test('chưa nối thì nói thẳng dữ liệu đang chỉ nằm trong máy', () => {
+    dung(khoCoCong(), saoLuuGia({ taiKhoan: null }));
+
+    expect(screen.getByText('Chưa nối — dữ liệu chỉ nằm trong máy này')).toBeTruthy();
+    expect(screen.getByText('icon:cloud-off')).toBeTruthy();
+  });
+
+  test('đã sao lưu thì hiện giờ của lần cuối', () => {
+    const luc = new Date(2026, 7, 5, 16, 12).toISOString();
+    dung(khoCoCong(), saoLuuGia({ taiKhoan: { email: 'anh@gmail.com' }, lucCuoi: luc }));
+
+    expect(screen.getByText('Đã sao lưu lúc 05/08, 16:12')).toBeTruthy();
+    expect(screen.getByText('icon:cloud')).toBeTruthy();
+  });
+
+  test('đang đẩy lên thì nói đang chạy', () => {
+    dung(khoCoCong(), saoLuuGia({ taiKhoan: { email: 'anh@gmail.com' }, dangChay: true }));
+
+    expect(screen.getByText('Đang đẩy lên…')).toBeTruthy();
+  });
+
+  /** Lỗi phải đè lên cả giờ sao lưu cũ: giờ cũ mà đứng một mình thì nhìn như vẫn đang êm. */
+  test('có lỗi thì hiện lỗi chứ không hiện giờ sao lưu cũ', () => {
+    dung(
+      khoCoCong(),
+      saoLuuGia({
+        taiKhoan: { email: 'anh@gmail.com' },
+        lucCuoi: new Date(2026, 7, 5, 16, 12).toISOString(),
+        loi: 'Chưa đẩy lên Drive được. Sẽ tự thử lại sau.',
+      }),
+    );
+
+    expect(screen.getByText('Chưa đẩy lên Drive được. Sẽ tự thử lại sau.')).toBeTruthy();
+    expect(screen.queryByText('Đã sao lưu lúc 05/08, 16:12')).toBeNull();
+  });
+
+  test('máy không nối Drive được thì nói rõ vì sao', () => {
+    dung(khoCoCong(), saoLuuGia({ hoTro: false }));
+
+    expect(screen.getByText('Cần bản app cài thẳng vào máy')).toBeTruthy();
+  });
+
+  test('bấm vào là mở màn hình sao lưu', () => {
+    dung(khoCoCong());
+    fireEvent.press(screen.getByText('Sao lưu Google Drive'));
+
+    expect(screen.getByText('Nối với Google Drive')).toBeTruthy();
   });
 });

@@ -136,6 +136,22 @@ export function ngayGon(ngay: string): string {
   return `${hai(n)}/${hai(thang)}/${nam}`;
 }
 
+/**
+ * Một mốc thời gian ISO viết gọn theo giờ máy: "05/08, 16:12".
+ *
+ * Dùng cho những thứ *xảy ra lúc mấy giờ* như lần sao lưu gần nhất — khác với các hàm
+ * trên, chỗ này nhận chuỗi ISO đầy đủ chứ không phải "yyyy-MM-dd". Chuỗi hỏng thì trả về
+ * rỗng để chỗ gọi bỏ qua, đừng hiện "Invalid Date" lên màn hình.
+ */
+export function gioPhut(iso: string): string {
+  const luc = new Date(iso);
+  if (Number.isNaN(luc.getTime())) {
+    return '';
+  }
+  const hai = (so: number) => String(so).padStart(2, '0');
+  return `${hai(luc.getDate())}/${hai(luc.getMonth() + 1)}, ${hai(luc.getHours())}:${hai(luc.getMinutes())}`;
+}
+
 /** Số công viết gọn: 1 công ra "1", nửa công ra "0,5". */
 export function soCong(so: number): string {
   return String(Math.round(so * 10) / 10).replace('.', ',');
