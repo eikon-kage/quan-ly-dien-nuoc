@@ -9,7 +9,7 @@ import { dangCham, datCong, thoDangLam } from '../nghiepvu/thaoTac';
 import { HopChon } from './HopChon';
 import { HopNhapSo } from './HopNhapSo';
 import { rungNhe } from './rungNhe';
-import { Co, Mau, PhongChu } from './thietKe';
+import { Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './thietKe';
 
 /** Đang mở hộp sửa cho thợ nào: chưa chọn buổi thì buoi là null. */
 interface DangSua {
@@ -313,10 +313,16 @@ function DaiNgay({
             accessibilityState={{ selected: dangChon }}
           >
             {/* Hôm nay ghi hẳn chữ "Nay" thay cho thứ — khỏi phải nhớ hôm nay thứ mấy. */}
-            <Text style={[kieu.chuThuGon, dangChon && kieu.chuTrenNenXanh]}>
+            <Text
+              style={[kieu.chuThuGon, dangChon && kieu.chuTrenNenXanh]}
+              maxFontSizeMultiplier={HeSoChuToiDaLuoi}
+            >
               {laHomNay ? 'Nay' : Ngay.thuGon(n)}
             </Text>
-            <Text style={[kieu.chuSoNgay, dangChon && kieu.chuTrenNenXanh]}>
+            <Text
+              style={[kieu.chuSoNgay, dangChon && kieu.chuTrenNenXanh]}
+              maxFontSizeMultiplier={HeSoChuToiDaLuoi}
+            >
               {Ngay.ngayGon(n).slice(0, 2)}
             </Text>
             {/*
@@ -329,6 +335,7 @@ function DaiNgay({
                 cong === 0 && kieu.chuChuaCham,
                 dangChon && kieu.chuTrenNenXanh,
               ]}
+              maxFontSizeMultiplier={HeSoChuToiDaLuoi}
             >
               {cong > 0 ? Ngay.soCong(cong) : '·'}
             </Text>
@@ -387,8 +394,10 @@ const kieu = StyleSheet.create({
   dongNgay: { flexDirection: 'row', alignItems: 'center' },
   giuaDauTrang: { flex: 1, alignItems: 'center', gap: 4 },
   nutTuan: {
-    width: 52,
-    height: 46,
+    minWidth: 52,
+    minHeight: 46,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
     borderRadius: Co.bo,
     backgroundColor: Mau.chinhNhat,
     alignItems: 'center',
@@ -421,9 +430,11 @@ const kieu = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    height: 28,
+    minHeight: 28,
+    paddingVertical: 5,
     paddingHorizontal: 12,
-    borderRadius: 14,
+    // Bo tròn hẳn chứ không lấy nửa chiều cao: cỡ chữ to thì nút cao lên, số cứng hoá vuông góc.
+    borderRadius: 999,
     backgroundColor: Mau.chinhNhat,
   },
   chuHomNay: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.chinh },
@@ -433,7 +444,9 @@ const kieu = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: Co.caoNut,
+    minHeight: Co.caoNut,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     marginHorizontal: 14,
     marginTop: 14,
     borderRadius: Co.bo,
@@ -441,7 +454,7 @@ const kieu = StyleSheet.create({
   },
   nutCaToThem: { backgroundColor: Mau.xanhLa, borderColor: Mau.xanhLa },
   nutCaToXoa: { backgroundColor: Mau.doNhat, borderColor: Mau.do },
-  chuNutCaTo: { fontSize: Co.chuNut, fontFamily: PhongChu.vua },
+  chuNutCaTo: { flexShrink: 1, fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
 
   danhSach: { padding: 14, paddingBottom: 20 },
   the: {
@@ -459,7 +472,8 @@ const kieu = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    height: Co.caoNutNho,
+    minHeight: Co.caoNutNho,
+    paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
     backgroundColor: Mau.chinhNhat,
@@ -473,14 +487,16 @@ const kieu = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: Co.caoOCham,
+    minHeight: Co.caoOCham,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     borderRadius: Co.bo,
     borderWidth: 1,
   },
   // Nền xanh nhạt chứ không tô đặc: ô này lặp lại nhiều lần, tô đặc thì cả màn hình rợp màu.
   oChamBat: { backgroundColor: Mau.xanhLaNhat, borderColor: Mau.xanhLa },
   oChamTat: { backgroundColor: Mau.trang, borderColor: Mau.vien },
-  chuOCham: { fontSize: Co.chuNut, fontFamily: PhongChu.vua },
+  chuOCham: { flexShrink: 1, fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
 
   trong: { padding: 24, paddingTop: 56, gap: 10, alignItems: 'center' },
   chuTrongTo: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },

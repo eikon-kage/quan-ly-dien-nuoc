@@ -2,7 +2,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import * as Ngay from '../nghiepvu/ngayViet';
 import { rungNhe } from './rungNhe';
-import { Co, Mau, PhongChu } from './thietKe';
+import { Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './thietKe';
 
 interface Props {
   tieuDe: string;
@@ -42,7 +42,7 @@ export function HopChonNgay({ tieuDe, nam, thang, ngayDangChon, onChon, onDong }
 
           <View style={kieu.hang}>
             {Ngay.COT_LICH.map((ten) => (
-              <Text key={ten} style={kieu.chuCot}>
+              <Text key={ten} style={kieu.chuCot} maxFontSizeMultiplier={HeSoChuToiDaLuoi}>
                 {ten}
               </Text>
             ))}
@@ -93,7 +93,12 @@ function ONgay({
       accessibilityLabel={`${Ngay.ngayGon(ngay).slice(0, 5)} ${Ngay.thu(ngay)}`}
       accessibilityState={{ selected: dangChon }}
     >
-      <Text style={[kieu.chuNgay, dangChon && kieu.chuNgayChon]}>{soTrongThang}</Text>
+      <Text
+        style={[kieu.chuNgay, dangChon && kieu.chuNgayChon]}
+        maxFontSizeMultiplier={HeSoChuToiDaLuoi}
+      >
+        {soTrongThang}
+      </Text>
     </Pressable>
   );
 }
@@ -144,7 +149,8 @@ const kieu = StyleSheet.create({
   // Ô cao 46pt: trên ngưỡng 44pt Apple khuyên, mà bảy cột vẫn vừa bề ngang máy nhỏ.
   o: {
     flex: 1,
-    height: 46,
+    minHeight: 46,
+    paddingVertical: 6,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -155,7 +161,9 @@ const kieu = StyleSheet.create({
   chuNgayChon: { fontFamily: PhongChu.dam, color: Mau.trang },
 
   nutThoi: {
-    height: Co.caoNut,
+    minHeight: Co.caoNut,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     marginTop: 10,
     borderRadius: Co.bo,
     borderWidth: 1,

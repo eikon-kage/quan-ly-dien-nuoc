@@ -244,7 +244,8 @@ const kieu = StyleSheet.create({
   nhan: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
   nhanNho: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.xam },
   o: {
-    height: Co.caoNut,
+    minHeight: Co.caoNut,
+    paddingVertical: 8,
     borderRadius: Co.bo,
     borderWidth: 1,
     borderColor: Mau.vien,
@@ -261,7 +262,8 @@ const kieu = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    height: Co.caoNutNho,
+    minHeight: Co.caoNutNho,
+    paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
     backgroundColor: Mau.chinhNhat,
@@ -275,7 +277,7 @@ const kieu = StyleSheet.create({
     borderTopColor: Mau.vien,
     paddingTop: 10,
   },
-  dongMoc: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 34 },
+  dongMoc: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 34 },
   chuMocNgay: { flex: 1, fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuMocTien: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
   nutXoaMoc: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
@@ -284,7 +286,9 @@ const kieu = StyleSheet.create({
   trai: { flex: 1, gap: 2 },
 
   nut: {
-    height: Co.caoNut,
+    minHeight: Co.caoNut,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: Co.bo,
     borderWidth: 1,
     alignItems: 'center',
@@ -292,5 +296,5 @@ const kieu = StyleSheet.create({
   },
   nutChinh: { backgroundColor: Mau.chinh, borderColor: Mau.chinh },
   nutPhu: { backgroundColor: Mau.trang, borderColor: Mau.vien },
-  chuNut: { fontSize: Co.chuNut, fontFamily: PhongChu.vua },
+  chuNut: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
 });

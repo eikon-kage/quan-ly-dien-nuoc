@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { NgayCong, ngayTrongThang } from '../nghiepvu/baoCao';
 import * as Ngay from '../nghiepvu/ngayViet';
-import { Co, Mau, PhongChu } from './thietKe';
+import { Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './thietKe';
 
 /**
  * Một tháng vẽ ra như tờ lịch treo tường: ngày nào đi làm thì có dấu tích.
@@ -35,7 +35,7 @@ export function LichCong({ nam, thang, ngayCongs, ngayNghis }: Props) {
     <View style={kieu.lich}>
       <View style={kieu.hang}>
         {Ngay.COT_LICH.map((ten) => (
-          <Text key={ten} style={kieu.chuCot}>
+          <Text key={ten} style={kieu.chuCot} maxFontSizeMultiplier={HeSoChuToiDaLuoi}>
             {ten}
           </Text>
         ))}
@@ -114,6 +114,7 @@ function ONgay({
           kieu.chuNgay,
           cong !== undefined ? kieu.chuNgayCong : nghi ? kieu.chuNgayNghi : kieu.chuNgayNgoai,
         ]}
+        maxFontSizeMultiplier={HeSoChuToiDaLuoi}
       >
         {soTrongThang}
       </Text>
@@ -123,7 +124,9 @@ function ONgay({
           <Feather name="check" size={13} color={Mau.xanhLa} />
           {/* Đi thiếu hoặc quá một ngày thì ghi rõ mấy công, kẻo tưởng ngày nào cũng như nhau. */}
           {cong.tongCong !== CONG_CA_NGAY && (
-            <Text style={kieu.chuSoCong}>{Ngay.soCong(cong.tongCong)}</Text>
+            <Text style={kieu.chuSoCong} maxFontSizeMultiplier={HeSoChuToiDaLuoi}>
+              {Ngay.soCong(cong.tongCong)}
+            </Text>
           )}
         </View>
       )}
@@ -146,7 +149,8 @@ const kieu = StyleSheet.create({
 
   o: {
     flex: 1,
-    height: 46,
+    minHeight: 46,
+    paddingVertical: 4,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',

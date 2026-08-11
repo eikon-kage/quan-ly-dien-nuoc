@@ -161,7 +161,8 @@ const kieu = StyleSheet.create({
   },
   moTa: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam, textAlign: 'center' },
   o: {
-    height: Co.caoNut,
+    minHeight: Co.caoNut,
+    paddingVertical: 8,
     borderRadius: Co.bo,
     borderWidth: 1,
     borderColor: Mau.vien,
@@ -193,7 +194,9 @@ const kieu = StyleSheet.create({
   },
   docLaiLoi: { color: Mau.do },
   nut: {
-    height: Co.caoNut,
+    minHeight: Co.caoNut,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: Co.bo,
     borderWidth: 1,
     alignItems: 'center',
@@ -202,5 +205,5 @@ const kieu = StyleSheet.create({
   nutBat: { backgroundColor: Mau.chinh, borderColor: Mau.chinh },
   nutTat: { backgroundColor: Mau.nen, borderColor: Mau.vien },
   nutThoi: { backgroundColor: Mau.nen, borderColor: Mau.vien },
-  chuNut: { fontSize: Co.chuNut, fontFamily: PhongChu.vua },
+  chuNut: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
 });

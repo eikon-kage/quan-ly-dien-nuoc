@@ -14,7 +14,7 @@ import { ManHinhChamCong } from './src/giaodien/ManHinhChamCong';
 import { ManHinhLichSuKy } from './src/giaodien/ManHinhLichSuKy';
 import { ManHinhTho } from './src/giaodien/ManHinhTho';
 import { dungSaoLuu } from './src/giaodien/dungSaoLuu';
-import { Co, Mau, PhongChu } from './src/giaodien/thietKe';
+import { Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './src/giaodien/thietKe';
 import { DuLieuChamCong } from './src/nghiepvu/kieu';
 import * as LuuTru from './src/nghiepvu/luuTru';
 
@@ -94,7 +94,11 @@ export default function App() {
                     accessibilityState={{ selected: dangChon }}
                   >
                     <Feather name={icon} size={20} color={mau} />
-                    <Text style={[kieu.chuTab, { color: mau }]} numberOfLines={1}>
+                    <Text
+                      style={[kieu.chuTab, { color: mau }]}
+                      numberOfLines={1}
+                      maxFontSizeMultiplier={HeSoChuToiDaLuoi}
+                    >
                       {nhan}
                     </Text>
                   </Pressable>
@@ -119,6 +123,14 @@ const kieu = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Mau.vien,
   },
-  nutTab: { flex: 1, height: 58, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  nutTab: {
+    flex: 1,
+    minHeight: 58,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
   chuTab: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua },
 });

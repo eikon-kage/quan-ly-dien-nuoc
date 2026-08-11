@@ -16,7 +16,8 @@ ngoài sân. Mọi quyết định giao diện dưới đây đều xuất phát
    app thông thường vì người dùng có tuổi.
 3. **Nét chữ nhiều nhất là 600 (SemiBold).** Không dùng 700 — ở cỡ lớn nhìn nặng và thô.
 4. **Nút cao 48pt, ô chấm 56pt.** Apple khuyên tối thiểu 44pt; đây là thứ bấm hằng ngày nên
-   rộng hơn một chút.
+   rộng hơn một chút. Đó là mức **tối thiểu** chứ không phải cố định — xem *Cỡ chữ hệ thống*
+   bên dưới.
 5. **Không có cử chỉ ẩn.** Không vuốt để xoá, không nhấn giữ để hiện menu, không lắc để
    hoàn tác. Muốn làm gì cũng phải có một cái nút nhìn thấy được.
 6. **Không dùng riêng màu để báo trạng thái.** Ô đã chấm đổi cả ba thứ cùng lúc: nền sang
@@ -372,6 +373,22 @@ Dùng ba nét: `400Regular`, `500Medium`, `700Bold` — khai báo ở
 > `PhongChu.dam`. Trong app không còn chỗ nào dùng `fontWeight` nữa; thêm mới cũng đừng dùng.
 
 Riêng hai mũi tên `‹ ›` để nguyên font hệ thống — chúng là ký hiệu, không phải chữ.
+
+### Cỡ chữ hệ thống
+
+Người dùng có tuổi hay chỉnh cỡ chữ trong Cài đặt máy lên to. Chữ trong app phóng theo, nên
+**mọi khung có chữ đều đặt `minHeight` kèm `paddingVertical`, không đặt `height`**. Đặt
+`height` cứng thì khung không nở ra, chữ phóng to bị cắt cụt mất nửa dưới — đúng lỗi đã gặp.
+
+Số ghi trong [thietKe.ts](../mobile/src/giaodien/thietKe.ts) (`caoNut` 48, `caoOCham` 56,
+`caoNutNho` 36) vì vậy là **mức sàn**: cỡ chữ thường thì nút cao đúng bằng đó, cỡ chữ to thì
+nút tự cao thêm. Nút có icon đi kèm chữ thì cho phần chữ `flexShrink: 1` để nó xuống dòng
+thay vì tràn ngang.
+
+Ba chỗ **không nở ngang được** vì chia cột đều nhau — dải bảy ngày ở màn hình Chấm công, tờ
+lịch, hộp chọn ngày — cộng thanh tab bốn mục: chữ ở đó chặn ở 1,3 lần
+(`HeSoChuToiDaLuoi`, dùng qua thuộc tính `maxFontSizeMultiplier` của `Text`). Phóng hơn nữa
+thì hai chữ số ngày không còn chỗ. Chỉ chặn ở lưới, đừng chặn ở nút và chữ thường.
 
 App chờ font tải xong mới vẽ màn hình đầu tiên. Hiện trước rồi font nhảy vào sau thì chữ
 giật một cái, nhìn như phần mềm lỗi.

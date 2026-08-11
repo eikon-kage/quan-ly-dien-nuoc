@@ -48,9 +48,23 @@ export const Co = {
   chuThuong: 15,
   chuPhu: 13,
 
+  /**
+   * Chiều cao nút là mức **tối thiểu**, không phải cố định: mọi nút đặt `minHeight` kèm
+   * `paddingVertical` chứ đừng đặt `height`. Người dùng có tuổi hay chỉnh cỡ chữ hệ thống
+   * lên to; chữ phóng theo mà khung không nở ra thì chữ bị cắt cụt.
+   */
   caoNut: 48,
   /** Ô chấm Sáng / Chiều — thứ được bấm nhiều nhất nên vẫn rộng rãi hơn nút thường. */
   caoOCham: 56,
   caoNutNho: 36,
   bo: 10,
 };
+
+/**
+ * Chữ trong lưới chia cột — dải ngày ở màn hình chấm công, tờ lịch, hộp chọn ngày, và thanh
+ * tab bốn mục — chỉ phóng tối đa 1,3 lần theo cỡ chữ hệ thống. Bề ngang màn hình chia đều cho
+ * các cột nên những ô này *không nở ngang được*, phóng hơn nữa thì chữ không còn chỗ.
+ *
+ * Chỉ dùng cho lưới. Nút và chữ thường không chặn — chúng cao lên được theo chữ.
+ */
+export const HeSoChuToiDaLuoi = 1.3;
