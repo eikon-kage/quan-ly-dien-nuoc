@@ -16,6 +16,10 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   Mở phần mềm lên là có ngay dải nhắc *"3 khách nợ quá 60 ngày"* trên đầu màn hình.
 - **Tin nhắc nợ soạn sẵn**: bấm một nút ra đoạn tin kèm bảng kê từng hoá đơn còn nợ và số
   tiền bằng chữ, sửa vài chữ rồi chép sang Zalo là gửi được.
+- **Gõ thẳng vào bảng như Excel**: cuối bảng chi tiết luôn có sẵn một dòng trống tô vàng — gõ
+  tên hàng (tự điền đơn vị và **giá của đúng khách đó**), gõ số lượng rồi `Enter` là dòng đó
+  vào sổ và có ngay dòng trống mới để gõ tiếp. Ngày lấy theo dòng ngay trên, sửa lại được.
+  Số lượng âm là khách trả lại. Bỏ dòng đang gõ dở thì bấm `Delete`.
 - **Thêm nhanh**: thanh nhập ngay trên lưới; chọn tên hàng là tự điền đơn vị và **giá của
   đúng khách đó**; gõ số lượng rồi Enter là xong một dòng. Tên hàng chưa có trong danh mục
   thì gõ mới, phần mềm tự thêm vào danh mục.
@@ -27,8 +31,6 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   khi ghi vào hoá đơn.
 - **Bộ hàng thường dùng**: gom các món hay đi cùng nhau thành một bộ ("Bộ lắp bồn nước"),
   chọn một lần là ra đủ dòng, giá vẫn lấy theo bảng giá của khách.
-- **Chép lại một ngày** và **nhân đôi dòng** (`Ctrl+D`): khách quen lấy lại đúng bộ hàng cũ
-  thì khỏi gõ lại từng món.
 - **Cảnh báo nhập sai**: giá lệch quá 20% so với lần gần nhất bán cho chính khách đó, dòng
   trùng y hệt (cùng ngày, cùng hàng, cùng số lượng), hoặc thêm khách trùng tên — đều hỏi lại
   trước khi ghi.
@@ -82,14 +84,13 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 | Phím | Tác dụng |
 |---|---|
 | `Ctrl+Z` / `Ctrl+Y` | Hoàn tác / Làm lại |
-| `Enter` | Thêm dòng hàng (khi đang ở thanh nhập nhanh) |
+| `Enter` | Thêm dòng hàng (ở thanh nhập nhanh, hoặc ở dòng trống cuối bảng) |
 | `F2` hoặc bấm đúp | Sửa ô đang chọn trên lưới |
 | `F3` | Nhảy về ô Tên hàng / ô tìm kiếm |
 | `Delete` | Xoá dòng hàng đang chọn |
 | `Ctrl+Enter` | Chèn dòng hàng lên trên dòng đang chọn |
 | `Ctrl+Shift+Enter` | Chèn dòng hàng xuống dưới dòng đang chọn |
 | `Alt+↑` / `Alt+↓` | Đổi chỗ dòng đang chọn với dòng liền kề |
-| `Ctrl+D` | Nhân đôi dòng hàng đang chọn (bản sao nằm ngay dưới) |
 | `Ctrl+N` | Thêm khách hàng (ở màn hình chính) |
 | `F5` | Nạp lại dữ liệu từ file (khi máy khác vừa sửa) |
 | `F6` | Mở sổ công nợ (ở màn hình chính) |
@@ -181,7 +182,6 @@ src/
     Forms/VatTuForm.cs          danh mục vật tư (kèm mã tắt)
     Forms/BoHangForm.cs         bộ hàng thường dùng
     Forms/NhapNhieuDongForm.cs  gõ một dòng ra nhiều món, có xem trước
-    Forms/ChepNgayForm.cs       chép lại hàng của một ngày sang ngày khác
     Forms/SaoLuuForm.cs         sao lưu, khôi phục, xuất toàn bộ ra Excel
     Forms/NhatKyForm.cs         xem nhật ký thay đổi
     Forms/VanBanForm.cs         hiện đoạn văn bản soạn sẵn để chép đi (tin nhắc nợ)
