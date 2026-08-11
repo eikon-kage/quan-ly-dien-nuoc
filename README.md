@@ -9,8 +9,8 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 - **Màn hình chính**: danh sách khách hàng lọc theo năm (mặc định là năm hiện tại), kèm
   tổng mua / đã trả / còn nợ của khách trong năm đó. Tìm khách không dấu (gõ `nguyen` ra
   `Nguyễn`). Bấm đúp hoặc Enter để mở đơn hàng của khách.
-- **Đơn hàng của khách**: cột trái là các hoá đơn trong năm, cột phải là chi tiết hàng đã lấy
-  theo từng ngày (ngày, tên hàng, đơn vị, đơn giá, số lượng, thành tiền, ghi chú).
+- **Đơn hàng của khách**: chọn hoá đơn trong năm ở ô trên cùng, cả màn hình còn lại là chi tiết
+  hàng đã lấy theo từng ngày (ngày, tên hàng, đơn vị, đơn giá, số lượng, thành tiền, ghi chú).
 - **Sổ công nợ**: một màn hình cho cả cửa hàng — ai đang nợ, nợ bao nhiêu và **nợ đã bao
   nhiêu ngày** (tính từ lần lấy hàng hoặc trả tiền gần nhất), xếp sẵn theo nợ lâu nhất.
   Mở phần mềm lên là có ngay dải nhắc *"3 khách nợ quá 60 ngày"* trên đầu màn hình.

@@ -8,16 +8,15 @@ using QuanLyDienNuoc.Ui;
 namespace QuanLyDienNuoc.Forms;
 
 /// <summary>
-/// Đơn hàng của một khách trong một năm: bên trái là các hoá đơn, bên phải là các dòng hàng
-/// đã lấy theo từng ngày. Thêm nhanh ở thanh trên, sửa trực tiếp trên lưới như Excel.
+/// Đơn hàng của một khách trong một năm: chọn hoá đơn ở thanh trên, cả màn hình còn lại là
+/// các dòng hàng đã lấy theo từng ngày. Thêm nhanh ở thanh trên, sửa trực tiếp trên lưới như Excel.
 /// </summary>
 public sealed class DonHangForm : Form
 {
     private readonly KhoDuLieu _kho = KhoDuLieu.Instance;
     private readonly Guid _khachId;
 
-    private readonly BindingList<DongHoaDon> _nguonHD = new();
-    private readonly DataGridView _luoiHD = new();
+    private readonly ComboBox _cboHoaDon = new();
     private readonly DataGridView _luoiCT = new();
     private BindingList<ChiTietHoaDon> _nguonCT = new();
 
@@ -39,7 +38,7 @@ public sealed class DonHangForm : Form
 
     private readonly Button _btnHoanTac = Theme.NutPhu("↶  Hoàn tác", 160, 42);
     private readonly Button _btnLamLai = Theme.NutPhu("↷  Làm lại", 150, 42);
-    private readonly Button _btnChot = Theme.NutPhu("Chốt hoá đơn", 200, 44);
+    private readonly Button _btnChot = Theme.NutPhu("Chốt hoá đơn", 180, 42);
 
     private readonly int _namBanDau;
     private readonly List<VatTu> _danhMucHang = new();
@@ -95,18 +94,20 @@ public sealed class DonHangForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 5,
             BackColor = Theme.Nen,
         };
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
+        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 
         goc.Controls.Add(TaoTieuDe(), 0, 0);
         goc.Controls.Add(TaoThanhCongCu(), 0, 1);
-        goc.Controls.Add(TaoThanNoiDung(), 0, 2);
-        goc.Controls.Add(TaoThanhTrangThai(), 0, 3);
+        goc.Controls.Add(TaoThanhHoaDon(), 0, 2);
+        goc.Controls.Add(TaoThanNoiDung(), 0, 3);
+        goc.Controls.Add(TaoThanhTrangThai(), 0, 4);
 
         Controls.Add(goc);
     }
@@ -202,127 +203,84 @@ public sealed class DonHangForm : Form
 
     private Control TaoThanNoiDung()
     {
-        var than = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 2,
-            RowCount = 1,
-            BackColor = Theme.Nen,
-            Padding = new Padding(20, 0, 20, 10),
-        };
-        than.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 440));
-        than.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-
-        than.Controls.Add(TaoCotHoaDon(), 0, 0);
-        than.Controls.Add(TaoCotChiTiet(), 1, 0);
+        var than = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 0, 20, 10) };
+        than.Controls.Add(TaoCotChiTiet());
         return than;
     }
 
-    private Control TaoCotHoaDon()
+    /// <summary>
+    /// Thanh chọn hoá đơn. Trước đây là cả một cột lưới rộng 440px bên trái, nhưng cột đó chỉ
+    /// để chọn xem hoá đơn nào — mã, ngày, tổng tiền, còn nợ của hoá đơn đang xem thì tiêu đề
+    /// lưới chi tiết và thanh tổng tiền phía dưới đã ghi rồi. Gom lại thành một ô chọn, phần
+    /// màn hình lấy lại được trả cho lưới chi tiết, chỗ thật sự phải nhìn cả ngày.
+    /// </summary>
+    private Control TaoThanhHoaDon()
     {
-        var cot = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 3,
-            BackColor = Theme.Nen,
-            Margin = new Padding(0, 0, 16, 0),
-        };
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-        cot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 180));
+        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 0, 20, 8) };
 
-        var lbl = new Label
-        {
-            Text = "HOÁ ĐƠN CỦA KHÁCH",
-            Font = Theme.FontDam,
-            ForeColor = Theme.Xam,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-        };
+        var lbl = Theme.Nhan("HOÁ ĐƠN:", Theme.FontNhan, Theme.Xam);
+        lbl.Margin = new Padding(0, 16, 10, 0);
 
-        Theme.ApDungLuoi(_luoiHD);
-        _luoiHD.ReadOnly = true;
-        _luoiHD.Columns.AddRange(
-            Theme.Cot(nameof(DongHoaDon.Ma), "MÃ HĐ", 100),
-            Theme.Cot(nameof(DongHoaDon.NgayMo), "MỞ NGÀY", 100, "dd/MM/yyyy"),
-            Theme.Cot(nameof(DongHoaDon.TongTien), "TỔNG", 110, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongHoaDon.ConLai), "CÒN NỢ", 110, "#,##0", canPhai: true));
-        _luoiHD.DataSource = _nguonHD;
-        _luoiHD.SelectionChanged += (_, _) =>
+        _cboHoaDon.DropDownStyle = ComboBoxStyle.DropDownList;
+        _cboHoaDon.Font = Theme.FontNhap;
+        _cboHoaDon.Width = 330;
+        _cboHoaDon.Margin = new Padding(0, 8, 20, 0);
+        _cboHoaDon.SelectedIndexChanged += (_, _) =>
         {
             if (_dangNap || !_sanSang)
             {
                 return;
             }
 
-            _hoaDonId = (_luoiHD.CurrentRow?.DataBoundItem as DongHoaDon)?.HD.Id;
+            _hoaDonId = (_cboHoaDon.SelectedItem as DongHoaDon)?.HD.Id;
             NapChiTiet();
         };
-        _luoiHD.CellDoubleClick += (_, e) =>
-        {
-            if (e.RowIndex >= 0)
-            {
-                SuaHoaDon();
-            }
-        };
-        _luoiHD.CellFormatting += (_, e) =>
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0)
-            {
-                return;
-            }
 
-            if (_luoiHD.Columns[e.ColumnIndex].DataPropertyName == nameof(DongHoaDon.ConLai)
-                && e.Value is decimal conLai
-                && e.CellStyle is { } kieu)
-            {
-                kieu.ForeColor = conLai > 0 ? Theme.Do : Theme.Xanh;
-                kieu.Font = Theme.FontLuoiDam;
-            }
-        };
-
-        var btnMoi = Theme.Nut("+  Hoá đơn mới", Theme.Chinh, 200, 44);
-        btnMoi.Margin = new Padding(0, 6, 10, 6);
+        var btnMoi = Theme.Nut("+  Hoá đơn mới", Theme.Chinh, 200, 42);
+        btnMoi.Margin = new Padding(0, 8, 10, 0);
         btnMoi.Click += (_, _) => TaoHoaDon();
 
-        var btnSua = Theme.NutPhu("Sửa", 100, 44);
-        btnSua.Margin = new Padding(0, 6, 10, 6);
-        btnSua.Click += (_, _) => SuaHoaDon();
-
-        var btnXoa = Theme.NutPhu("Xoá", 100, 44);
-        btnXoa.ForeColor = Theme.Do;
-        btnXoa.Margin = new Padding(0, 6, 10, 6);
-        btnXoa.Click += (_, _) => XoaHoaDon();
-
-        _btnChot.Margin = new Padding(0, 6, 10, 6);
+        _btnChot.Margin = new Padding(0, 8, 10, 0);
         _btnChot.Click += (_, _) => DoiTrangThaiChot();
 
-        var btnIn = Theme.Nut("IN / XEM TRƯỚC", Theme.Cam, 200, 44);
-        btnIn.Margin = new Padding(0, 6, 10, 6);
+        var btnIn = Theme.Nut("IN / XEM TRƯỚC", Theme.Cam, 200, 42);
+        btnIn.Margin = new Padding(0, 8, 10, 0);
         btnIn.Click += (_, _) => XemTruocVaIn();
 
-        var btnXuatExcel = Theme.NutPhu("Xuất Excel", 145, 44);
-        btnXuatExcel.Margin = new Padding(0, 6, 10, 6);
-        btnXuatExcel.Click += (_, _) => XuatExcel();
+        // Sửa mã, xoá hoá đơn và hai việc Excel gom vào menu: cả năm mới đụng tới vài lần,
+        // để ngoài thì chen mất chỗ của hai nút dùng hằng ngày là thêm hoá đơn và in.
+        var btnKhac = Theme.NutPhu("Việc khác  ▾", 170, 42);
+        btnKhac.Margin = new Padding(0, 8, 10, 0);
+        btnKhac.Click += (s, _) => MoMenuHoaDon((Control)s!);
 
-        var btnNhapExcel = Theme.NutPhu("Nhập từ Excel", 175, 44);
-        btnNhapExcel.Margin = new Padding(0, 6, 10, 6);
-        btnNhapExcel.Click += (_, _) => NhapTuExcel();
+        var hang = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Left,
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = true,
+            WrapContents = false,
+        };
+        hang.Controls.Add(lbl);
+        hang.Controls.Add(_cboHoaDon);
+        hang.Controls.Add(btnMoi);
+        hang.Controls.Add(_btnChot);
+        hang.Controls.Add(btnIn);
+        hang.Controls.Add(btnKhac);
 
-        var nut = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = false, WrapContents = true };
-        nut.Controls.Add(btnMoi);
-        nut.Controls.Add(btnSua);
-        nut.Controls.Add(btnXoa);
-        nut.Controls.Add(_btnChot);
-        nut.Controls.Add(btnIn);
-        nut.Controls.Add(btnXuatExcel);
-        nut.Controls.Add(btnNhapExcel);
+        nen.Controls.Add(hang);
+        return nen;
+    }
 
-        cot.Controls.Add(lbl, 0, 0);
-        cot.Controls.Add(Theme.Khung(_luoiHD), 0, 1);
-        cot.Controls.Add(nut, 0, 2);
-        return cot;
+    private void MoMenuHoaDon(Control nut)
+    {
+        var menu = new ContextMenuStrip { Font = Theme.FontThuong };
+        menu.Items.Add("Sửa mã / ngày hoá đơn", null, (_, _) => SuaHoaDon());
+        menu.Items.Add("Xoá hoá đơn này", null, (_, _) => XoaHoaDon());
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Xuất Excel", null, (_, _) => XuatExcel());
+        menu.Items.Add("Nhập từ Excel", null, (_, _) => NhapTuExcel());
+
+        menu.Show(nut, new Point(0, nut.Height));
     }
 
     private Control TaoCotChiTiet()
@@ -719,33 +677,25 @@ public sealed class DonHangForm : Form
         }.Where(s => s is not null));
 
         _dangNap = true;
-        _nguonHD.RaiseListChangedEvents = false;
-        _nguonHD.Clear();
+        _cboHoaDon.BeginUpdate();
+        _cboHoaDon.Items.Clear();
 
         foreach (var hoaDon in _kho.HoaDonCuaKhach(_khachId, NamDangChon))
         {
-            _nguonHD.Add(new DongHoaDon
-            {
-                HD = hoaDon,
-                Ma = hoaDon.DaChot ? hoaDon.MaHoaDon + " (chốt)" : hoaDon.MaHoaDon,
-                NgayMo = hoaDon.NgayMo,
-                TongTien = hoaDon.TongTien,
-                ConLai = hoaDon.ConLai,
-            });
+            _cboHoaDon.Items.Add(new DongHoaDon { HD = hoaDon });
         }
 
-        _nguonHD.RaiseListChangedEvents = true;
-        _nguonHD.ResetBindings();
+        _cboHoaDon.EndUpdate();
 
         _hoaDonId = null;
-        if (_nguonHD.Count > 0)
+        if (_cboHoaDon.Items.Count > 0)
         {
             var viTri = 0;
             if (chon is { } id)
             {
-                for (var i = 0; i < _nguonHD.Count; i++)
+                for (var i = 0; i < _cboHoaDon.Items.Count; i++)
                 {
-                    if (_nguonHD[i].HD.Id == id)
+                    if (((DongHoaDon)_cboHoaDon.Items[i]!).HD.Id == id)
                     {
                         viTri = i;
                         break;
@@ -753,10 +703,11 @@ public sealed class DonHangForm : Form
                 }
             }
 
-            _luoiHD.CurrentCell = _luoiHD.Rows[viTri].Cells[0];
-            _hoaDonId = _nguonHD[viTri].HD.Id;
+            _cboHoaDon.SelectedIndex = viTri;
+            _hoaDonId = ((DongHoaDon)_cboHoaDon.Items[viTri]!).HD.Id;
         }
 
+        _cboHoaDon.Enabled = _cboHoaDon.Items.Count > 0;
         _dangNap = false;
         NapChiTiet();
     }
@@ -797,18 +748,6 @@ public sealed class DonHangForm : Form
 
         CapNhatTong();
         CapNhatNutLichSu();
-    }
-
-    /// <summary>Cập nhật lại tiền của các hoá đơn ở cột trái mà không rời ô đang chọn.</summary>
-    private void CapNhatTomTatHoaDon()
-    {
-        foreach (var dong in _nguonHD)
-        {
-            dong.TongTien = dong.HD.TongTien;
-            dong.ConLai = dong.HD.ConLai;
-        }
-
-        _luoiHD.Invalidate();
     }
 
     private void CapNhatTong()
@@ -1112,7 +1051,6 @@ public sealed class DonHangForm : Form
         _kho.GhiNhan(anhChup, $"Sửa {TenCotDeDoc(thuocTinh)}", phatSuKien: false);
 
         _luoiCT.InvalidateRow(e.RowIndex);
-        CapNhatTomTatHoaDon();
         CapNhatTong();
 
         if (thuocTinh == nameof(ChiTietHoaDon.Ngay) && dong is not null)
@@ -1782,17 +1720,16 @@ public sealed class DonHangForm : Form
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
-    /// <summary>Một dòng hoá đơn ở cột bên trái.</summary>
+    /// <summary>
+    /// Một dòng trong ô chọn hoá đơn. Chỉ mã và ngày mở, không kèm tiền: tiền của hoá đơn
+    /// đang xem đã nằm ở thanh tổng dưới lưới, mà tiền thì đổi liên tục theo từng dòng hàng
+    /// vừa gõ — chép vào đây là phải nhớ cập nhật lại từng lần.
+    /// </summary>
     private sealed class DongHoaDon
     {
         public HoaDon HD { get; set; } = null!;
 
-        public string Ma { get; set; } = string.Empty;
-
-        public DateTime NgayMo { get; set; }
-
-        public decimal TongTien { get; set; }
-
-        public decimal ConLai { get; set; }
+        public override string ToString() =>
+            $"{HD.MaHoaDon}  ·  {HD.NgayMo:dd/MM/yyyy}" + (HD.DaChot ? "  ·  đã chốt" : string.Empty);
     }
 }
