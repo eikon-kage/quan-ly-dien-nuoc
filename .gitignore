@@ -15,6 +15,13 @@ bld/
 [Ll]ogs/
 [Oo]ut/
 
+## Biến môi trường — có khoá thật, tuyệt đối không commit.
+## Riêng file mẫu (*.example) thì vẫn theo dõi: nó chỉ có tên biến, không có giá trị.
+.env
+.env.*
+!.env.example
+!*/.env.example
+
 ## Visual Studio
 .vs/
 *.user
