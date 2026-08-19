@@ -27,6 +27,12 @@ hôm qua, hoặc tháng trước.
 
 ## 2. Những chỗ cố ý làm như vậy
 
+> Trong cùng thư mục Drive ấy còn có **hộp thư đối chiếu** — các file `Cham-cong-so-chu-*`
+> và `Cham-cong-so-tho-*` của tính năng hai máy đối chiếu sổ, xem
+> [chamcong-doi-chieu.md](chamcong-doi-chieu.md). Tên chúng không khớp khuôn tên bản sao lưu
+> nên hàm dọn bản cũ không đụng tới, và **máy thợ thì không sao lưu** — hai máy cùng tài
+> khoản mà cùng sao lưu là ghi đè lên nhau.
+
 **Quyền xin của Google chỉ là `drive.file`.** App **chỉ thấy được những file do chính nó
 tạo ra**, không đọc được bất cứ thứ gì khác trong Drive của người dùng. Đừng đổi sang
 `drive` hay `drive.readonly` — hai quyền ấy đọc được cả kho Drive, Google xếp vào loại hạn

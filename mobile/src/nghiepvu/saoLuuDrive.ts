@@ -11,10 +11,10 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { accessToken, boTokenDangGiu } from './dangNhapGoogle';
 import * as Drive from './goiDrive';
 import { dongGoi, moGoi, ngayTuTenFile, tenFileSaoLuu, tomTat, TomTat } from './goiSaoLuu';
 import { DuLieuChamCong } from './kieu';
+import { voiToken } from './phienDrive';
 
 /**
  * Giữ lại 30 bản gần nhất. Một tháng là đủ để phát hiện ra "hình như tháng trước sai số"
@@ -35,25 +35,6 @@ export interface BanSaoLuu {
 /** Lần sao lưu gần nhất chạy xong, để hiện lên màn hình. */
 export async function lanCuoi(): Promise<string | null> {
   return AsyncStorage.getItem(KHOA_LAN_CUOI);
-}
-
-/**
- * Gọi Drive, gặp 401 thì lấy token mới rồi thử lại đúng một lần.
- *
- * 401 xảy ra khi người dùng thu hồi quyền hoặc đổi mật khẩu giữa chừng — token trong tay
- * mình vẫn còn hạn trên giấy tờ nên không tự biết mà làm mới. Chỉ thử lại một lần: 401
- * lần nữa nghĩa là hỏng thật, thử mãi chỉ làm người dùng ngồi chờ.
- */
-async function voiToken<T>(viec: (token: string) => Promise<T>): Promise<T> {
-  try {
-    return await viec(await accessToken());
-  } catch (loi) {
-    if (!(loi instanceof Drive.LoiDrive) || loi.ma !== 401) {
-      throw loi;
-    }
-    boTokenDangGiu();
-    return viec(await accessToken());
-  }
 }
 
 /**

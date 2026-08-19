@@ -1,31 +1,44 @@
 import { Feather } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { chiaSeExcel } from '../nghiepvu/chiaSeExcel';
+import { doiChieu } from '../nghiepvu/doiChieu';
 import { DuLieuChamCong, Tho } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
+import { soCuaMay } from '../nghiepvu/soCong';
 import { luongTaiNgay, tatCaTho } from '../nghiepvu/thaoTac';
+import { CaiDatVai } from '../nghiepvu/vaiMay';
+import { DieuKhienDoiChieu } from './dungDoiChieu';
 import { DieuKhienSaoLuu } from './dungSaoLuu';
 import { HopSaoLuu } from './HopSaoLuu';
 import { HopSuaTho } from './HopSuaTho';
-import { rungNhe } from './rungNhe';
-import { Co, Mau, PhongChu } from './thietKe';
+import { HopVaiMay } from './HopVaiMay';
+import { ManHinhDoiChieu } from './ManHinhDoiChieu';
+import { ManHinhNhapExcel } from './ManHinhNhapExcel';
+import { DauTrang, NutChip, theTrang } from './ThanhPhan';
+import { Co, Mau, PhongChu, Tuoi } from './thietKe';
 
 interface Props {
   duLieu: DuLieuChamCong;
   capNhat: (moi: DuLieuChamCong) => void;
   saoLuu: DieuKhienSaoLuu;
+  caiDat: CaiDatVai;
+  datCaiDat: (moi: CaiDatVai) => void;
+  dieuKhien: DieuKhienDoiChieu;
 }
 
 /** Trạng thái của nút xuất Excel. */
 type TrangThaiXuat = 'ranh' | 'dangLam' | 'loi';
 
-export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
+export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhien }: Props) {
   /** null = đang đóng, 'them' = thêm mới, còn lại là thợ đang sửa. */
   const [dangMo, datDangMo] = useState<Tho | 'them' | null>(null);
   const [dangXuat, datDangXuat] = useState<TrangThaiXuat>('ranh');
   const [moSaoLuu, datMoSaoLuu] = useState(false);
+  const [moNhap, datMoNhap] = useState(false);
+  const [moDoiChieu, datMoDoiChieu] = useState(false);
+  const [moVaiMay, datMoVaiMay] = useState(false);
 
   const thos = tatCaTho(duLieu);
   const homNay = Ngay.homNay();
@@ -58,6 +71,27 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
             ? `Đã sao lưu lúc ${Ngay.gioPhut(lucCuoi)}`
             : 'Đã nối, chưa sao lưu lần nào';
 
+  /**
+   * Đếm thợ đang lệch. Chỉ một con số: chi tiết nằm trong màn hình đối chiếu, còn ở đây chỉ
+   * cần trả lời "có phải mở ra xem không".
+   */
+  const soLech = useMemo(
+    () =>
+      [...dieuKhien.soBenKia.values()].filter(
+        (daNhan) =>
+          doiChieu(soCuaMay(duLieu, caiDat, daNhan.so.thoId, homNay), daNhan.so).lechs.length > 0,
+      ).length,
+    [duLieu, caiDat, dieuKhien.soBenKia, homNay],
+  );
+
+  const soDaGui = dieuKhien.soBenKia.size;
+  const chuDoiChieu =
+    soDaGui === 0
+      ? 'Chưa thợ nào gửi sổ lên'
+      : soLech > 0
+        ? `${soLech} thợ ghi khác sổ mình`
+        : `${soDaGui} sổ thợ, khớp cả`;
+
   const daAn = hoTro && taiKhoan !== null && loi === null;
   const iconDrive = daAn ? 'cloud' : 'cloud-off';
   const mauDrive = daAn ? Mau.xanhLa : loi !== null ? Mau.do : Mau.xam;
@@ -67,7 +101,6 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
       return;
     }
 
-    rungNhe();
     datDangXuat('dangLam');
     try {
       await chiaSeExcel(duLieu, homNay);
@@ -78,6 +111,18 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
     }
   }
 
+  if (moDoiChieu) {
+    return (
+      <ManHinhDoiChieu
+        duLieu={duLieu}
+        capNhat={capNhat}
+        caiDat={caiDat}
+        dieuKhien={dieuKhien}
+        onDong={() => datMoDoiChieu(false)}
+      />
+    );
+  }
+
   return (
     <View style={kieu.khung}>
       {/*
@@ -86,17 +131,16 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
         danh sách — thứ người dùng vào đây để xem. Vào đầu trang thì màn hình này cũng có
         đầu trang trắng giống Chấm công và Bảng lương, ba màn hình nhìn ra một bộ.
       */}
-      <View style={kieu.dauTrang}>
-        <View style={kieu.giuaDauTrang}>
-          <Text style={kieu.chuTieuDe}>Thợ</Text>
-          <Text style={kieu.chuDem}>{demTho}</Text>
-        </View>
-
-        <Pressable style={kieu.nutThem} onPress={() => datDangMo('them')}>
-          <Feather name="plus" size={16} color={Mau.trang} />
-          <Text style={kieu.chuNutThem}>Thêm thợ</Text>
-        </Pressable>
-      </View>
+      <DauTrang
+        tieuDe="Thợ"
+        phu={demTho}
+        phai={
+          <Pressable style={kieu.nutThem} onPress={() => datDangMo('them')}>
+            <Feather name="plus" size={16} color={Mau.trang} />
+            <Text style={kieu.chuNutThem}>Thêm thợ</Text>
+          </Pressable>
+        }
+      />
 
       <FlatList
         data={thos}
@@ -125,10 +169,7 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
               </Text>
             </View>
 
-            <Pressable style={kieu.nutSua} onPress={() => datDangMo(tho)}>
-              <Feather name="edit-2" size={12} color={Mau.chinh} />
-              <Text style={kieu.chuNutSua}>Sửa</Text>
-            </Pressable>
+            <NutChip nhan="Sửa" icon="edit-2" onPress={() => datDangMo(tho)} />
           </View>
         )}
       />
@@ -145,6 +186,23 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
             chưa". Để thành nút to thì hai nút cạnh nhau, nhìn như hai việc ngang nhau
             trong khi một cái phải bấm còn một cái thì không.
           */}
+          {/*
+            Đối chiếu đứng trên sao lưu vì nó là việc *phải nhìn* — có thợ nào ghi khác sổ
+            mình không — còn sao lưu thì tự chạy, chỉ ghé vào lúc muốn xem đã lên Drive chưa.
+          */}
+          <Pressable
+            style={kieu.dongDrive}
+            onPress={() => datMoDoiChieu(true)}
+            accessibilityRole="button"
+          >
+            <Feather name="columns" size={16} color={soLech > 0 ? Mau.do : Mau.xam} />
+            <View style={kieu.giuaDongDrive}>
+              <Text style={kieu.chuDrive}>Đối chiếu với sổ thợ</Text>
+              <Text style={kieu.chuTrangThaiDrive}>{chuDoiChieu}</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={Mau.xam} />
+          </Pressable>
+
           <Pressable
             style={kieu.dongDrive}
             onPress={() => datMoSaoLuu(true)}
@@ -158,32 +216,77 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
             <Feather name="chevron-right" size={16} color={Mau.xam} />
           </Pressable>
 
-          <Pressable
-            style={[kieu.nutXuat, dangXuat === 'dangLam' && kieu.nutXuatMo]}
-            onPress={xuatExcel}
-            disabled={dangXuat === 'dangLam'}
-            accessibilityRole="button"
-          >
-            {dangXuat === 'dangLam' ? (
-              <ActivityIndicator color={Mau.chinh} />
-            ) : (
-              <Feather name="share" size={16} color={Mau.chinh} />
-            )}
-            <Text style={kieu.chuNutXuat}>
-              {dangXuat === 'dangLam' ? 'Đang tạo file…' : 'Xuất toàn bộ ra Excel'}
-            </Text>
-          </Pressable>
+          {/*
+            Hai chiều của Excel đứng cạnh nhau thành một hàng, mỗi nút một nửa bề ngang:
+            xếp dọc thành hai nút to thì chân trang cao thêm gần một nút nữa, mà chân trang
+            cao lên là danh sách thợ — thứ người dùng vào đây để xem — ngắn đi.
+          */}
+          <View style={kieu.hangNut}>
+            <Pressable
+              style={[kieu.nutXuat, kieu.nutNua]}
+              onPress={() => datMoNhap(true)}
+              accessibilityRole="button"
+            >
+              <Feather name="file-plus" size={16} color={Mau.chinh} />
+              <Text style={kieu.chuNutXuat}>Nhập từ Excel</Text>
+            </Pressable>
+
+            <Pressable
+              style={[kieu.nutXuat, kieu.nutNua, dangXuat === 'dangLam' && kieu.nutXuatMo]}
+              onPress={xuatExcel}
+              disabled={dangXuat === 'dangLam'}
+              accessibilityRole="button"
+            >
+              {dangXuat === 'dangLam' ? (
+                <ActivityIndicator color={Mau.chinh} />
+              ) : (
+                <Feather name="share" size={16} color={Mau.chinh} />
+              )}
+              <Text style={kieu.chuNutXuat}>
+                {dangXuat === 'dangLam' ? 'Đang tạo file…' : 'Xuất ra Excel'}
+              </Text>
+            </Pressable>
+          </View>
 
           <Text style={[kieu.chuChanTrang, dangXuat === 'loi' && kieu.chuLoi]}>
             {dangXuat === 'loi'
               ? 'Chưa gửi được file. Bấm nút trên để làm lại.'
-              : 'Gửi qua Zalo, gửi mail hoặc lưu vào máy tính để mở bằng Excel.'}
+              : 'Nhập: điền công cả tháng trên máy tính rồi đưa vào app. ' +
+                'Xuất: gửi qua Zalo hoặc mail để mở bằng Excel.'}
           </Text>
         </View>
       )}
 
+      {/*
+        Dòng này nằm ngoài khối `coDuLieu` ở trên, và đó là điều bắt buộc: máy thợ mới cài
+        thì chưa có thợ nào, chưa có buổi nào — nếu ẩn theo `coDuLieu` thì đúng người cần
+        nó nhất lại không có đường vào để nhận mã mời.
+      */}
+      <Pressable
+        style={kieu.dongVaiMay}
+        onPress={() => datMoVaiMay(true)}
+        accessibilityRole="button"
+      >
+        <Feather name="smartphone" size={15} color={Mau.xam} />
+        <Text style={kieu.chuVaiMay}>Máy này: máy của chủ · đổi</Text>
+      </Pressable>
+
+      {moVaiMay && (
+        <HopVaiMay
+          duLieu={duLieu}
+          capNhat={capNhat}
+          caiDat={caiDat}
+          datCaiDat={datCaiDat}
+          onDong={() => datMoVaiMay(false)}
+        />
+      )}
+
       {moSaoLuu && (
         <HopSaoLuu saoLuu={saoLuu} capNhat={capNhat} onDong={() => datMoSaoLuu(false)} />
+      )}
+
+      {moNhap && (
+        <ManHinhNhapExcel duLieu={duLieu} capNhat={capNhat} onDong={() => datMoNhap(false)} />
       )}
 
       {dangMo !== null && (
@@ -201,19 +304,15 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu }: Props) {
 const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
-  dauTrang: {
+  dongVaiMay: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Mau.vien,
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: Co.caoNutNho,
+    paddingBottom: 8,
   },
-  giuaDauTrang: { flex: 1, gap: 2 },
-  chuTieuDe: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
-  chuDem: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+  chuVaiMay: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
 
   // Cao 44 bằng mũi tên đổi tháng bên Bảng lương — vẫn đúng mức tối thiểu Apple khuyên.
   nutThem: {
@@ -229,53 +328,27 @@ const kieu = StyleSheet.create({
   },
   chuNutThem: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, color: Mau.trang },
 
-  danhSach: { padding: 14, paddingBottom: 20 },
-  the: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: Mau.trang,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    padding: 14,
-    marginBottom: 10,
-  },
+  danhSach: { padding: 16, paddingTop: 4, paddingBottom: 20 },
+  the: { ...theTrang, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   trai: { flex: 1, gap: 3 },
   chuTen: { fontSize: Co.chuTen, fontFamily: PhongChu.dam },
   chuTien: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
-  nutSua: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    minHeight: Co.caoNutNho,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: Mau.chinhNhat,
-  },
-  chuNutSua: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.chinh },
 
-  chanTrang: {
-    backgroundColor: Mau.trang,
-    borderTopWidth: 1,
-    borderTopColor: Mau.vien,
-    padding: 14,
-    gap: 8,
-  },
+  chanTrang: { paddingHorizontal: 16, paddingBottom: 12, gap: 10 },
+  // Dòng Drive là một thẻ trắng nổi bóng, giống hàng việc trong danh sách của bản thiết kế.
   dongDrive: {
+    ...theTrang,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 10,
     minHeight: Co.caoNut,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: Co.bo,
-    backgroundColor: Mau.nen,
+    paddingVertical: 10,
   },
   giuaDongDrive: { flex: 1, gap: 2 },
   chuDrive: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, color: Mau.chu },
   chuTrangThaiDrive: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+  hangNut: { flexDirection: 'row', gap: 10 },
+  nutNua: { flex: 1 },
   nutXuat: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -286,7 +359,7 @@ const kieu = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: Co.bo,
     borderWidth: 1,
-    borderColor: Mau.chinh,
+    borderColor: Tuoi.chinh,
     backgroundColor: Mau.chinhNhat,
   },
   nutXuatMo: { opacity: 0.6 },

@@ -4,6 +4,8 @@ import { chiaSeExcel } from '../../nghiepvu/chiaSeExcel';
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import * as Ngay from '../../nghiepvu/ngayViet';
 import { cham, luuTho, themTho } from '../../nghiepvu/thaoTac';
+import { MAC_DINH } from '../../nghiepvu/vaiMay';
+import { DieuKhienDoiChieu } from '../dungDoiChieu';
 import { DieuKhienSaoLuu, TrangThaiSaoLuu } from '../dungSaoLuu';
 import { ManHinhTho } from '../ManHinhTho';
 
@@ -29,6 +31,17 @@ function saoLuuGia(sua: Partial<TrangThaiSaoLuu> = {}): DieuKhienSaoLuu {
   };
 }
 
+/** Hộp thư giả: chưa thợ nào gửi sổ lên. */
+function doiChieuGia(sua: Partial<DieuKhienDoiChieu> = {}): DieuKhienDoiChieu {
+  return {
+    trangThai: { hoTro: true, daNoi: false, dangChay: false, lucCuoi: null, loi: null },
+    soBenKia: new Map(),
+    dongBo: jest.fn(() => Promise.resolve()),
+    noiGoogle: jest.fn(() => Promise.resolve()),
+    ...sua,
+  };
+}
+
 const chiaSe = chiaSeExcel as jest.MockedFunction<typeof chiaSeExcel>;
 const HOM_NAY = Ngay.homNay();
 
@@ -38,7 +51,16 @@ function khoCoCong(): DuLieuChamCong {
 }
 
 function dung(duLieu: DuLieuChamCong, saoLuu: DieuKhienSaoLuu = saoLuuGia()) {
-  return render(<ManHinhTho duLieu={duLieu} capNhat={jest.fn()} saoLuu={saoLuu} />);
+  return render(
+    <ManHinhTho
+      duLieu={duLieu}
+      capNhat={jest.fn()}
+      saoLuu={saoLuu}
+      caiDat={MAC_DINH}
+      datCaiDat={jest.fn()}
+      dieuKhien={doiChieuGia()}
+    />,
+  );
 }
 
 beforeEach(() => {
@@ -92,25 +114,27 @@ describe('xuất Excel ở màn hình Thợ', () => {
   test('có nút xuất kèm icon và câu chỉ dẫn', () => {
     dung(khoCoCong());
 
-    expect(screen.getByText('Xuất toàn bộ ra Excel')).toBeTruthy();
+    expect(screen.getByText('Xuất ra Excel')).toBeTruthy();
     // Điều 8 của tài liệu giao diện: icon luôn đi kèm chữ.
     expect(screen.getByText('icon:share')).toBeTruthy();
     expect(
-      screen.getByText('Gửi qua Zalo, gửi mail hoặc lưu vào máy tính để mở bằng Excel.'),
+      screen.getByText(
+        'Nhập: điền công cả tháng trên máy tính rồi đưa vào app. Xuất: gửi qua Zalo hoặc mail để mở bằng Excel.',
+      ),
     ).toBeTruthy();
   });
 
   test('chưa có gì thì chưa hiện nút, khỏi xuất ra file rỗng', () => {
     dung(duLieuRong());
 
-    expect(screen.queryByText('Xuất toàn bộ ra Excel')).toBeNull();
+    expect(screen.queryByText('Xuất ra Excel')).toBeNull();
   });
 
   test('bấm là dựng file từ đúng dữ liệu đang có', async () => {
     const duLieu = khoCoCong();
     dung(duLieu);
 
-    fireEvent.press(screen.getByText('Xuất toàn bộ ra Excel'));
+    fireEvent.press(screen.getByText('Xuất ra Excel'));
 
     await waitFor(() => expect(chiaSe).toHaveBeenCalledWith(duLieu, HOM_NAY));
   });
@@ -124,7 +148,7 @@ describe('xuất Excel ở màn hình Thợ', () => {
     );
 
     dung(khoCoCong());
-    fireEvent.press(screen.getByText('Xuất toàn bộ ra Excel'));
+    fireEvent.press(screen.getByText('Xuất ra Excel'));
 
     const dangLam = await screen.findByText('Đang tạo file…');
     fireEvent.press(dangLam);
@@ -133,19 +157,19 @@ describe('xuất Excel ở màn hình Thợ', () => {
     await act(async () => {
       xong('file:///tam/Cham-cong.xlsx');
     });
-    expect(screen.getByText('Xuất toàn bộ ra Excel')).toBeTruthy();
+    expect(screen.getByText('Xuất ra Excel')).toBeTruthy();
   });
 
   test('hỏng thì nói bằng tiếng người và cho bấm lại', async () => {
     chiaSe.mockRejectedValueOnce(new Error('hết chỗ trống'));
 
     dung(khoCoCong());
-    fireEvent.press(screen.getByText('Xuất toàn bộ ra Excel'));
+    fireEvent.press(screen.getByText('Xuất ra Excel'));
 
     expect(await screen.findByText('Chưa gửi được file. Bấm nút trên để làm lại.')).toBeTruthy();
 
     // Bấm lại lần nữa là chạy lại thật, không kẹt ở trạng thái lỗi.
-    fireEvent.press(screen.getByText('Xuất toàn bộ ra Excel'));
+    fireEvent.press(screen.getByText('Xuất ra Excel'));
     await waitFor(() => expect(chiaSe).toHaveBeenCalledTimes(2));
   });
 });

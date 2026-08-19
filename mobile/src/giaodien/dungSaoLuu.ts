@@ -41,13 +41,21 @@ export interface DieuKhienSaoLuu {
   saoLuuNgay: () => Promise<void>;
 }
 
-export function dungSaoLuu(duLieu: DuLieuChamCong | null): DieuKhienSaoLuu {
+/**
+ * `bat` để tắt hẳn sao lưu trên **máy thợ**.
+ *
+ * Không phải để tiết kiệm: cả nhóm nối chung một tài khoản Google, mà tên file sao lưu chỉ
+ * theo ngày ("Cham-cong-2026-08-19.json"). Hai máy cùng sao lưu là ghi đè lên nhau, và bản
+ * còn lại trên Drive là của máy bấm sau — mất bản sao lưu của chủ. Sổ máy thợ vốn đã nằm
+ * trong hộp thư nên không mất gì.
+ */
+export function dungSaoLuu(duLieu: DuLieuChamCong | null, bat = true): DieuKhienSaoLuu {
   const [taiKhoan, datTaiKhoan] = useState<TaiKhoan | null>(null);
   const [dangChay, datDangChay] = useState(false);
   const [lucCuoi, datLucCuoi] = useState<string | null>(null);
   const [loi, datLoi] = useState<string | null>(null);
 
-  const hoTro = Google.hoTro();
+  const hoTro = Google.hoTro() && bat;
 
   /**
    * Dữ liệu mới nhất, giữ trong ref chứ không bắt các hàm bên dưới phụ thuộc vào nó —

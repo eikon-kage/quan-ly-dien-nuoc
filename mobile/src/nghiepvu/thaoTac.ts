@@ -117,14 +117,22 @@ export function timTho(duLieu: DuLieuChamCong, thoId: string): Tho | undefined {
   return duLieu.thos.find((t) => t.id === thoId);
 }
 
+/**
+ * Thêm thợ.
+ *
+ * `id` nhận từ ngoài được, và chỉ dùng cho đúng một việc: máy của thợ tự chấm phải tạo
+ * bản ghi thợ mang **đúng id do máy chủ đặt** (nhận qua mã mời). Hai máy đặt id khác nhau
+ * thì lúc đối chiếu không ghép được ai với ai. Bình thường cứ để trống cho nó tự sinh.
+ */
 export function themTho(
   duLieu: DuLieuChamCong,
   ten: string,
   tienMotCong: number,
   ngayTao: string,
+  id: string = taoId(),
 ): { duLieu: DuLieuChamCong; tho: Tho } {
   const tho: Tho = {
-    id: taoId(),
+    id,
     ten: ten.trim(),
     dienThoai: '',
     // Mốc lương đầu tiên tính từ ngày thêm thợ, không phải từ hôm nay — nhập thợ cũ
