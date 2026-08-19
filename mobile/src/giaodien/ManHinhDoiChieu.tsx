@@ -55,6 +55,19 @@ export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, onDong }: 
     return bang;
   }, [duLieu, caiDat, soBenKia, homNay]);
 
+  /**
+   * Trên máy chủ, tên trong sổ mình là tên chuẩn — chủ mới là bên đặt tên. Trên máy thợ thì
+   * ngược lại: tên nội bộ chỉ là chữ "Tôi" đặt tạm lúc nhận mã mời, còn tên thật nằm trong
+   * sổ chủ gửi xuống. Lấy sai thứ tự thì màn hình chính gọi "Anh Tuấn" mà mở đối chiếu ra
+   * lại thành "Tôi", cùng một người mà hai tên.
+   */
+  function tenCuaTho(thoId: string): string {
+    const trongSoMinh = timTho(duLieu, thoId)?.ten;
+    const trongSoBenKia = soBenKia.get(thoId)?.so.tenTho;
+    const uuTien = caiDat.vai === 'chu' ? [trongSoMinh, trongSoBenKia] : [trongSoBenKia, trongSoMinh];
+    return uuTien.find((ten) => ten !== undefined && ten !== '') ?? 'Thợ';
+  }
+
   function layMotDong(thoId: string, lech: DongLech) {
     try {
       capNhat(layTheoBenKia(duLieu, thoId, lech));
@@ -127,7 +140,7 @@ export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, onDong }: 
           />
         ) : (
           <ChiTiet
-            tenTho={timTho(duLieu, dangXem)?.ten ?? soBenKia.get(dangXem)?.so.tenTho ?? 'Thợ'}
+            tenTho={tenCuaTho(dangXem)}
             benKia={benKia}
             ket={ketTheoTho.get(dangXem) ?? null}
             nhanLuc={soBenKia.get(dangXem)?.suaLuc ?? null}

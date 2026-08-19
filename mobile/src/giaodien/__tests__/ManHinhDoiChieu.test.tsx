@@ -144,4 +144,20 @@ describe('máy thợ', () => {
     expect(screen.getByText('Hai sổ khớp nhau')).toBeTruthy();
     expect(screen.queryByText('Thợ khác')).toBeNull();
   });
+
+  test('lấy tên do chủ đặt, không phải chữ "Tôi" đặt tạm lúc nhận mã mời', () => {
+    // Máy thợ để tên nội bộ là "Tôi" cho tới khi sổ chủ về. Nếu màn hình này lấy tên nội bộ
+    // trước thì màn hình chính gọi "Anh Tuấn" mà mở đối chiếu ra lại thành "Tôi".
+    const them = themTho(duLieuRong(), 'Tôi', 0, Ngay.congNgay(HOM_NAY, -10));
+    const thoId = them.tho.id;
+    const soChu: SoCong = { ...soCuaTho(them.duLieu, thoId), nguon: 'chu', tenTho: 'Anh Tuấn' };
+
+    dung(them.duLieu, dieuKhienGia([{ so: soChu, suaLuc: '' }]), jest.fn(), {
+      ...CAI_DAT,
+      thoId,
+    });
+
+    expect(screen.getByText('Anh Tuấn')).toBeTruthy();
+    expect(screen.queryByText('Tôi')).toBeNull();
+  });
 });
