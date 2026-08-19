@@ -7,8 +7,8 @@ import { BaoCaoTho } from '../nghiepvu/baoCao';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { HopChonNgay } from './HopChonNgay';
 import { LichCong } from './LichCong';
-import { rungNhe } from './rungNhe';
-import { Co, Mau, PhongChu } from './thietKe';
+import { DauTrang, HangO, TheSo, ThanhDoan, theTrang } from './ThanhPhan';
+import { Bong, Co, Mau, PhongChu } from './thietKe';
 
 interface Props {
   /**
@@ -22,6 +22,17 @@ interface Props {
   denNgayDau: string;
   onDong: () => void;
 }
+
+/**
+ * Bốn khoảng có sẵn trên thanh phân đoạn. *Cả kỳ* luôn đứng đầu: lỡ lọc hẹp rồi thì đó là
+ * đường về.
+ */
+const KHOANG_SAN = [
+  { ma: 'ky', nhan: 'Cả kỳ' },
+  { ma: 'thang', nhan: 'Cả tháng' },
+  { ma: 'dau', nhan: 'Nửa đầu' },
+  { ma: 'cuoi', nhan: 'Nửa cuối' },
+];
 
 /** Ngày viết gọn còn "05/08" — trong màn hình này năm đã ghi trên đầu rồi. */
 function ngayNgan(ngay: string): string {
@@ -56,11 +67,29 @@ export function ManHinhBaoCaoTho({ dungBaoCao, tuNgayDau, denNgayDau, onDong }: 
 
   const { tho, ngayCongs, ngayNghis, ungTiens } = baoCao;
   const laCaKy = tuNgay === tuNgayDau && denNgay === denNgayDau;
-  const laCaThang = tuNgay === dauThang && denNgay === cuoiThang;
   const cacThang = Ngay.cacThangTrongKhoang(tuNgay, denNgay);
 
+  function khoangCua(ma: string): [string, string] {
+    switch (ma) {
+      case 'thang':
+        return [dauThang, cuoiThang];
+      case 'dau':
+        return [dauThang, Ngay.ghep(nam, thang, 15)];
+      case 'cuoi':
+        return [Ngay.ghep(nam, thang, 16), cuoiThang];
+      default:
+        return [tuNgayDau, denNgayDau];
+    }
+  }
+
+  /** Rỗng khi khoảng đang xem không trùng khoảng nào có sẵn — lúc ấy không viên nào sáng. */
+  const khoangDangDung =
+    KHOANG_SAN.find(({ ma }) => {
+      const [tu, den] = khoangCua(ma);
+      return tu === tuNgay && den === denNgay;
+    })?.ma ?? '';
+
   function datKhoang(tu: string, den: string) {
-    rungNhe();
     datTuNgay(tu);
     datDenNgay(den);
   }
@@ -70,7 +99,6 @@ export function ManHinhBaoCaoTho({ dungBaoCao, tuNgayDau, denNgayDau, onDong }: 
    * cho bấm không ăn. Người dùng chỉ thấy một khoảng hợp lệ, không bao giờ gặp ngõ cụt.
    */
   function chonNgay(ngay: string) {
-    rungNhe();
 
     if (dangChon === 'tu') {
       datTuNgay(ngay);
@@ -90,25 +118,19 @@ export function ManHinhBaoCaoTho({ dungBaoCao, tuNgayDau, denNgayDau, onDong }: 
   return (
     <Modal visible animationType="slide" onRequestClose={onDong}>
       <SafeAreaView style={kieu.khung} edges={['top', 'bottom']}>
-        <View style={kieu.dauTrang}>
-          <Pressable style={kieu.nutDong} onPress={onDong} accessibilityLabel="Đóng">
-            <Feather name="chevron-left" size={22} color={Mau.chinh} />
-          </Pressable>
-          <View style={kieu.giuaDauTrang}>
-            <Text style={kieu.chuTen} numberOfLines={1}>
-              {tho.ten}
-            </Text>
-            <Text style={kieu.chuPhu}>
-              {laCaKy ? `Cả kỳ · ${Ngay.khoangGon(tuNgay, denNgay)}` : Ngay.khoangGon(tuNgay, denNgay)}
-            </Text>
-          </View>
-          <View style={kieu.nutDong} />
-        </View>
+        <DauTrang
+          tieuDe={tho.ten}
+          phu={
+            laCaKy
+              ? `Cả kỳ · ${Ngay.khoangGon(tuNgay, denNgay)}`
+              : Ngay.khoangGon(tuNgay, denNgay)
+          }
+          onLui={onDong}
+        />
 
         {/*
-          Hai nút ngày mở tờ lịch, mấy nút tắt bên dưới cho những khoảng hay dùng. Có nút
-          tắt vì kỳ nửa tháng là chuyện lặp đi lặp lại — bắt chọn tay hai lần mỗi tháng
-          thì phí. Nút "Cả kỳ" luôn đứng đầu: lỡ lọc hẹp rồi thì đó là đường về.
+          Hai nút ngày mở tờ lịch, bốn khoảng hay dùng ở thanh ngay dưới. Có mấy khoảng sẵn
+          vì kỳ nửa tháng là chuyện lặp đi lặp lại — bắt chọn tay hai lần mỗi tháng thì phí.
         */}
         <View style={kieu.hangLoc}>
           <View style={kieu.dongNgay}>
@@ -117,41 +139,55 @@ export function ManHinhBaoCaoTho({ dungBaoCao, tuNgayDau, denNgayDau, onDong }: 
             <NutNgay nhan="Đến" ngay={denNgay} onPress={() => datDangChon('den')} />
           </View>
 
-          <View style={kieu.dongChip}>
-            <Chip
-              nhan="Cả kỳ"
-              dangDung={laCaKy}
-              onPress={() => datKhoang(tuNgayDau, denNgayDau)}
-            />
-            <Chip
-              nhan="Cả tháng"
-              dangDung={laCaThang}
-              onPress={() => datKhoang(dauThang, cuoiThang)}
-            />
-            <Chip
-              nhan="Nửa đầu"
-              dangDung={tuNgay === dauThang && denNgay === Ngay.ghep(nam, thang, 15)}
-              onPress={() => datKhoang(dauThang, Ngay.ghep(nam, thang, 15))}
-            />
-            <Chip
-              nhan="Nửa cuối"
-              dangDung={tuNgay === Ngay.ghep(nam, thang, 16) && denNgay === cuoiThang}
-              onPress={() => datKhoang(Ngay.ghep(nam, thang, 16), cuoiThang)}
-            />
-          </View>
+          {/*
+            Bốn nút viền rời nhau ở bản cũ giờ thành một thanh phân đoạn có viên trượt như
+            bản thiết kế: nhìn ra ngay đang ở khoảng nào, thay vì phải soi nút nào đổi màu.
+            Lọc bằng tay hai đầu ngày thì không viên nào sáng — đúng vậy, khoảng ấy không
+            phải một trong bốn khoảng có sẵn.
+          */}
+          <ThanhDoan
+            cac={KHOANG_SAN}
+            dangChon={khoangDangDung}
+            onChon={(ma) => datKhoang(...khoangCua(ma))}
+          />
         </View>
 
         <ScrollView contentContainerStyle={kieu.trong}>
-          {/* Mấy con số tóm tắt, để khỏi phải cộng lại từ bảng bên dưới. */}
-          <View style={kieu.the}>
-            <Dong nhan="Số công" gia={`${Ngay.soCong(baoCao.tongCong)} công`} />
-            <Dong nhan="Tiền công" gia={Ngay.tien(baoCao.tienCong)} />
-            {baoCao.daUng > 0 && <Dong nhan="Đã ứng" gia={Ngay.tienTru(baoCao.daUng)} />}
-            {/*
-              Kỳ trước trả thiếu thì phần thiếu nằm ở đây, không lẫn vào tiền công kỳ này —
-              nhìn ra ngay đâu là công mới làm, đâu là nợ cũ mang sang.
-            */}
-            {baoCao.noKyTruoc !== 0 && (
+          {/*
+            Bốn con số tóm tắt xếp thành lưới 2×2, mỗi ô một màu — mảnh dễ nhận nhất của
+            bản thiết kế. Trước đây là bốn dòng nhãn–số trong một thẻ trắng: đọc thì ra,
+            nhưng phải rà mắt từng dòng. Lưới thì con số to nằm giữa ô, nhìn một cái là hết.
+
+            Ô *Đã ứng* hiện cả khi bằng 0 (khác bản cũ) để lưới lúc nào cũng đủ bốn ô: lưới
+            2×2 khuyết một góc nhìn như thiếu chỗ chứ không như "không có gì".
+          */}
+          <View style={kieu.luoiO}>
+            <HangO>
+              <TheSo nhan="Số công" so={`${Ngay.soCong(baoCao.tongCong)} công`} mau="chinh" />
+              <TheSo nhan="Tiền công" so={Ngay.tien(baoCao.tienCong)} mau="ngoc" />
+            </HangO>
+            <HangO>
+              {/* Chưa ứng lần nào thì ghi "0 đ", không ghi "−0 đ" — dấu trừ trước số 0 là vô nghĩa. */}
+              <TheSo
+                nhan="Đã ứng"
+                so={baoCao.daUng > 0 ? Ngay.tienTru(baoCao.daUng) : Ngay.tien(0)}
+                mau="do"
+              />
+              {/* Ứng quá tiền công thì cả ô đổi sang đỏ, không chỉ riêng con số. */}
+              <TheSo
+                nhan="Còn phải trả"
+                so={Ngay.tien(baoCao.conLai)}
+                mau={baoCao.conLai < 0 ? 'do' : 'xanhLa'}
+              />
+            </HangO>
+          </View>
+
+          {/*
+            Kỳ trước trả thiếu thì phần thiếu đứng thành một dòng riêng dưới lưới, không lẫn
+            vào tiền công kỳ này — nhìn ra ngay đâu là công mới làm, đâu là nợ cũ mang sang.
+          */}
+          {baoCao.noKyTruoc !== 0 && (
+            <View style={kieu.theNo}>
               <Dong
                 nhan={baoCao.noKyTruoc > 0 ? 'Nợ kỳ trước' : 'Kỳ trước trả dư'}
                 gia={
@@ -159,16 +195,10 @@ export function ManHinhBaoCaoTho({ dungBaoCao, tuNgayDau, denNgayDau, onDong }: 
                     ? Ngay.tien(baoCao.noKyTruoc)
                     : Ngay.tienTru(baoCao.noKyTruoc)
                 }
+                dam
               />
-            )}
-            <View style={kieu.gach} />
-            <Dong
-              nhan="Còn phải trả"
-              gia={Ngay.tien(baoCao.conLai)}
-              mau={baoCao.conLai < 0 ? Mau.do : Mau.xanhLa}
-              dam
-            />
-          </View>
+            </View>
+          )}
 
           {/*
             Cả đi làm lẫn nghỉ gộp vào một tờ lịch. Ngày nghỉ chỉ đếm phần đã trôi qua và
@@ -263,27 +293,6 @@ function NutNgay({ nhan, ngay, onPress }: { nhan: string; ngay: string; onPress:
   );
 }
 
-/** Khoảng đang dùng thì nút đổi cả nền lẫn màu chữ lẫn nét chữ, không chỉ mỗi màu. */
-function Chip({
-  nhan,
-  dangDung,
-  onPress,
-}: {
-  nhan: string;
-  dangDung: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={[kieu.chip, dangDung ? kieu.chipDung : kieu.chipThuong]}
-      onPress={onPress}
-      accessibilityState={{ selected: dangDung }}
-    >
-      <Text style={[kieu.chuChip, dangDung && kieu.chuChipDung]}>{nhan}</Text>
-    </Pressable>
-  );
-}
-
 function Dong({
   nhan,
   gia,
@@ -308,68 +317,28 @@ function Dong({
 const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
-  dauTrang: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Mau.vien,
-  },
-  nutDong: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  giuaDauTrang: { flex: 1, alignItems: 'center' },
-  chuTen: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
-  chuPhu: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
-
-  hangLoc: {
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Mau.vien,
-  },
+  hangLoc: { paddingHorizontal: 16, paddingBottom: 10, gap: 10 },
   dongNgay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  // Nút ngày là thẻ trắng nổi bóng, cùng dáng với nút icon ở đầu trang.
   nutNgay: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    minHeight: Co.caoNutNho,
-    paddingVertical: 6,
+    minHeight: 44,
+    paddingVertical: 8,
     paddingHorizontal: 8,
     borderRadius: Co.bo,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    backgroundColor: Mau.nen,
+    backgroundColor: Mau.trang,
+    ...Bong.the,
   },
   chuNhanNgay: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuNgayLoc: { fontSize: Co.chuThuong, fontFamily: PhongChu.dam, color: Mau.chu },
 
-  dongChip: { flexDirection: 'row', gap: 6 },
-  chip: {
-    flex: 1,
-    minHeight: Co.caoNutNho,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderRadius: Co.bo,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipThuong: { backgroundColor: Mau.trang, borderColor: Mau.vien },
-  chipDung: { backgroundColor: Mau.chinhNhat, borderColor: Mau.chinh },
-  chuChip: {
-    fontSize: Co.chuPhu,
-    fontFamily: PhongChu.thuong,
-    color: Mau.xam,
-    textAlign: 'center',
-  },
-  chuChipDung: { fontFamily: PhongChu.dam, color: Mau.chinh },
-
-  trong: { padding: 14, paddingBottom: 24 },
+  trong: { padding: 16, paddingTop: 4, paddingBottom: 24 },
+  luoiO: { gap: 11 },
+  theNo: { ...theTrang, marginTop: 12 },
   tieuDeMuc: {
     fontSize: Co.chuPhu,
     fontFamily: PhongChu.vua,
@@ -378,14 +347,7 @@ const kieu = StyleSheet.create({
     marginBottom: 6,
     marginLeft: 2,
   },
-  the: {
-    backgroundColor: Mau.trang,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    padding: 12,
-    gap: 6,
-  },
+  the: { ...theTrang, gap: 6 },
   theCuoi: { marginBottom: 8 },
 
   lichSau: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: Mau.vien },
@@ -401,7 +363,6 @@ const kieu = StyleSheet.create({
   chuNhanDam: { fontFamily: PhongChu.vua, color: Mau.chu },
   chuGia: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
   chuGiaDam: { fontSize: Co.chuTen, fontFamily: PhongChu.dam },
-  gach: { height: 1, backgroundColor: Mau.vien, marginVertical: 3 },
 
   dongUng: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 },
   coNgay: { width: 62 },

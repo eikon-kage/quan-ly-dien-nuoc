@@ -6,6 +6,7 @@ import { DuLieuChamCong, KyLuong } from '../nghiepvu/kieu';
 import { cacKyMoiTruoc, kyGanNhat, tongCuaKy } from '../nghiepvu/ky';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { ManHinhChiTietKy } from './ManHinhChiTietKy';
+import { DauTrang, Nhan, theTrang } from './ThanhPhan';
 import { Co, Mau, PhongChu } from './thietKe';
 
 interface Props {
@@ -29,12 +30,10 @@ export function ManHinhLichSuKy({ duLieu, capNhat }: Props) {
 
   return (
     <View style={kieu.khung}>
-      <View style={kieu.dauTrang}>
-        <Text style={kieu.chuTieuDe}>Kỳ đã chốt</Text>
-        <Text style={kieu.chuPhu}>
-          {cacKy.length === 0 ? 'Chưa chốt kỳ nào' : `${cacKy.length} kỳ đã quyết toán`}
-        </Text>
-      </View>
+      <DauTrang
+        tieuDe="Kỳ đã chốt"
+        phu={cacKy.length === 0 ? 'Chưa chốt kỳ nào' : `${cacKy.length} kỳ đã quyết toán`}
+      />
 
       <FlatList
         data={cacKy}
@@ -76,11 +75,7 @@ function TheKy({ ky, moiNhat, onPress }: { ky: KyLuong; moiNhat: boolean; onPres
     <Pressable style={kieu.the} onPress={onPress}>
       <View style={kieu.dongTen}>
         <Text style={kieu.chuKhoang}>{Ngay.khoangGon(ky.tuNgay, ky.denNgay)}</Text>
-        {moiNhat && (
-          <View style={kieu.nhan}>
-            <Text style={kieu.chuNhanMoi}>Mới nhất</Text>
-          </View>
-        )}
+        {moiNhat && <Nhan chu="Mới nhất" />}
       </View>
 
       <Text style={kieu.chuPhuThe}>
@@ -129,36 +124,10 @@ function TheKy({ ky, moiNhat, onPress }: { ky: KyLuong; moiNhat: boolean; onPres
 const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
-  dauTrang: {
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: Mau.vien,
-  },
-  chuTieuDe: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
-  chuPhu: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam, marginTop: 2 },
-
-  danhSach: { padding: 14, paddingBottom: 20 },
-  the: {
-    backgroundColor: Mau.trang,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    padding: 14,
-    marginBottom: 10,
-    gap: 7,
-  },
+  danhSach: { padding: 16, paddingTop: 4, paddingBottom: 20 },
+  the: { ...theTrang, marginBottom: 12, gap: 7 },
   dongTen: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   chuKhoang: { flex: 1, fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
-  nhan: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: Mau.chinhNhat,
-  },
-  chuNhanMoi: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.chinh },
   chuPhuThe: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
 
   dongSo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

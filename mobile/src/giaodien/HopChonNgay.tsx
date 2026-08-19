@@ -1,7 +1,7 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import * as Ngay from '../nghiepvu/ngayViet';
-import { rungNhe } from './rungNhe';
+import { HopDay } from './HopDay';
 import { Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './thietKe';
 
 interface Props {
@@ -24,54 +24,46 @@ interface Props {
  */
 export function HopChonNgay({ tieuDe, nam, thang, ngayDangChon, onChon, onDong }: Props) {
   function bamNgay(soTrongThang: number) {
-    rungNhe();
     onChon(Ngay.ghep(nam, thang, soTrongThang));
   }
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onDong}>
-      <View style={kieu.nenMo}>
-        <Pressable style={kieu.phuKin} onPress={onDong} />
+    <HopDay khoang={5} onDong={onDong}>
+      <Text style={kieu.tieuDe}>{tieuDe}</Text>
+      <Text style={kieu.moTa}>
+        Tháng {thang}/{nam}
+      </Text>
 
-        <View style={kieu.hop}>
-          <View style={kieu.tay} />
-          <Text style={kieu.tieuDe}>{tieuDe}</Text>
-          <Text style={kieu.moTa}>
-            Tháng {thang}/{nam}
+      <View style={kieu.hang}>
+        {Ngay.COT_LICH.map((ten) => (
+          <Text key={ten} style={kieu.chuCot} maxFontSizeMultiplier={HeSoChuToiDaLuoi}>
+            {ten}
           </Text>
-
-          <View style={kieu.hang}>
-            {Ngay.COT_LICH.map((ten) => (
-              <Text key={ten} style={kieu.chuCot} maxFontSizeMultiplier={HeSoChuToiDaLuoi}>
-                {ten}
-              </Text>
-            ))}
-          </View>
-
-          {Ngay.oLichThang(nam, thang).map((tuan, hang) => (
-            <View key={`tuan-${hang}`} style={kieu.hang}>
-              {tuan.map((n, cot) =>
-                n === null ? (
-                  <View key={`trong-${cot}`} style={kieu.o} />
-                ) : (
-                  <ONgay
-                    key={n}
-                    ngay={Ngay.ghep(nam, thang, n)}
-                    soTrongThang={n}
-                    dangChon={Ngay.ghep(nam, thang, n) === ngayDangChon}
-                    onPress={() => bamNgay(n)}
-                  />
-                ),
-              )}
-            </View>
-          ))}
-
-          <Pressable style={kieu.nutThoi} onPress={onDong}>
-            <Text style={kieu.chuNutThoi}>Thôi</Text>
-          </Pressable>
-        </View>
+        ))}
       </View>
-    </Modal>
+
+      {Ngay.oLichThang(nam, thang).map((tuan, hang) => (
+        <View key={`tuan-${hang}`} style={kieu.hang}>
+          {tuan.map((n, cot) =>
+            n === null ? (
+              <View key={`trong-${cot}`} style={kieu.o} />
+            ) : (
+              <ONgay
+                key={n}
+                ngay={Ngay.ghep(nam, thang, n)}
+                soTrongThang={n}
+                dangChon={Ngay.ghep(nam, thang, n) === ngayDangChon}
+                onPress={() => bamNgay(n)}
+              />
+            ),
+          )}
+        </View>
+      ))}
+
+      <Pressable style={kieu.nutThoi} onPress={onDong}>
+        <Text style={kieu.chuNutThoi}>Thôi</Text>
+      </Pressable>
+    </HopDay>
   );
 }
 
@@ -104,35 +96,11 @@ function ONgay({
 }
 
 const kieu = StyleSheet.create({
-  nenMo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(35,42,53,0.35)' },
-  phuKin: { flex: 1 },
-  hop: {
-    backgroundColor: Mau.trang,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    padding: 14,
-    paddingBottom: 28,
-    gap: 5,
-  },
-  tay: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Mau.vien,
-    alignSelf: 'center',
-    marginBottom: 6,
-  },
-  tieuDe: {
-    fontSize: Co.chuThuong,
-    fontFamily: PhongChu.dam,
-    color: Mau.chu,
-    textAlign: 'center',
-  },
+  tieuDe: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
   moTa: {
     fontSize: Co.chuPhu,
     fontFamily: PhongChu.thuong,
     color: Mau.xam,
-    textAlign: 'center',
     marginBottom: 4,
   },
 
@@ -140,7 +108,7 @@ const kieu = StyleSheet.create({
   chuCot: {
     flex: 1,
     textAlign: 'center',
-    fontSize: Co.chuPhu,
+    fontSize: Co.chuNho,
     fontFamily: PhongChu.vua,
     color: Mau.xam,
     paddingBottom: 2,
@@ -151,11 +119,11 @@ const kieu = StyleSheet.create({
     flex: 1,
     minHeight: 46,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: Co.bo,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  oThuong: { backgroundColor: Mau.nen, borderWidth: 1, borderColor: Mau.vien },
+  oThuong: { backgroundColor: Mau.trang, borderWidth: 1, borderColor: Mau.vien },
   oChon: { backgroundColor: Mau.chinh, borderWidth: 1, borderColor: Mau.chinh },
   chuNgay: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
   chuNgayChon: { fontFamily: PhongChu.dam, color: Mau.trang },

@@ -119,6 +119,29 @@ describe('màn hình quyết toán', () => {
     expect(kyGanNhat(moiNhat())!.dongs.find((d) => d.thoId === tuan)?.chuyenKySau).toBe(100_000);
   });
 
+  test('bấm Khoản khác mở đúng hộp nhập, ghi xong thì viên đó sáng', () => {
+    const { duLieu, binh } = kho();
+    const { moiNhat } = dung(duLieu);
+
+    // Mở bằng mục Khoản khác chứ không phải bằng cách chạm vào con số Thực trả.
+    // Anh Bình xếp trước, giống bài kiểm thử Không trả ở trên.
+    fireEvent.press(screen.getAllByText('Khoản khác')[0]);
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 2000000'), '100000');
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(screen.getByLabelText('Anh Bình thực trả 100.000 đ, chạm để sửa')).toBeTruthy();
+
+    // Bấm lại Khoản khác thì hộp mở lại với số đã ghi, không phải gõ từ đầu.
+    fireEvent.press(screen.getAllByText('Khoản khác')[0]);
+    expect(screen.getByLabelText('Ví dụ 2000000').props.value).toBe('100000');
+    fireEvent.press(screen.getByText('Thôi'));
+
+    fireEvent.press(screen.getByText('Chốt kỳ, đã trả tiền'));
+    const dongBinh = kyGanNhat(moiNhat())!.dongs.find((d) => d.thoId === binh)!;
+    expect(dongBinh.daTra).toBe(100_000);
+    expect(dongBinh.chuyenKySau).toBe(150_000);
+  });
+
   test('kỳ trước còn nợ thì kỳ này hiện thành một dòng riêng', () => {
     let { duLieu, tuan } = kho();
     duLieu = quyetToan(duLieu, { denNgay: '2026-08-04', daTra: new Map([[tuan, 0]]) });

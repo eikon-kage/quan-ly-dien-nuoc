@@ -8,8 +8,8 @@ import { CONG_TOI_DA, docSoCong } from '../nghiepvu/nhapSo';
 import { dangCham, datCong, thoDangLam } from '../nghiepvu/thaoTac';
 import { HopChon } from './HopChon';
 import { HopNhapSo } from './HopNhapSo';
-import { rungNhe } from './rungNhe';
-import { Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './thietKe';
+import { NutChip, theTrang } from './ThanhPhan';
+import { Bong, Co, HeSoChuToiDaLuoi, Mau, PhongChu, Tuoi } from './thietKe';
 
 /** Đang mở hộp sửa cho thợ nào: chưa chọn buổi thì buoi là null. */
 interface DangSua {
@@ -47,18 +47,15 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
   const caToDaDu = thos.length > 0 && thos.every(diDuCaNgay);
 
   function doiTuan(soTuan: number) {
-    rungNhe();
     datNgay(Ngay.congNgay(ngay, soTuan * 7));
   }
 
   function chonNgay(ngayMoi: string) {
-    rungNhe();
     datNgay(ngayMoi);
   }
 
   /** Chạm ô đang xanh là bỏ chấm — sửa nhầm bằng đúng thao tác vừa rồi. */
   function bamO(tho: Tho, buoi: BuoiLam) {
-    rungNhe();
     capNhat(datCong(duLieu, tho.id, ngay, buoi, soCongCua(tho, buoi) === null ? 1 : null));
   }
 
@@ -67,7 +64,6 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
    * nhanh hơn nhiều so với bấm từng ô. Đã đủ hết rồi thì nút này quay ra xoá sạch.
    */
   function bamCaTo() {
-    rungNhe();
     const xoaHet = caToDaDu;
     let moi = duLieu;
 
@@ -93,7 +89,6 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
     }
 
     const soCong: Record<string, number | null> = { ca: 1, nua: 0.5, ruoi: 1.5, nghi: null };
-    rungNhe();
     capNhat(datCong(duLieu, dangSua.tho.id, ngay, dangSua.buoi, soCong[ma]));
     datDangSua(null);
   }
@@ -103,7 +98,6 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
       return;
     }
 
-    rungNhe();
     capNhat(datCong(duLieu, dangSua.tho.id, ngay, dangSua.buoi, so));
     datGoSoCong(false);
     datDangSua(null);
@@ -111,29 +105,32 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
 
   return (
     <View style={kieu.khung}>
+      {/*
+        Đầu trang không còn là dải trắng kẻ viền dưới: chữ nằm thẳng trên nền trang, ngày
+        căn trái, hai nút đổi tuần dồn sang phải — đúng dáng đầu trang của bản thiết kế.
+      */}
       <View style={kieu.dauTrang}>
-        <View style={kieu.dongNgay}>
-          <NutTuan huong={-1} onPress={() => doiTuan(-1)} />
-
-          <View style={kieu.giuaDauTrang}>
-            <Text style={kieu.chuNgay}>{Ngay.thuVaNgay(ngay)}</Text>
-            {dangXemNgayKhac && (
-              <Pressable
-                style={kieu.nutHomNay}
-                onPress={() => chonNgay(Ngay.homNay())}
-                accessibilityLabel="Về hôm nay"
-              >
-                <Feather name="corner-up-left" size={13} color={Mau.chinh} />
-                <Text style={kieu.chuHomNay}>Hôm nay</Text>
-              </Pressable>
-            )}
-          </View>
-
-          <NutTuan huong={1} onPress={() => doiTuan(1)} />
+        <View style={kieu.giuaDauTrang}>
+          <Text style={kieu.chuNgay} numberOfLines={1}>
+            {Ngay.thuVaNgay(ngay)}
+          </Text>
+          {dangXemNgayKhac && (
+            <Pressable
+              style={kieu.nutHomNay}
+              onPress={() => chonNgay(Ngay.homNay())}
+              accessibilityLabel="Về hôm nay"
+            >
+              <Feather name="corner-up-left" size={13} color={Mau.chinh} />
+              <Text style={kieu.chuHomNay}>Hôm nay</Text>
+            </Pressable>
+          )}
         </View>
 
-        <DaiNgay ngayDangXem={ngay} congMoiNgay={congMoiNgay} onChon={chonNgay} />
+        <NutTuan huong={-1} onPress={() => doiTuan(-1)} />
+        <NutTuan huong={1} onPress={() => doiTuan(1)} />
       </View>
+
+      <DaiNgay ngayDangXem={ngay} congMoiNgay={congMoiNgay} onChon={chonNgay} />
 
       {thos.length > 0 && (
         <Pressable
@@ -170,10 +167,7 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
                 {tho.ten}
               </Text>
               {/* Icon không đứng một mình — người dùng không đoán hình. */}
-              <Pressable style={kieu.nutSua} onPress={() => datDangSua({ tho, buoi: null })}>
-                <Feather name="edit-2" size={12} color={Mau.chinh} />
-                <Text style={kieu.chuNutSua}>Sửa</Text>
-              </Pressable>
+              <NutChip nhan="Sửa" icon="edit-2" onPress={() => datDangSua({ tho, buoi: null })} />
             </View>
 
             <View style={kieu.dongO}>
@@ -384,44 +378,45 @@ const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
   dauTrang: {
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Mau.vien,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  dongNgay: { flexDirection: 'row', alignItems: 'center' },
-  giuaDauTrang: { flex: 1, alignItems: 'center', gap: 4 },
+  giuaDauTrang: { flex: 1, alignItems: 'flex-start', gap: 6 },
+  // Nút trắng nổi bằng bóng, giống nút icon bên phải đầu trang của bản thiết kế.
   nutTuan: {
     minWidth: 52,
     minHeight: 46,
     paddingVertical: 5,
     paddingHorizontal: 6,
     borderRadius: Co.bo,
-    backgroundColor: Mau.chinhNhat,
+    backgroundColor: Mau.trang,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Bong.the,
   },
   chuNutTuan: { fontSize: 11, fontFamily: PhongChu.vua, color: Mau.chinh },
-  chuNgay: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
+  chuNgay: { fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
 
-  daiNgay: { flexDirection: 'row', gap: 5 },
+  daiNgay: { flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingBottom: 4 },
   oNgay: {
     flex: 1,
-    paddingVertical: 7,
-    borderRadius: 9,
+    paddingVertical: 9,
+    borderRadius: Co.bo,
     borderWidth: 1,
     alignItems: 'center',
-    gap: 1,
+    gap: 2,
   },
   // Ngày đang xem tô đặc để nổi hẳn lên giữa sáu ngày còn lại.
   oNgayChon: { backgroundColor: Mau.chinh, borderColor: Mau.chinh },
-  oNgayHomNay: { backgroundColor: Mau.chinhNhat, borderColor: Mau.chinh },
+  oNgayHomNay: { backgroundColor: Mau.trang, borderColor: Tuoi.chinh },
   oNgayThuong: { backgroundColor: Mau.trang, borderColor: Mau.vien },
   oNgayChuaToi: { opacity: 0.45 },
 
-  chuThuGon: { fontSize: 11, fontFamily: PhongChu.vua, color: Mau.xam },
+  chuThuGon: { fontSize: Co.chuNho, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuSoNgay: { fontSize: Co.chuSo, fontFamily: PhongChu.dam, color: Mau.chu },
   chuCongNgay: { fontSize: 11, fontFamily: PhongChu.vua, color: Mau.xanhLa },
   chuChuaCham: { color: Mau.xam },
@@ -447,8 +442,8 @@ const kieu = StyleSheet.create({
     minHeight: Co.caoNut,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    marginHorizontal: 14,
-    marginTop: 14,
+    marginHorizontal: 16,
+    marginTop: 10,
     borderRadius: Co.bo,
     borderWidth: 1,
   },
@@ -456,29 +451,10 @@ const kieu = StyleSheet.create({
   nutCaToXoa: { backgroundColor: Mau.doNhat, borderColor: Mau.do },
   chuNutCaTo: { flexShrink: 1, fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
 
-  danhSach: { padding: 14, paddingBottom: 20 },
-  the: {
-    backgroundColor: Mau.trang,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    padding: 12,
-    marginBottom: 10,
-    gap: 10,
-  },
+  danhSach: { padding: 16, paddingTop: 14, paddingBottom: 20 },
+  the: { ...theTrang, marginBottom: 12, gap: 12 },
   dongTen: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   chuTen: { flex: 1, fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
-  nutSua: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    minHeight: Co.caoNutNho,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: Mau.chinhNhat,
-  },
-  chuNutSua: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.chinh },
 
   dongO: { flexDirection: 'row', gap: 10 },
   oCham: {
@@ -494,8 +470,9 @@ const kieu = StyleSheet.create({
     borderWidth: 1,
   },
   // Nền xanh nhạt chứ không tô đặc: ô này lặp lại nhiều lần, tô đặc thì cả màn hình rợp màu.
-  oChamBat: { backgroundColor: Mau.xanhLaNhat, borderColor: Mau.xanhLa },
-  oChamTat: { backgroundColor: Mau.trang, borderColor: Mau.vien },
+  // Viền lấy màu tươi của bản thiết kế, chữ và dấu tích thì lấy màu đậm cho đọc được.
+  oChamBat: { backgroundColor: Mau.xanhLaNhat, borderColor: Tuoi.xanhLa },
+  oChamTat: { backgroundColor: Mau.nen, borderColor: Mau.vien },
   chuOCham: { flexShrink: 1, fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
 
   trong: { padding: 24, paddingTop: 56, gap: 10, alignItems: 'center' },
@@ -507,13 +484,11 @@ const kieu = StyleSheet.create({
     textAlign: 'center',
   },
 
-  chanTrang: {
-    backgroundColor: Mau.trang,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Mau.vien,
-  },
+  /*
+    Dòng tổng nằm thẳng trên nền trang, không có dải trắng kẻ viền. Thanh tab ngay dưới đã
+    là một mảng trắng nổi bóng rồi — thêm một dải trắng nữa chồng lên là hai tầng bóng.
+  */
+  chanTrang: { paddingVertical: 12, alignItems: 'center' },
   chuTong: { fontSize: Co.chuThuong, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuTongSo: { fontFamily: PhongChu.dam, color: Mau.chu },
 });

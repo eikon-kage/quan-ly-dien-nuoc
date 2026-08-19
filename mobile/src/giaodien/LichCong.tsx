@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { NgayCong, ngayTrongThang } from '../nghiepvu/baoCao';
 import * as Ngay from '../nghiepvu/ngayViet';
-import { Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './thietKe';
+import { Co, HeSoChuToiDaLuoi, Mau, PhongChu, Tuoi } from './thietKe';
 
 /**
  * Một tháng vẽ ra như tờ lịch treo tường: ngày nào đi làm thì có dấu tích.
@@ -141,7 +141,7 @@ const kieu = StyleSheet.create({
   chuCot: {
     flex: 1,
     textAlign: 'center',
-    fontSize: Co.chuPhu,
+    fontSize: Co.chuNho,
     fontFamily: PhongChu.vua,
     color: Mau.xam,
     paddingBottom: 2,
@@ -151,12 +151,13 @@ const kieu = StyleSheet.create({
     flex: 1,
     minHeight: 46,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: Co.bo,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 1,
   },
-  oCong: { backgroundColor: Mau.xanhLaNhat, borderWidth: 1, borderColor: Mau.xanhLa },
+  // Viền lấy màu tươi của bản thiết kế; dấu tích và chữ vẫn màu đậm cho đọc được.
+  oCong: { backgroundColor: Mau.xanhLaNhat, borderWidth: 1, borderColor: Tuoi.xanhLa },
   oNghi: { backgroundColor: Mau.nen, borderWidth: 1, borderColor: Mau.vien },
   oNgoai: { backgroundColor: Mau.trang },
 
@@ -171,6 +172,6 @@ const kieu = StyleSheet.create({
   gach: { height: 1, backgroundColor: Mau.vien, marginTop: 6, marginBottom: 2 },
   chuThich: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, paddingTop: 2 },
   mucChuThich: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  oMau: { width: 20, height: 20, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  oMau: { width: 20, height: 20, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   chuMuc: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.chu },
 });

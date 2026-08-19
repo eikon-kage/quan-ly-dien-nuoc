@@ -8,8 +8,8 @@ import { DuLieuChamCong } from '../nghiepvu/kieu';
 import { kyHienTai, quyetToan, traDuKien } from '../nghiepvu/ky';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { HopNhapSo } from './HopNhapSo';
-import { rungNhe } from './rungNhe';
-import { Co, Mau, PhongChu } from './thietKe';
+import { DauTrang, ThanhDoan, theTrang } from './ThanhPhan';
+import { Bong, Co, Mau, PhongChu, Tuoi } from './thietKe';
 
 interface Props {
   duLieu: DuLieuChamCong;
@@ -42,14 +42,12 @@ export function ManHinhQuyetToan({ duLieu, homNay, capNhat, onDong }: Props) {
   const tongChuyenTiep = ky.dongs.reduce((tong, dong) => tong + (dong.conLai - traCuaTho(dong)), 0);
 
   function datTra(thoId: string, soTien: number) {
-    rungNhe();
     const moi = new Map(daTra);
     moi.set(thoId, soTien);
     datDaTra(moi);
   }
 
   function chot() {
-    rungNhe();
     capNhat(quyetToan(duLieu, { denNgay: homNay, daTra }));
     onDong();
   }
@@ -57,16 +55,11 @@ export function ManHinhQuyetToan({ duLieu, homNay, capNhat, onDong }: Props) {
   return (
     <Modal visible animationType="slide" onRequestClose={onDong}>
       <SafeAreaView style={kieu.khung} edges={['top', 'bottom']}>
-        <View style={kieu.dauTrang}>
-          <Pressable style={kieu.nutDong} onPress={onDong} accessibilityLabel="Đóng">
-            <Feather name="chevron-left" size={22} color={Mau.chinh} />
-          </Pressable>
-          <View style={kieu.giuaDauTrang}>
-            <Text style={kieu.chuTieuDe}>Quyết toán kỳ</Text>
-            <Text style={kieu.chuPhu}>{Ngay.khoangGon(ky.tuNgay, ky.denNgay)}</Text>
-          </View>
-          <View style={kieu.nutDong} />
-        </View>
+        <DauTrang
+          tieuDe="Quyết toán kỳ"
+          phu={Ngay.khoangGon(ky.tuNgay, ky.denNgay)}
+          onLui={onDong}
+        />
 
         <ScrollView contentContainerStyle={kieu.trong}>
           {ky.dongs.map((dong) => {
@@ -139,20 +132,32 @@ export function ManHinhQuyetToan({ duLieu, homNay, capNhat, onDong }: Props) {
                 )}
 
                 {/*
-                  Hai nút tắt cho hai đầu hay gặp: trả đủ và khất hẳn. Ở giữa thì mở ô nhập.
+                  Ba lối trả, dựng thành thanh phân đoạn như bản thiết kế: trả đủ, trả một
+                  khoản, khất hẳn.
+
+                  *Khoản khác* mở đúng hộp nhập mà chạm vào ô **Thực trả** ở trên cũng mở.
+                  Trước đây chỉ có ô Thực trả — muốn trả một khoản nhất định thì phải đoán ra
+                  là chạm được vào con số ấy. Đưa nó thành một mục ngang hàng với hai mục kia
+                  thì nhìn là thấy có ba lối, không phải mò.
+
+                  Viên *Khoản khác* sáng khi số đang trả không phải trả đủ cũng không phải 0 —
+                  tức là một khoản do người dùng tự đặt.
                 */}
-                <View style={kieu.dongNutTat}>
-                  <NutTat
-                    nhan="Trả đủ"
-                    dangDung={tra === traDuKien(dong)}
-                    onPress={() => datTra(dong.tho.id, traDuKien(dong))}
-                  />
-                  <NutTat
-                    nhan="Không trả"
-                    dangDung={tra === 0}
-                    onPress={() => datTra(dong.tho.id, 0)}
-                  />
-                </View>
+                <ThanhDoan
+                  cac={[
+                    { ma: 'du', nhan: 'Trả đủ' },
+                    { ma: 'khac', nhan: 'Khoản khác' },
+                    { ma: 'khong', nhan: 'Không trả' },
+                  ]}
+                  dangChon={tra === traDuKien(dong) ? 'du' : tra === 0 ? 'khong' : 'khac'}
+                  onChon={(ma) => {
+                    if (ma === 'khac') {
+                      datDangSua(dong);
+                      return;
+                    }
+                    datTra(dong.tho.id, ma === 'du' ? traDuKien(dong) : 0);
+                  }}
+                />
               </View>
             );
           })}
@@ -212,54 +217,11 @@ export function ManHinhQuyetToan({ duLieu, homNay, capNhat, onDong }: Props) {
   );
 }
 
-/** Nút tắt đổi cả nền lẫn màu chữ lẫn nét chữ khi đang dùng, không chỉ mỗi màu. */
-function NutTat({
-  nhan,
-  dangDung,
-  onPress,
-}: {
-  nhan: string;
-  dangDung: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={[kieu.nutTat, dangDung ? kieu.nutTatDung : kieu.nutTatThuong]}
-      onPress={onPress}
-      accessibilityState={{ selected: dangDung }}
-    >
-      <Text style={[kieu.chuNutTat, dangDung && kieu.chuNutTatDung]}>{nhan}</Text>
-    </Pressable>
-  );
-}
-
 const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
-  dauTrang: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Mau.vien,
-  },
-  nutDong: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  giuaDauTrang: { flex: 1, alignItems: 'center' },
-  chuTieuDe: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
-  chuPhu: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
-
-  trong: { padding: 14, paddingBottom: 20 },
-  the: {
-    backgroundColor: Mau.trang,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    padding: 14,
-    marginBottom: 10,
-    gap: 8,
-  },
+  trong: { padding: 16, paddingTop: 4, paddingBottom: 20 },
+  the: { ...theTrang, marginBottom: 12, gap: 8 },
   dongTen: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   chuTen: { flex: 1, fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
   chuCong: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
@@ -279,39 +241,20 @@ const kieu = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: Co.bo,
     borderWidth: 1,
-    borderColor: Mau.chinh,
+    borderColor: Tuoi.chinh,
     backgroundColor: Mau.chinhNhat,
   },
   chuNhanTra: { flex: 1, fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
   chuSoTra: { fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
 
-  dongNutTat: { flexDirection: 'row', gap: 8 },
-  nutTat: {
-    flex: 1,
-    minHeight: Co.caoNutNho,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: Co.bo,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nutTatThuong: { backgroundColor: Mau.nen, borderColor: Mau.vien },
-  nutTatDung: { backgroundColor: Mau.chinhNhat, borderColor: Mau.chinh },
-  chuNutTat: {
-    fontSize: Co.chuPhu,
-    fontFamily: PhongChu.thuong,
-    color: Mau.xam,
-    textAlign: 'center',
-  },
-  chuNutTatDung: { fontFamily: PhongChu.dam, color: Mau.chinh },
-
   chanTrang: {
     backgroundColor: Mau.trang,
-    padding: 12,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: Mau.vien,
+    ...Bong.noi,
   },
   chuNhanTong: { fontSize: Co.chuThuong, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuTongTra: { fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.xanhLa },

@@ -23,8 +23,8 @@ import { DuLieuChamCong } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { BanSaoLuu, danhSachBan, docBan } from '../nghiepvu/saoLuuDrive';
 import { DieuKhienSaoLuu } from './dungSaoLuu';
-import { rungNhe } from './rungNhe';
-import { Co, Mau, PhongChu } from './thietKe';
+import { NutChip, theTrang } from './ThanhPhan';
+import { Bong, Co, Mau, PhongChu } from './thietKe';
 
 interface Props {
   saoLuu: DieuKhienSaoLuu;
@@ -59,7 +59,6 @@ export function HopSaoLuu({ saoLuu, capNhat, onDong }: Props) {
   }, [daNoi, trangThai.lucCuoi, taiDanhSach]);
 
   async function noi() {
-    rungNhe();
     await noiDrive();
   }
 
@@ -75,7 +74,6 @@ export function HopSaoLuu({ saoLuu, capNhat, onDong }: Props) {
   }
 
   async function daySaoLuu() {
-    rungNhe();
     await saoLuuNgay();
   }
 
@@ -99,7 +97,6 @@ export function HopSaoLuu({ saoLuu, capNhat, onDong }: Props) {
             style: 'destructive',
             onPress: () => {
               capNhat(duLieu);
-              rungNhe();
               onDong();
             },
           },
@@ -229,19 +226,14 @@ export function HopSaoLuu({ saoLuu, capNhat, onDong }: Props) {
                   )}
                 </View>
 
-                <Pressable
-                  style={kieu.nutKhoiPhuc}
-                  onPress={() => hoiKhoiPhuc(ban)}
-                  disabled={dangKhoiPhuc !== null}
-                  accessibilityRole="button"
-                >
-                  {dangKhoiPhuc === ban.id ? (
+                {dangKhoiPhuc === ban.id ? (
+                  <View style={kieu.dangTai}>
                     <ActivityIndicator size="small" color={Mau.chinh} />
-                  ) : (
-                    <Feather name="download" size={12} color={Mau.chinh} />
-                  )}
-                  <Text style={kieu.chuNutKhoiPhuc}>Khôi phục</Text>
-                </Pressable>
+                    <Text style={kieu.chuDangTai}>Khôi phục</Text>
+                  </View>
+                ) : (
+                  <NutChip nhan="Khôi phục" icon="download" onPress={() => hoiKhoiPhuc(ban)} />
+                )}
               </View>
             )}
           />
@@ -257,27 +249,26 @@ const kieu = StyleSheet.create({
   dauTrang: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Mau.vien,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
-  chuTieuDe: { flex: 1, fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
-  nutDong: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  chuTieuDe: { flex: 1, fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
+  nutDong: {
+    width: 40,
+    height: 40,
+    borderRadius: Co.bo,
+    backgroundColor: Mau.trang,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Bong.the,
+  },
 
-  danhSach: { padding: 14, paddingBottom: 24 },
+  danhSach: { padding: 16, paddingTop: 4, paddingBottom: 24 },
   dauDanhSach: { gap: 14 },
 
-  the: {
-    backgroundColor: Mau.trang,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    padding: 14,
-    gap: 10,
-  },
+  the: { ...theTrang, gap: 10 },
   hangThe: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   giuaThe: { flex: 1, gap: 3 },
   chuThe: { fontSize: Co.chuThuong, fontFamily: PhongChu.dam, color: Mau.chu },
@@ -315,28 +306,22 @@ const kieu = StyleSheet.create({
   chuNhomTieuDe: { flex: 1, fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.xam },
 
   dongBan: {
+    ...theTrang,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: Mau.trang,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    padding: 14,
-    marginTop: 10,
+    marginTop: 12,
   },
   chuNgay: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
-  nutKhoiPhuc: {
+  // Đang tải thì thay nút bằng vòng xoay kèm đúng chữ ấy, khỏi bấm thêm lần nữa.
+  dangTai: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 7,
     minHeight: Co.caoNutNho,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: Mau.chinhNhat,
+    paddingHorizontal: 12,
   },
-  chuNutKhoiPhuc: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.chinh },
+  chuDangTai: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.xam },
 
   trong: { padding: 24, paddingTop: 56, gap: 10, alignItems: 'center' },
   chuTrongTo: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },

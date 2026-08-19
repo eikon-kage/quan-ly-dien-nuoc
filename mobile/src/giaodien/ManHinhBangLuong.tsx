@@ -9,7 +9,7 @@ import { themUng } from '../nghiepvu/thaoTac';
 import { HopNhapSo } from './HopNhapSo';
 import { ManHinhBaoCaoTho } from './ManHinhBaoCaoTho';
 import { ManHinhQuyetToan } from './ManHinhQuyetToan';
-import { rungNhe } from './rungNhe';
+import { DauTrang, NutChip, theTrang } from './ThanhPhan';
 import { Co, Mau, PhongChu } from './thietKe';
 
 interface Props {
@@ -37,7 +37,6 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
       return;
     }
 
-    rungNhe();
     capNhat(themUng(duLieu, dangUng.id, homNay, soTien, ghiChu));
     datDangUng(null);
   }
@@ -48,14 +47,14 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
         Không còn mũi tên đổi tháng: chỉ có đúng một kỳ đang mở, không có gì để đổi qua
         đổi lại. Khoảng ngày ghi ngay dưới tiêu đề để biết đang tính từ hôm nào.
       */}
-      <View style={kieu.dauTrang}>
-        <Text style={kieu.chuTieuDe}>Kỳ này</Text>
-        <Text style={kieu.chuKhoang}>
-          {ky.dongs.length === 0
+      <DauTrang
+        tieuDe="Kỳ này"
+        phu={
+          ky.dongs.length === 0
             ? 'Chưa có công nào'
-            : `${Ngay.khoangGon(ky.tuNgay, ky.denNgay)} · ${Ngay.thu(ky.denNgay)}`}
-        </Text>
-      </View>
+            : `${Ngay.khoangGon(ky.tuNgay, ky.denNgay)} · ${Ngay.thu(ky.denNgay)}`
+        }
+      />
 
       <FlatList
         data={ky.dongs}
@@ -75,10 +74,11 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
               <Text style={kieu.chuTen} numberOfLines={1}>
                 {dong.tho.ten}
               </Text>
-              <Pressable style={kieu.nutUng} onPress={() => datDangUng(dong.tho)}>
-                <Feather name="arrow-up-right" size={12} color={Mau.chinh} />
-                <Text style={kieu.chuNutUng}>Ứng tiền</Text>
-              </Pressable>
+              <NutChip
+                nhan="Ứng tiền"
+                icon="arrow-up-right"
+                onPress={() => datDangUng(dong.tho)}
+              />
             </View>
 
             <Text style={kieu.chuPhu}>
@@ -143,10 +143,7 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
           */}
           <Pressable
             style={kieu.nutQuyetToan}
-            onPress={() => {
-              rungNhe();
-              datDangQuyetToan(true);
-            }}
+            onPress={() => datDangQuyetToan(true)}
           >
             <Feather name="check-circle" size={17} color={Mau.trang} />
             <Text style={kieu.chuNutQuyetToan}>Quyết toán kỳ này</Text>
@@ -189,40 +186,10 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
 const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
-  dauTrang: {
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: Mau.vien,
-  },
-  chuTieuDe: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
-  chuKhoang: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam, marginTop: 2 },
-
-  danhSach: { padding: 14, paddingBottom: 20 },
-  the: {
-    backgroundColor: Mau.trang,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    padding: 14,
-    marginBottom: 10,
-    gap: 7,
-  },
+  danhSach: { padding: 16, paddingTop: 4, paddingBottom: 20 },
+  the: { ...theTrang, marginBottom: 12, gap: 7 },
   dongTen: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   chuTen: { flex: 1, fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
-  nutUng: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    minHeight: Co.caoNutNho,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: Mau.chinhNhat,
-  },
-  chuNutUng: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.chinh },
 
   chuPhu: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
   dongSo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -252,14 +219,8 @@ const kieu = StyleSheet.create({
     textAlign: 'center',
   },
 
-  chanTrang: {
-    backgroundColor: Mau.trang,
-    padding: 12,
-    gap: 10,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Mau.vien,
-  },
+  // Nằm thẳng trên nền trang: thanh tab ngay dưới đã là mảng trắng nổi bóng rồi.
+  chanTrang: { paddingHorizontal: 16, paddingVertical: 12, gap: 10, alignItems: 'center' },
   chuTong: { fontSize: Co.chuThuong, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuTongSo: { fontFamily: PhongChu.dam, color: Mau.chu },
   nutQuyetToan: {

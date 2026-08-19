@@ -4,13 +4,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,7 +19,7 @@ import { docTien } from '../nghiepvu/nhapSo';
 import { datLuong, lichSuLuong, luongTaiNgay, luuTho, themTho, xoaMocLuong } from '../nghiepvu/thaoTac';
 import { HopChon } from './HopChon';
 import { HopNhapSo } from './HopNhapSo';
-import { rungNhe } from './rungNhe';
+import { NutChip, ONhap, theTrang } from './ThanhPhan';
 import { Co, Mau, PhongChu } from './thietKe';
 
 interface Props {
@@ -63,7 +61,6 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
       capNhat(luuTho(duLieu, { ...moiNhat, ten: tenSach, dangLam }));
     }
 
-    rungNhe();
     onDong();
   }
 
@@ -80,7 +77,6 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
     const tuNgay =
       ma === 'homNay' ? homNay : ma === 'dauThang' ? dauThang : dangApDung.tuNgay;
 
-    rungNhe();
     capNhat(datLuong(duLieu, moiNhat.id, tuNgay, soTienMoi));
     datSoTienMoi(null);
   }
@@ -98,7 +94,6 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
         onPress: () => {
           try {
             capNhat(xoaMocLuong(duLieu, moiNhat.id, tuNgay));
-            rungNhe();
           } catch {
             Alert.alert('Không xoá được', 'Thợ phải còn ít nhất một mốc tiền công.', [
               { text: 'Đóng' },
@@ -111,47 +106,45 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
 
   return (
     <Modal visible animationType="slide" onRequestClose={onDong}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={kieu.khung}
-      >
+      {/*
+        `behavior="padding"` cho cả iOS lẫn Android, không phân biệt hệ — xem ghi chú dài ở
+        [HopDay](./HopDay.tsx). Kèm `ScrollView` có `keyboardShouldPersistTaps="handled"` để
+        bấm được nút Lưu ngay khi bàn phím còn mở, không phải đóng bàn phím trước.
+      */}
+      <KeyboardAvoidingView behavior="padding" style={kieu.khung}>
         <SafeAreaView style={kieu.khung} edges={['top', 'bottom']}>
           <ScrollView contentContainerStyle={kieu.trong} keyboardShouldPersistTaps="handled">
             <Text style={kieu.tieuDe}>{moiNhat ? 'Sửa thợ' : 'Thêm thợ'}</Text>
 
-            <View style={kieu.khoi}>
-              <Text style={kieu.nhan}>Tên thợ</Text>
-              <TextInput
-                style={kieu.o}
-                value={ten}
-                onChangeText={datTen}
-                placeholder="Ví dụ: Anh Tuấn"
-                placeholderTextColor={Mau.xam}
-                autoFocus={moiNhat === null}
-              />
-            </View>
+            <ONhap
+              nhan="Tên thợ"
+              value={ten}
+              onChangeText={datTen}
+              placeholder="Ví dụ: Anh Tuấn"
+              autoFocus={moiNhat === null}
+            />
 
             {moiNhat === null ? (
               <View style={kieu.khoi}>
-                <Text style={kieu.nhan}>Tiền một công</Text>
-                <TextInput
-                  style={kieu.o}
+                <ONhap
+                  nhan="Tiền một công"
+                  coSo
                   value={tienMoi}
                   onChangeText={datTienMoi}
                   placeholder="Ví dụ: 300000"
-                  placeholderTextColor={Mau.xam}
                   keyboardType="number-pad"
                 />
                 <Text style={kieu.chuPhu}>Một ngày làm đủ sáng và chiều là 2 công.</Text>
               </View>
             ) : (
-              <View style={kieu.khoi}>
+              <View style={kieu.theLuong}>
                 <View style={kieu.dongNhan}>
                   <Text style={kieu.nhan}>Tiền công</Text>
-                  <Pressable style={kieu.nutNho} onPress={() => datDangNhapLuong(true)}>
-                    <Feather name="trending-up" size={12} color={Mau.chinh} />
-                    <Text style={kieu.chuNutNho}>Đổi lương</Text>
-                  </Pressable>
+                  <NutChip
+                    nhan="Đổi lương"
+                    icon="trending-up"
+                    onPress={() => datDangNhapLuong(true)}
+                  />
                 </View>
 
                 <Text style={kieu.tienLon}>{Ngay.tien(luongTaiNgay(moiNhat, homNay))}</Text>
@@ -240,35 +233,15 @@ const kieu = StyleSheet.create({
   tieuDe: { fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
 
   khoi: { gap: 7 },
+  // Khối tiền công gói vào một thẻ trắng: nó có tới bốn năm dòng, để trần thì trôi vào
+  // giữa các khối khác không biết đâu là đầu đâu là cuối.
+  theLuong: { ...theTrang, gap: 7 },
   dongNhan: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   nhan: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
   nhanNho: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.xam },
-  o: {
-    minHeight: Co.caoNut,
-    paddingVertical: 8,
-    borderRadius: Co.bo,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 14,
-    fontSize: Co.chuTieuDe,
-    fontFamily: PhongChu.thuong,
-    color: Mau.chu,
-  },
   chuPhu: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
 
   tienLon: { fontSize: 24, fontFamily: PhongChu.dam, color: Mau.chu },
-  nutNho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    minHeight: Co.caoNutNho,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: Mau.chinhNhat,
-  },
-  chuNutNho: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.chinh },
 
   lichSu: {
     marginTop: 8,

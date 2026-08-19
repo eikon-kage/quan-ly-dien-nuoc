@@ -7,8 +7,8 @@ import { DuLieuChamCong, KyLuong } from '../nghiepvu/kieu';
 import { baoCaoTrongKy, boChot, tongCuaKy } from '../nghiepvu/ky';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { ManHinhBaoCaoTho } from './ManHinhBaoCaoTho';
-import { rungNhe } from './rungNhe';
-import { Co, Mau, PhongChu } from './thietKe';
+import { DauTrang, theTrang } from './ThanhPhan';
+import { Bong, Co, Mau, PhongChu } from './thietKe';
 
 interface Props {
   duLieu: DuLieuChamCong;
@@ -31,7 +31,6 @@ export function ManHinhChiTietKy({ duLieu, ky, boChotDuoc, capNhat, onDong }: Pr
   const tong = tongCuaKy(ky);
 
   function lamBoChot() {
-    rungNhe();
     capNhat(boChot(duLieu, ky.id));
     onDong();
   }
@@ -39,16 +38,11 @@ export function ManHinhChiTietKy({ duLieu, ky, boChotDuoc, capNhat, onDong }: Pr
   return (
     <Modal visible animationType="slide" onRequestClose={onDong}>
       <SafeAreaView style={kieu.khung} edges={['top', 'bottom']}>
-        <View style={kieu.dauTrang}>
-          <Pressable style={kieu.nutDong} onPress={onDong} accessibilityLabel="Đóng">
-            <Feather name="chevron-left" size={22} color={Mau.chinh} />
-          </Pressable>
-          <View style={kieu.giuaDauTrang}>
-            <Text style={kieu.chuTieuDe}>{Ngay.khoangGon(ky.tuNgay, ky.denNgay)}</Text>
-            <Text style={kieu.chuPhu}>Chốt ngày {Ngay.ngayGon(ky.denNgay)}</Text>
-          </View>
-          <View style={kieu.nutDong} />
-        </View>
+        <DauTrang
+          tieuDe={Ngay.khoangGon(ky.tuNgay, ky.denNgay)}
+          phu={`Chốt ngày ${Ngay.ngayGon(ky.denNgay)}`}
+          onLui={onDong}
+        />
 
         <ScrollView contentContainerStyle={kieu.trong}>
           {ky.dongs.map((dong) => (
@@ -125,7 +119,6 @@ export function ManHinhChiTietKy({ duLieu, ky, boChotDuoc, capNhat, onDong }: Pr
               <Pressable
                 style={[kieu.nutBoChot, hoiBoChot && kieu.nutBoChotChac]}
                 onPress={() => {
-                  rungNhe();
                   if (hoiBoChot) {
                     lamBoChot();
                   } else {
@@ -193,30 +186,8 @@ export function ManHinhChiTietKy({ duLieu, ky, boChotDuoc, capNhat, onDong }: Pr
 const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
-  dauTrang: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Mau.trang,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Mau.vien,
-  },
-  nutDong: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  giuaDauTrang: { flex: 1, alignItems: 'center' },
-  chuTieuDe: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
-  chuPhu: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
-
-  trong: { padding: 14, paddingBottom: 20 },
-  the: {
-    backgroundColor: Mau.trang,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    padding: 14,
-    marginBottom: 10,
-    gap: 7,
-  },
+  trong: { padding: 16, paddingTop: 4, paddingBottom: 20 },
+  the: { ...theTrang, marginBottom: 12, gap: 7 },
   dongTen: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   chuTen: { flex: 1, fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
   chuCong: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
@@ -282,12 +253,15 @@ const kieu = StyleSheet.create({
   },
   chuNutThoi: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, color: Mau.xam },
 
+  // Không có thanh tab dưới màn hình này nên chân trang vẫn là mảng trắng, nổi bằng bóng.
   chanTrang: {
     backgroundColor: Mau.trang,
-    padding: 12,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     gap: 6,
-    borderTopWidth: 1,
-    borderTopColor: Mau.vien,
+    ...Bong.noi,
   },
   chuNhanTong: { fontSize: Co.chuThuong, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuTongTra: { fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.xanhLa },

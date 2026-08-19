@@ -1,17 +1,10 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import * as Ngay from '../nghiepvu/ngayViet';
 import { docTien } from '../nghiepvu/nhapSo';
+import { HopDay } from './HopDay';
+import { ONhap } from './ThanhPhan';
 import { Co, Mau, PhongChu } from './thietKe';
 
 interface Props {
@@ -36,6 +29,9 @@ interface Props {
 /**
  * Hộp nhập một con số. Tự vẽ vì Alert.prompt chỉ có trên iOS, và vì hộp mặc định
  * không chỉnh được cỡ chữ.
+ *
+ * Phần nền mờ, tay nắm và chuyện đẩy hộp lên khi bàn phím mở nằm hết trong
+ * [HopDay](./HopDay.tsx) — dùng chung với hộp chọn và hộp chọn ngày.
  */
 export function HopNhapSo({
   tieuDe,
@@ -58,139 +54,75 @@ export function HopNhapSo({
   const ghiDuoc = so !== null && so > 0 && loiHienTai === null;
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onDong}>
-      <KeyboardAvoidingView
-        style={kieu.nenMo}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <HopDay onDong={onDong}>
+      <Text style={kieu.tieuDe}>{tieuDe}</Text>
+
+      {/*
+        Câu hỏi ("Thợ ứng bao nhiêu?") làm nhãn nằm trong ô, không còn là một dòng chữ
+        riêng phía trên — mắt đọc câu hỏi rồi gõ luôn, không phải nhảy qua một khoảng trống.
+      */}
+      <ONhap
+        nhan={moTa}
+        coSo
+        value={chu}
+        onChangeText={datChu}
+        placeholder={goiY}
+        accessibilityLabel={goiY}
+        keyboardType={banPhim}
+        autoFocus
+      />
+
+      {/*
+        Đọc lại số vừa gõ ("1.500.000 đ") để bắt lỗi thừa hoặc thiếu số 0.
+        Gõ quá tay thì chỗ này thành lời nhắc màu đỏ.
+      */}
+      <Text style={[kieu.docLai, loiHienTai !== null && kieu.docLaiLoi]}>
+        {loiHienTai ?? (so !== null && so > 0 ? hienLai(so) : ' ')}
+      </Text>
+
+      {/*
+        Ô chữ để trắng cũng ghi được — bắt điền thì lần nào vội cũng phải gõ bừa
+        một chữ cho xong.
+      */}
+      {oChu !== undefined && (
+        <ONhap
+          nhan={oChu.nhan}
+          value={chuThem}
+          onChangeText={datChuThem}
+          placeholder={oChu.goiY}
+          maxLength={60}
+        />
+      )}
+
+      <Pressable
+        style={[kieu.nut, ghiDuoc ? kieu.nutBat : kieu.nutTat]}
+        onPress={() => ghiDuoc && onGhi(so, chuThem.trim())}
+        disabled={!ghiDuoc}
       >
-        <Pressable style={kieu.phuKin} onPress={onDong} />
+        <Text style={[kieu.chuNut, { color: ghiDuoc ? Mau.trang : Mau.xam }]}>Ghi</Text>
+      </Pressable>
 
-        <Pressable style={kieu.hop} onPress={() => {}}>
-          <View style={kieu.tay} />
-          <Text style={kieu.tieuDe}>{tieuDe}</Text>
-          <Text style={kieu.moTa}>{moTa}</Text>
-
-          {/*
-            Chữ gợi ý tự vẽ chứ không dùng placeholder: Android có lỗi để con nháy
-            nhảy ra sát mép phải khi ô căn giữa mà còn trống và có placeholder.
-            Ô trống thật thì con nháy nằm đúng giữa.
-          */}
-          <View>
-            <TextInput
-              style={kieu.o}
-              value={chu}
-              onChangeText={datChu}
-              accessibilityLabel={goiY}
-              keyboardType={banPhim}
-              autoFocus
-            />
-            {chu === '' && (
-              <View style={kieu.phuGoiY} pointerEvents="none">
-                <Text style={kieu.chuGoiY}>{goiY}</Text>
-              </View>
-            )}
-          </View>
-
-          {/*
-            Đọc lại số vừa gõ ("1.500.000 đ") để bắt lỗi thừa hoặc thiếu số 0.
-            Gõ quá tay thì chỗ này thành lời nhắc màu đỏ.
-          */}
-          <Text style={[kieu.docLai, loiHienTai !== null && kieu.docLaiLoi]}>
-            {loiHienTai ?? (so !== null && so > 0 ? hienLai(so) : ' ')}
-          </Text>
-
-          {/*
-            Ô chữ để trắng cũng ghi được — bắt điền thì lần nào vội cũng phải gõ bừa
-            một chữ cho xong. Chữ căn trái vì đây là câu chữ, không phải con số.
-          */}
-          {oChu !== undefined && (
-            <>
-              <Text style={kieu.nhanOChu}>{oChu.nhan}</Text>
-              <TextInput
-                style={[kieu.o, kieu.oChu]}
-                value={chuThem}
-                onChangeText={datChuThem}
-                placeholder={oChu.goiY}
-                placeholderTextColor={Mau.xam}
-                maxLength={60}
-              />
-            </>
-          )}
-
-          <Pressable
-            style={[kieu.nut, ghiDuoc ? kieu.nutBat : kieu.nutTat]}
-            onPress={() => ghiDuoc && onGhi(so, chuThem.trim())}
-            disabled={!ghiDuoc}
-          >
-            <Text style={[kieu.chuNut, { color: ghiDuoc ? Mau.trang : Mau.xam }]}>Ghi</Text>
-          </Pressable>
-
-          <Pressable style={[kieu.nut, kieu.nutThoi]} onPress={onDong}>
-            <Text style={[kieu.chuNut, { color: Mau.xam }]}>Thôi</Text>
-          </Pressable>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </Modal>
+      <Pressable style={[kieu.nut, kieu.nutThoi]} onPress={onDong}>
+        <Text style={[kieu.chuNut, { color: Mau.xam }]}>Thôi</Text>
+      </Pressable>
+    </HopDay>
   );
 }
 
 const kieu = StyleSheet.create({
-  nenMo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(35,42,53,0.35)' },
-  phuKin: { flex: 1 },
-  hop: {
-    backgroundColor: Mau.trang,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    padding: 14,
-    paddingBottom: 28,
-    gap: 8,
-  },
-  tay: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Mau.vien,
-    alignSelf: 'center',
-    marginBottom: 6,
-  },
   tieuDe: {
-    fontSize: Co.chuThuong,
+    fontSize: Co.chuTieuDe,
     fontFamily: PhongChu.dam,
     color: Mau.chu,
-    textAlign: 'center',
+    paddingBottom: 2,
   },
-  moTa: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam, textAlign: 'center' },
-  o: {
-    minHeight: Co.caoNut,
-    paddingVertical: 8,
-    borderRadius: Co.bo,
-    borderWidth: 1,
-    borderColor: Mau.vien,
-    backgroundColor: Mau.nen,
-    paddingHorizontal: 14,
-    fontSize: 20,
-    fontFamily: PhongChu.vua,
-    color: Mau.chu,
-    textAlign: 'center',
-  },
-  phuGoiY: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chuGoiY: { fontSize: 20, fontFamily: PhongChu.vua, color: Mau.xam },
-  nhanOChu: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.xam, marginLeft: 2 },
-  oChu: { fontSize: Co.chuThuong, textAlign: 'left' },
+  // Căn trái, thẳng cột với ô nhập ngay trên nó.
   docLai: {
     fontSize: Co.chuPhu,
     fontFamily: PhongChu.vua,
     color: Mau.xanhLa,
-    textAlign: 'center',
     minHeight: 18,
+    marginLeft: 2,
   },
   docLaiLoi: { color: Mau.do },
   nut: {
@@ -204,6 +136,6 @@ const kieu = StyleSheet.create({
   },
   nutBat: { backgroundColor: Mau.chinh, borderColor: Mau.chinh },
   nutTat: { backgroundColor: Mau.nen, borderColor: Mau.vien },
-  nutThoi: { backgroundColor: Mau.nen, borderColor: Mau.vien },
+  nutThoi: { backgroundColor: Mau.trang, borderColor: Mau.vien },
   chuNut: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
 });
