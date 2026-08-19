@@ -6,6 +6,7 @@ import * as Ngay from '../../nghiepvu/ngayViet';
 import { cham, luuTho, themTho } from '../../nghiepvu/thaoTac';
 import { MAC_DINH } from '../../nghiepvu/vaiMay';
 import { DieuKhienDoiChieu } from '../dungDoiChieu';
+import { DieuKhienNhom } from '../dungSupabase';
 import { DieuKhienSaoLuu, TrangThaiSaoLuu } from '../dungSaoLuu';
 import { ManHinhTho } from '../ManHinhTho';
 
@@ -42,6 +43,17 @@ function doiChieuGia(sua: Partial<DieuKhienDoiChieu> = {}): DieuKhienDoiChieu {
   };
 }
 
+/** Nhóm Supabase giả: máy đã điền cấu hình nhưng chưa nối. */
+function nhomGia(sua: Partial<DieuKhienNhom['trangThai']> = {}): DieuKhienNhom {
+  return {
+    trangThai: { hoTro: true, taiKhoan: null, dangChay: false, loi: null, nhac: null, ...sua },
+    noiAnDanh: jest.fn(() => Promise.resolve()),
+    noiEmail: jest.fn(() => Promise.resolve()),
+    taoTaiKhoan: jest.fn(() => Promise.resolve()),
+    ngat: jest.fn(() => Promise.resolve()),
+  };
+}
+
 const chiaSe = chiaSeExcel as jest.MockedFunction<typeof chiaSeExcel>;
 const HOM_NAY = Ngay.homNay();
 
@@ -59,6 +71,7 @@ function dung(duLieu: DuLieuChamCong, saoLuu: DieuKhienSaoLuu = saoLuuGia()) {
       caiDat={MAC_DINH}
       datCaiDat={jest.fn()}
       dieuKhien={doiChieuGia()}
+      nhom={nhomGia()}
     />,
   );
 }

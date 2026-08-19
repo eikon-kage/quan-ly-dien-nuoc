@@ -11,8 +11,10 @@ import { luongTaiNgay, tatCaTho } from '../nghiepvu/thaoTac';
 import { CaiDatVai } from '../nghiepvu/vaiMay';
 import { DieuKhienDoiChieu } from './dungDoiChieu';
 import { DieuKhienSaoLuu } from './dungSaoLuu';
+import { DieuKhienNhom } from './dungSupabase';
 import { HopSaoLuu } from './HopSaoLuu';
 import { HopSuaTho } from './HopSuaTho';
+import { HopNoiNhom } from './HopNoiNhom';
 import { HopVaiMay } from './HopVaiMay';
 import { ManHinhDoiChieu } from './ManHinhDoiChieu';
 import { ManHinhNhapExcel } from './ManHinhNhapExcel';
@@ -26,12 +28,13 @@ interface Props {
   caiDat: CaiDatVai;
   datCaiDat: (moi: CaiDatVai) => void;
   dieuKhien: DieuKhienDoiChieu;
+  nhom: DieuKhienNhom;
 }
 
 /** Trạng thái của nút xuất Excel. */
 type TrangThaiXuat = 'ranh' | 'dangLam' | 'loi';
 
-export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhien }: Props) {
+export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhien, nhom }: Props) {
   /** null = đang đóng, 'them' = thêm mới, còn lại là thợ đang sửa. */
   const [dangMo, datDangMo] = useState<Tho | 'them' | null>(null);
   const [dangXuat, datDangXuat] = useState<TrangThaiXuat>('ranh');
@@ -39,6 +42,7 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
   const [moNhap, datMoNhap] = useState(false);
   const [moDoiChieu, datMoDoiChieu] = useState(false);
   const [moVaiMay, datMoVaiMay] = useState(false);
+  const [moNhom, datMoNhom] = useState(false);
 
   const thos = tatCaTho(duLieu);
   const homNay = Ngay.homNay();
@@ -262,14 +266,37 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
         thì chưa có thợ nào, chưa có buổi nào — nếu ẩn theo `coDuLieu` thì đúng người cần
         nó nhất lại không có đường vào để nhận mã mời.
       */}
-      <Pressable
-        style={kieu.dongVaiMay}
-        onPress={() => datMoVaiMay(true)}
-        accessibilityRole="button"
-      >
-        <Feather name="smartphone" size={15} color={Mau.xam} />
-        <Text style={kieu.chuVaiMay}>Máy này: máy của chủ · đổi</Text>
-      </Pressable>
+      <View style={kieu.hangCaiDat}>
+        <Pressable
+          style={kieu.dongVaiMay}
+          onPress={() => datMoVaiMay(true)}
+          accessibilityRole="button"
+        >
+          <Feather name="smartphone" size={15} color={Mau.xam} />
+          <Text style={kieu.chuVaiMay}>Máy của chủ · đổi</Text>
+        </Pressable>
+
+        {nhom.trangThai.hoTro && (
+          <Pressable
+            style={kieu.dongVaiMay}
+            onPress={() => datMoNhom(true)}
+            accessibilityRole="button"
+          >
+            <Feather
+              name={nhom.trangThai.taiKhoan !== null ? 'users' : 'link'}
+              size={15}
+              color={nhom.trangThai.taiKhoan !== null ? Mau.xanhLa : Mau.xam}
+            />
+            <Text style={kieu.chuVaiMay}>
+              {nhom.trangThai.taiKhoan !== null ? 'Đã nối nhóm' : 'Chưa nối nhóm'}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {moNhom && (
+        <HopNoiNhom vai="chu" dieuKhien={nhom} onDong={() => datMoNhom(false)} />
+      )}
 
       {moVaiMay && (
         <HopVaiMay
@@ -304,13 +331,13 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
 const kieu = StyleSheet.create({
   khung: { flex: 1, backgroundColor: Mau.nen },
 
+  hangCaiDat: { flexDirection: 'row', justifyContent: 'center', gap: 18, paddingBottom: 8 },
   dongVaiMay: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     minHeight: Co.caoNutNho,
-    paddingBottom: 8,
   },
   chuVaiMay: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
 

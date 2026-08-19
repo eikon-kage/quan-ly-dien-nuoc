@@ -17,6 +17,7 @@ import { ManHinhTho } from './src/giaodien/ManHinhTho';
 import { ManHinhThoTuCham } from './src/giaodien/ManHinhThoTuCham';
 import { dungDoiChieu } from './src/giaodien/dungDoiChieu';
 import { dungSaoLuu } from './src/giaodien/dungSaoLuu';
+import { dungSupabase } from './src/giaodien/dungSupabase';
 import { Bong, Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './src/giaodien/thietKe';
 import { DuLieuChamCong } from './src/nghiepvu/kieu';
 import * as LuuTru from './src/nghiepvu/luuTru';
@@ -63,6 +64,9 @@ export default function App() {
    */
   const doiChieu = dungDoiChieu(duLieu, caiDat ?? VaiMay.MAC_DINH);
 
+  /** Kết nối vào nhóm trên Supabase — cả hai vai đều dùng, nên cũng giữ ở đây. */
+  const nhom = dungSupabase();
+
   useEffect(() => {
     LuuTru.doc().then(datDuLieu);
     VaiMay.doc().then(datCaiDat);
@@ -103,6 +107,7 @@ export default function App() {
             caiDat={caiDat}
             datCaiDat={doiVai}
             dieuKhien={doiChieu}
+            nhom={nhom}
           />
         ) : (
           <>
@@ -118,6 +123,7 @@ export default function App() {
                   caiDat={caiDat}
                   datCaiDat={doiVai}
                   dieuKhien={doiChieu}
+                  nhom={nhom}
                 />
               )}
             </View>

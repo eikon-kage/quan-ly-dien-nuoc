@@ -15,6 +15,7 @@ import { SoCong, catSo } from '../../nghiepvu/soCong';
 import { cham, dangCham, themTho } from '../../nghiepvu/thaoTac';
 import { CaiDatVai } from '../../nghiepvu/vaiMay';
 import { DieuKhienDoiChieu } from '../dungDoiChieu';
+import { DieuKhienNhom } from '../dungSupabase';
 import { ManHinhThoTuCham } from '../ManHinhThoTuCham';
 
 const HOM_NAY = Ngay.homNay();
@@ -44,6 +45,17 @@ function dieuKhienGia(cac: SoDaNhan[] = []): DieuKhienDoiChieu {
   };
 }
 
+/** Nhóm Supabase giả: máy đã điền cấu hình nhưng chưa nối. */
+function nhomGia(sua: Partial<DieuKhienNhom['trangThai']> = {}): DieuKhienNhom {
+  return {
+    trangThai: { hoTro: true, taiKhoan: null, dangChay: false, loi: null, nhac: null, ...sua },
+    noiAnDanh: jest.fn(() => Promise.resolve()),
+    noiEmail: jest.fn(() => Promise.resolve()),
+    taoTaiKhoan: jest.fn(() => Promise.resolve()),
+    ngat: jest.fn(() => Promise.resolve()),
+  };
+}
+
 function dung(
   duLieu: DuLieuChamCong,
   caiDat: CaiDatVai,
@@ -57,6 +69,7 @@ function dung(
       caiDat={caiDat}
       datCaiDat={jest.fn()}
       dieuKhien={dieuKhien}
+      nhom={nhomGia()}
     />,
   );
   return capNhat;

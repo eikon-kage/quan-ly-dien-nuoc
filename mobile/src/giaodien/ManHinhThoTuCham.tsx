@@ -9,7 +9,9 @@ import { soCuaMay } from '../nghiepvu/soCong';
 import { boCham, cham, dangCham, timTho } from '../nghiepvu/thaoTac';
 import { CaiDatVai } from '../nghiepvu/vaiMay';
 import { DieuKhienDoiChieu } from './dungDoiChieu';
+import { DieuKhienNhom } from './dungSupabase';
 import { HopChon } from './HopChon';
+import { HopNoiNhom } from './HopNoiNhom';
 import { HopVaiMay } from './HopVaiMay';
 import { ManHinhDoiChieu } from './ManHinhDoiChieu';
 import { DauTrang, theTrang } from './ThanhPhan';
@@ -39,11 +41,13 @@ interface Props {
   caiDat: CaiDatVai;
   datCaiDat: (moi: CaiDatVai) => void;
   dieuKhien: DieuKhienDoiChieu;
+  nhom: DieuKhienNhom;
 }
 
-export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien }: Props) {
+export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien, nhom }: Props) {
   const [moDoiChieu, datMoDoiChieu] = useState(false);
   const [moVaiMay, datMoVaiMay] = useState(false);
+  const [moNhom, datMoNhom] = useState(false);
   /** Ô đang mở hộp chọn số công. */
   const [dangSua, datDangSua] = useState<{ ngay: string; buoi: BuoiLam } | null>(null);
 
@@ -205,10 +209,25 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
           </View>
         ))}
 
-        <Pressable style={kieu.dongCaiDat} onPress={() => datMoVaiMay(true)}>
-          <Feather name="user" size={15} color={Mau.xam} />
-          <Text style={kieu.chuPhu}>Máy của thợ · đổi lại</Text>
-        </Pressable>
+        <View style={kieu.hangCaiDat}>
+          <Pressable style={kieu.dongCaiDat} onPress={() => datMoVaiMay(true)}>
+            <Feather name="user" size={15} color={Mau.xam} />
+            <Text style={kieu.chuPhu}>Máy của thợ · đổi lại</Text>
+          </Pressable>
+
+          {nhom.trangThai.hoTro && (
+            <Pressable style={kieu.dongCaiDat} onPress={() => datMoNhom(true)}>
+              <Feather
+                name={nhom.trangThai.taiKhoan !== null ? 'users' : 'link'}
+                size={15}
+                color={nhom.trangThai.taiKhoan !== null ? Mau.xanhLa : Mau.xam}
+              />
+              <Text style={kieu.chuPhu}>
+                {nhom.trangThai.taiKhoan !== null ? 'Đã nối nhóm' : 'Chưa nối nhóm'}
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </ScrollView>
 
       {dangSua !== null && (
@@ -224,6 +243,8 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
           onDong={() => datDangSua(null)}
         />
       )}
+
+      {moNhom && <HopNoiNhom vai="tho" dieuKhien={nhom} onDong={() => datMoNhom(false)} />}
 
       {moVaiMay && (
         <HopVaiMay
@@ -337,12 +358,12 @@ const kieu = StyleSheet.create({
   chuOCham: { flexShrink: 1, fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
   chuOChamTo: { fontSize: Co.chuTieuDe },
 
+  hangCaiDat: { flexDirection: 'row', justifyContent: 'center', gap: 18, marginTop: 8 },
   dongCaiDat: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     minHeight: Co.caoNutNho,
-    marginTop: 8,
   },
 });
