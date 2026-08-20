@@ -80,9 +80,8 @@ thực tế chỉ hai nút đầu là dùng hằng ngày. Nay mỗi khu giữ ng
 | Ở đâu | Để ngoài | Trong nút ⋯ |
 | --- | --- | --- |
 | Trang chủ, chân bảng khách | Mở đơn hàng · Thu tiền | sửa khách · xoá khách |
-| Đơn hàng, dải tiêu đề | Thu tiền của khách | bảng giá riêng · nhắc nợ · hoàn tác · làm lại |
-| Đơn hàng, thanh hoá đơn | + Hoá đơn mới · In / xem trước | chốt (mở lại) · trả cho hoá đơn này · sửa mã · xoá hoá đơn · Excel vào/ra |
-| Đơn hàng, hàng nhập hàng | + Thêm dòng · − Trả lại | nhập nhiều dòng · bộ hàng thường dùng |
+| Đơn hàng, dải tiêu đề | năm · hoá đơn · + Hoá đơn mới · In / xem trước | thu tiền · trả cho hoá đơn · chốt (mở lại) · sửa mã · xoá hoá đơn · nhập nhiều dòng · bảng giá riêng · nhắc nợ · hoàn tác · làm lại · Excel vào/ra |
+| Đơn hàng, hàng nhập hàng | + Thêm dòng · − Trả lại | *(không còn)* |
 | Đơn hàng, thanh tổng tiền | *(chỉ còn nút ⋯)* | chèn dòng · chuyển lên/xuống · xoá dòng |
 | Sổ công nợ | Mở đơn hàng · Thu tiền | soạn tin nhắc nợ · xuất Excel |
 | Sao lưu | Sao lưu ngay | xuất Excel · mở thư mục · khôi phục |
@@ -95,11 +94,49 @@ không mờ của từng dòng menu tính lại đúng lúc mở menu.
 
 ## Màn đơn hàng: chỗ dành cho bảng chi tiết
 
-Bảng chi tiết hàng đã lấy là thứ ngồi nhìn cả ngày, nên hai thanh nút phía trên bị dồn lại:
-việc của khách chuyển lên nằm chung dải tiêu đề xanh, chọn năm nhập vào cùng hàng với chọn hoá
-đơn, hàng "nhập nhiều dòng / bộ hàng thường dùng" và hai nút chèn / xoá dòng thu về nút `⋯`.
-Cộng lại bảng chi tiết cao thêm **152px** — bỏ hẳn thanh công cụ 76px, hàng nút phụ 52px, và
-mấy dòng còn lại bớt mỗi dòng vài px — mà không mất việc nào.
+Bảng chi tiết hàng đã lấy là thứ ngồi nhìn cả ngày. Mọi thứ phía trên nó dồn hết vào **một dải
+tiêu đề duy nhất**:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Ông Long (thợ xây)      [2026] [HD2026-02 · 02/06 · đã chốt] [+ Hoá đơn mới] │
+│ ĐT: 0912 345 678 · Xóm 5, Hải Minh        [IN / XEM TRƯỚC] [⋯] [Đóng (Esc)]  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ NGÀY LẤY      TÊN HÀNG        ĐƠN VỊ  ĐƠN GIÁ  SỐ LƯỢNG  [+ THÊM DÒNG] [−]   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ bảng chi tiết hàng đã lấy                                                    │
+```
+
+So với bản trước, ba thứ bị bỏ hẳn:
+
+- **thanh công cụ 76px** (bảng giá, nhắc nợ, hoàn tác, làm lại) — vào nút `⋯`;
+- **thanh chọn hoá đơn 62px** — hai ô chọn dời lên dải tiêu đề, nằm ngang hàng tên khách;
+- **dòng "CHI TIẾT HOÁ ĐƠN HD… · mở ngày… · 2 dòng"** — mã, ngày và trạng thái chốt đã hiện
+  ngay trong ô chọn hoá đơn nên dòng đó chỉ nhắc lại; chưa có hoá đơn nào thì nhắc ở thanh dưới.
+
+Cộng cả hàng nút phụ trong khối nhập hàng, bảng chi tiết cao thêm khoảng **240px** so với bản
+theo Figma đầu tiên.
+
+Thanh dưới cùng không còn dòng nhắc phím tắt dài; nó chỉ nói việc vừa làm ("Đã xoá 3 dòng. Bấm
+Ctrl+Z để lấy lại.") và nhắc ô còn thiếu.
+
+## Nhập hàng: Enter đi một đường
+
+Gõ tên hàng → `Enter` sang thẳng **ô số lượng** (đơn vị và đơn giá phần mềm tự điền theo danh
+mục, gõ tay chỉ khi cần sửa) → `Enter` là ghi dòng. Thiếu ô nào thì **không có hộp thoại chặn
+giữa**: thanh dưới nhắc một câu, con trỏ nhảy về đúng ô còn thiếu. Nhập cả chục dòng liền tay
+mới không bị mất nhịp.
+
+Ô NGÀY LẤY to hẳn ra (200 × 40px, chữ 14pt, lịch bung ra cũng đặt cỡ chữ riêng) — trong hàng
+nhập thì đây là ô phải bấm chuột nhiều nhất.
+
+## Chọn nhiều dòng rồi làm một lượt
+
+Bảng chi tiết cho chọn nhiều dòng: `Ctrl`+bấm để chọn thêm từng dòng, `Shift`+bấm để chọn cả
+dải. Xoá (`Delete`) và chuyển lên / xuống (`Alt+↑` / `Alt+↓`) áp cho **cả nhóm đang chọn**,
+ghi thành một bước hoàn tác duy nhất. Chuyển xuống thì chạy từ dòng cuối nhóm lên, chuyển lên
+thì từ dòng đầu xuống — làm ngược lại là cả nhóm dồn cục vào nhau. Chuyển xong nhóm vẫn được
+chọn, bấm `Alt+↓` liên tiếp là cả nhóm đi tiếp.
 
 ## Chỗ làm khác bản thiết kế
 

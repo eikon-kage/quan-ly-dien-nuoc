@@ -72,6 +72,9 @@ public static class Theme
     public static readonly Font FontThuong = new("Segoe UI", 12F);
     public static readonly Font FontDam = new("Segoe UI", 12F, FontStyle.Bold);
     public static readonly Font FontNhap = new("Segoe UI", 13F);
+
+    /// <summary>Cỡ chữ cho ô nhập cần bấm nhiều — ô chọn ngày và lịch bung ra của nó.</summary>
+    public static readonly Font FontNhapTo = new("Segoe UI", 14F);
     public static readonly Font FontLuoi = new("Segoe UI", 12.5F);
     public static readonly Font FontLuoiDam = new("Segoe UI", 12.5F, FontStyle.Bold);
     public static readonly Font FontSo = new("Segoe UI", 15F, FontStyle.Bold);
@@ -564,13 +567,23 @@ public static class Theme
     }
 
     /// <summary>Một ô nhập có nhãn nằm phía trên, gộp trong một panel để xếp bằng FlowLayoutPanel.</summary>
-    public static Panel Truong(string nhan, Control dieuKhien, int rong)
+    /// <param name="cao">
+    /// Chiều cao ô nhập. Để 0 là lấy mặc định (36 cho ô chữ, 34 cho nút và ô chọn ngày).
+    /// Truyền số lớn hơn thì panel cao theo, dùng cho ô cần bấm nhiều như ô chọn ngày.
+    /// </param>
+    public static Panel Truong(string nhan, Control dieuKhien, int rong, int cao = 0)
     {
+        var caoO = cao > 0 ? cao : dieuKhien is TextBox { Multiline: false } ? 36 : 34;
+
+        // Nhãn cách ô nhập 8px. Trước đây nhãn nằm dán vào đầu ô, hai thứ chữ khác cỡ dính
+        // nhau nhìn rất chật.
+        const int DinhO = 28;
+
         var panel = new Panel
         {
             Width = rong,
-            Height = 66,
-            Margin = new Padding(0, 0, 14, 0),
+            Height = Math.Max(66, DinhO + caoO + 4),
+            Margin = new Padding(0, 0, 18, 0),
         };
 
         var lbl = new Label
@@ -579,7 +592,7 @@ public static class Theme
             Font = FontNhan,
             ForeColor = Xam,
             Location = new Point(0, 0),
-            Size = new Size(rong, 24),
+            Size = new Size(rong, 20),
             TextAlign = ContentAlignment.MiddleLeft,
         };
 
@@ -587,8 +600,8 @@ public static class Theme
         // nguyên, đưa vào khung nữa là vẽ đè lên phần Windows tự vẽ.
         if (dieuKhien is TextBox { Multiline: false } o)
         {
-            var hop = HopO(o, rong);
-            hop.Location = new Point(0, 24);
+            var hop = HopO(o, rong, caoO);
+            hop.Location = new Point(0, DinhO);
             panel.Controls.Add(lbl);
             panel.Controls.Add(hop);
             return panel;
@@ -600,9 +613,12 @@ public static class Theme
             cbo.BackColor = Trang;
         }
 
-        dieuKhien.Location = new Point(0, 26);
         dieuKhien.Width = rong;
-        dieuKhien.Height = 32;
+        dieuKhien.Height = caoO;
+
+        // ComboBox khoá chiều cao theo cỡ chữ, kéo cao không được. Ô nào thấp hơn mức chung của
+        // hàng thì đặt vào giữa, để các ô trong một hàng nhìn ngang nhau.
+        dieuKhien.Location = new Point(0, DinhO + Math.Max(0, (caoO - dieuKhien.Height) / 2));
 
         panel.Controls.Add(lbl);
         panel.Controls.Add(dieuKhien);
@@ -783,6 +799,11 @@ public static class Theme
         {
             cot.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             cot.DefaultCellStyle.Padding = new Padding(8, 4, 12, 4);
+
+            // Tên cột phải căn cùng chiều với con số bên dưới, kèm đúng lề phải: cột tiền căn
+            // phải mà tên cột nằm sát mép trái thì nhìn như hai cột khác nhau.
+            cot.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+            cot.HeaderCell.Style.Padding = new Padding(8, 0, 12, 0);
         }
 
         return cot;
