@@ -567,6 +567,78 @@ public static class Theme
     }
 
     /// <summary>
+    /// Nhãn của ô nhập. Tự vẽ chứ không để Label vẽ, vì hai chuyện:
+    ///
+    /// <para>
+    /// 1. **Đo theo bề ngang thật.** Cỡ chữ phải đo lúc vẽ, trên đúng bề ngang của nhãn sau khi
+    /// Windows phóng to giao diện. Đo sẵn lúc dựng là đem chiều dài chữ tính bằng điểm ảnh thật
+    /// đi so với bề ngang chưa phóng — máy đặt cỡ chữ 125% là so lệch hẳn, rồi chữ bị cắt.
+    /// </para>
+    ///
+    /// <para>
+    /// 2. **Chừa chỗ cho dấu.** Chữ hoa tiếng Việt có dấu cả trên ("Ầ") lẫn dưới ("Ị"), cao hơn
+    /// chữ hoa tiếng Anh. Ô nhãn chật một hai điểm ảnh là cắt mất dấu, mà cắt dấu thì đọc ra chữ
+    /// khác.
+    /// </para>
+    /// </summary>
+    private sealed class NhanO : Label
+    {
+        private Font? _fontHa;
+        private string _khoaFontHa = string.Empty;
+
+        public NhanO()
+        {
+            SetStyle(
+                ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw,
+                true);
+            AutoSize = false;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            e.Graphics.Clear(BackColor);
+            TextRenderer.DrawText(
+                e.Graphics,
+                Text,
+                PhongVua(),
+                ClientRectangle,
+                ForeColor,
+                TextFormatFlags.Left
+                | TextFormatFlags.VerticalCenter
+                | TextFormatFlags.SingleLine
+                | TextFormatFlags.EndEllipsis
+                | TextFormatFlags.NoPrefix);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _fontHa?.Dispose();
+                _fontHa = null;
+            }
+
+            base.Dispose(disposing);
+        }
+
+        private Font PhongVua()
+        {
+            var khoa = $"{Text}|{Font.Size}|{ClientSize.Width}";
+            if (_khoaFontHa == khoa)
+            {
+                return _fontHa ?? Font;
+            }
+
+            _khoaFontHa = khoa;
+            _fontHa?.Dispose();
+
+            var vua = PhongVuaBeNgang(Text, Font, ClientSize.Width);
+            _fontHa = ReferenceEquals(vua, Font) ? null : vua;
+            return vua;
+        }
+    }
+
+    /// <summary>
     /// Phông vừa bề ngang cho một dòng chữ: chữ dài hơn chỗ có thì hạ cỡ từng nửa điểm cho vừa.
     /// Nhãn trên ô nhập đặt cứng theo bề ngang của ô, mà chữ tiếng Việt đủ dấu thì dài hơn ước
     /// lượng — không đo lại là cắt mất chữ.
@@ -602,9 +674,10 @@ public static class Theme
     {
         var caoO = cao > 0 ? cao : dieuKhien is TextBox { Multiline: false } ? 36 : 34;
 
-        // Nhãn cách ô nhập 8px. Trước đây nhãn nằm dán vào đầu ô, hai thứ chữ khác cỡ dính
-        // nhau nhìn rất chật.
-        const int DinhO = 28;
+        // Nhãn cao 24px chứ không phải 20: chữ hoa tiếng Việt có dấu cả trên lẫn dưới nên cao
+        // hơn chữ hoa thường, chật một hai điểm ảnh là cắt mất dấu. Rồi cách ô nhập 6px.
+        const int CaoNhan = 24;
+        const int DinhO = CaoNhan + 6;
 
         var panel = new Panel
         {
@@ -613,17 +686,13 @@ public static class Theme
             Margin = new Padding(0, 0, le, 0),
         };
 
-        var lbl = new Label
+        var lbl = new NhanO
         {
             Text = nhan,
-            Font = PhongVuaBeNgang(nhan, FontNhan, rong),
+            Font = FontNhan,
             ForeColor = Xam,
             Location = new Point(0, 0),
-            Size = new Size(rong, 20),
-            TextAlign = ContentAlignment.MiddleLeft,
-
-            // Chốt cuối: nhãn quá dài thì cắt bằng "…" chứ đừng cắt giữa từ như trước.
-            AutoEllipsis = true,
+            Size = new Size(rong, CaoNhan),
         };
 
         // TextBox thì bọc khung bo góc cho giống bản thiết kế; nút hay ô chọn ngày thì để
@@ -752,11 +821,14 @@ public static class Theme
         luoi.ColumnHeadersDefaultCellStyle.SelectionBackColor = Trang;
         luoi.ColumnHeadersDefaultCellStyle.SelectionForeColor = Xam;
         luoi.ColumnHeadersDefaultCellStyle.Font = FontNhan;
-        luoi.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
+        luoi.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 9, 8, 9);
         luoi.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
         luoi.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
-        luoi.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-        luoi.ColumnHeadersHeight = 46;
+
+        // Đầu bảng **tự cao theo chữ**, không đặt cứng 46px. Tên cột dài trong cột hẹp thì
+        // Windows cho nó xuống hai dòng, mà đầu bảng cao cố định là mất hẳn dòng dưới ("SỐ HĐ
+        // NỢ" chỉ còn thấy "SỐ HĐ"). Lề trên dưới 9px để một dòng vẫn thoáng như cũ.
+        luoi.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
 
         luoi.RowTemplate.Height = 46;
         luoi.DefaultCellStyle.Font = FontLuoi;
@@ -888,7 +960,11 @@ public static class Theme
     /// </summary>
     public static Panel ThanhTieuDe(string tieuDe, string phuDe)
     {
-        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Trang };
+        // Xếp bằng neo trên chứ không đặt cứng toạ độ y = 14 và y = 52: cỡ chữ 19pt kèm dấu
+        // tiếng Việt cao bao nhiêu thì tuỳ máy (Windows đặt cỡ chữ 125% là cao thêm một phần
+        // tư). Đặt cứng thì tiêu đề tràn xuống đè lên phụ đề, mà tiêu đề nằm trên nên nó che
+        // mất nửa trên của phụ đề — đúng chỗ vừa bị cắt.
+        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Trang, Padding = new Padding(24, 12, 24, 8) };
 
         var lblTieuDe = new Label
         {
@@ -896,7 +972,8 @@ public static class Theme
             Font = FontTieuDe,
             ForeColor = ChuDam,
             AutoSize = true,
-            Location = new Point(24, 14),
+            Dock = DockStyle.Top,
+            Margin = new Padding(0),
         };
 
         var lblPhu = new Label
@@ -905,12 +982,13 @@ public static class Theme
             Font = FontPhu,
             ForeColor = Xam,
             AutoSize = true,
-            MaximumSize = new Size(0, 0),
-            Location = new Point(26, 52),
+            Dock = DockStyle.Top,
+            Margin = new Padding(2, 4, 0, 0),
         };
 
-        panel.Controls.Add(lblTieuDe);
+        // Neo trên thì cái thêm sau nằm trên: thêm phụ đề trước, tiêu đề sau.
         panel.Controls.Add(lblPhu);
+        panel.Controls.Add(lblTieuDe);
         panel.Paint += (s, e) =>
         {
             var p = (Panel)s!;

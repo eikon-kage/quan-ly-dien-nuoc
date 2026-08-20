@@ -81,9 +81,9 @@ thực tế chỉ hai nút đầu là dùng hằng ngày. Nay mỗi khu giữ ng
 | Ở đâu | Để ngoài | Trong nút ⋯ |
 | --- | --- | --- |
 | Trang chủ, chân bảng khách | Mở đơn hàng · Thu tiền | sửa khách · xoá khách |
-| Đơn hàng, dải tiêu đề | năm · hoá đơn · + Hoá đơn mới · In / xem trước | thu tiền · trả cho hoá đơn · chốt (mở lại) · sửa mã · xoá hoá đơn · nhập nhiều dòng · bảng giá riêng · nhắc nợ · hoàn tác · làm lại · Excel vào/ra |
+| Đơn hàng, dải tiêu đề | năm · hoá đơn · + Hoá đơn mới · In / xem trước | thu tiền · trả cho hoá đơn · chốt (mở lại) · sửa mã · xoá hoá đơn · bảng giá riêng · nhắc nợ · hoàn tác · làm lại · Excel vào/ra |
 | Đơn hàng, hàng nhập hàng | + Thêm dòng · − Trả lại | *(không còn)* |
-| Đơn hàng, thanh tổng tiền | *(chỉ còn nút ⋯)* | chèn dòng · chuyển lên/xuống · xoá dòng |
+| Đơn hàng, thanh tổng tiền | Nhập nhiều dòng | chèn dòng · chuyển lên/xuống · xoá dòng |
 | Sổ công nợ | Mở đơn hàng · Thu tiền | soạn tin nhắc nợ · xuất Excel |
 | Sao lưu | Sao lưu ngay | xuất Excel · mở thư mục · khôi phục |
 | Xem trước hoá đơn | In hoá đơn · trang trước/sau | phóng to · thu nhỏ · vừa màn hình |
@@ -184,6 +184,26 @@ chọn, bấm `Alt+↓` liên tiếp là cả nhóm đi tiếp.
 3. **Không có thẻ tổng quan, ô đại diện, chuông thông báo, biểu đồ.** Phần mềm chạy trên một máy ở cửa hàng,
    không có tài khoản người dùng và không có gì để thông báo. Chỗ đó dành cho việc thật: chọn
    năm và nút thêm khách hàng.
+
+## Chữ bị cắt — ba cái bẫy đã gặp thật
+
+Máy khách đặt cỡ chữ Windows 125% là mọi chỗ đặt cứng chiều cao đều lộ ra. Ba chỗ đã cắt chữ thật
+và cách chữa:
+
+1. **Nhãn trên ô nhập** (`NGÀY LẤY`, `ĐƠN VỊ`) — ô nhãn cao 20px, mà chữ hoa tiếng Việt có dấu cả
+   trên (`Ầ`) lẫn dưới (`Ị`) nên cao hơn chữ hoa tiếng Anh: cắt mất dấu là đọc ra chữ khác. Nay ô
+   nhãn cao 24px, và nhãn **tự vẽ** (`Theme.NhanO`) để đo cỡ chữ **lúc vẽ, trên bề ngang thật**.
+   Đo sẵn lúc dựng là đem chiều dài chữ tính bằng điểm ảnh thật đi so với bề ngang chưa phóng —
+   máy 125% là so lệch hẳn.
+2. **Phụ đề của thanh tiêu đề cửa sổ** — tiêu đề 19pt đặt cứng ở `y = 14`, phụ đề ở `y = 52`. Cỡ
+   chữ phóng lên thì hộp của tiêu đề tràn xuống quá 52, mà tiêu đề nằm trên nên nó **che mất nửa
+   trên của phụ đề**. Nay hai nhãn neo `Top` xếp nối nhau, không còn toạ độ cứng.
+3. **Tên cột trong đầu bảng** — tên dài trong cột hẹp thì Windows cho xuống hai dòng, mà đầu bảng
+   cao cố định 46px là mất hẳn dòng dưới (`SỐ HĐ NỢ` chỉ còn thấy `SỐ HĐ`). Nay đầu bảng
+   `AutoSize` theo chữ, lề trên dưới 9px để một dòng vẫn thoáng như cũ.
+
+Quy tắc rút ra: **đừng đặt cứng chiều cao cho thứ có chữ trong đó.** Nút thì tự hạ cỡ chữ, nhãn
+thì tự vẽ, đầu bảng thì `AutoSize`.
 
 ## Thứ tự neo trong WinForms — chỗ dễ sai nhất
 

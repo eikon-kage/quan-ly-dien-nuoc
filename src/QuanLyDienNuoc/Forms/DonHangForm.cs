@@ -203,7 +203,6 @@ public sealed class DonHangForm : Form
             .Viec("Sửa mã / ngày hoá đơn", SuaHoaDon, bat: () => HoaDonHienTai is not null)
             .Viec("Xoá hoá đơn này", XoaHoaDon, Theme.Do, () => HoaDonHienTai is not null)
             .Ngan()
-            .Viec("Nhập nhiều dòng một lượt…", NhapNhieuDong)
             .Viec("Bảng giá riêng của khách", MoBangGia)
             .Viec("Soạn tin nhắc nợ", SoanTinNhacNo)
             .Ngan()
@@ -278,7 +277,7 @@ public sealed class DonHangForm : Form
         };
         cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 98));
         cot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
+        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
 
         cot.Controls.Add(TaoThanhThemNhanh(), 0, 0);
         cot.Controls.Add(Theme.Khung(TaoLuoiChiTiet()), 0, 1);
@@ -375,12 +374,14 @@ public sealed class DonHangForm : Form
         // bị đẩy ra ngoài, mọc thanh cuộn ngang rồi cắt mất nút.
         const int CaoO = 40;
         const int Le = 12;
-        hang.Controls.Add(Theme.Truong("NGÀY LẤY", _dtNgay, 190, CaoO, Le));
-        hang.Controls.Add(Theme.Truong("TÊN HÀNG", _cboHang, 250, CaoO, Le));
+        hang.Controls.Add(Theme.Truong("NGÀY LẤY", _dtNgay, 180, CaoO, Le));
+        hang.Controls.Add(Theme.Truong("TÊN HÀNG", _cboHang, 240, CaoO, Le));
         hang.Controls.Add(Theme.Truong("ĐƠN VỊ", _txtDonVi, 90, CaoO, Le));
         hang.Controls.Add(Theme.Truong("ĐƠN GIÁ", _txtDonGia, 120, CaoO, Le));
-        hang.Controls.Add(Theme.Truong("SỐ LƯỢNG", _txtSoLuong, 100, CaoO, Le));
-        hang.Controls.Add(Theme.Truong("THÀNH TIỀN", _lblTamTinh, 110, CaoO, Le));
+        hang.Controls.Add(Theme.Truong("SỐ LƯỢNG", _txtSoLuong, 110, CaoO, Le));
+
+        // "THÀNH TIỀN" là nhãn dài nhất hàng: chừa đủ 130px cho nó, khỏi phải hạ cỡ chữ.
+        hang.Controls.Add(Theme.Truong("THÀNH TIỀN", _lblTamTinh, 130, CaoO, Le));
         hang.Controls.Add(Theme.Truong(" ", btnThem, 180, CaoO, Le));
         hang.Controls.Add(Theme.Truong(" ", btnTraLai, 150, CaoO, Le));
 
@@ -599,6 +600,13 @@ public sealed class DonHangForm : Form
     {
         var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(0, 8, 0, 0) };
 
+        // Nhập nhiều dòng để ngoài chứ không nằm trong menu: gõ cả đơn hàng bằng một dòng
+        // "ống 27 x10, co 90 x5" là cách nhập nhanh nhất, mà nằm trong menu thì không ai thấy.
+        // Đặt ở đây, ngay dưới bảng, vì hàng ô nhập phía trên đã đủ rộng cho màn 1366.
+        var btnNhieuDong = Theme.Nut("NHẬP NHIỀU DÒNG", Theme.Chinh, 210, 44);
+        btnNhieuDong.Margin = new Padding(0, 0, 10, 0);
+        btnNhieuDong.Click += (_, _) => NhapNhieuDong();
+
         // Đúng những việc của menu chuột phải trên lưới, để ai không quen chuột phải vẫn tìm
         // được. Trước đây là hai nút chữ dài chiếm hết góc trái dưới bảng.
         var viecDong = Theme.NutBaCham("Việc với dòng đang chọn", 44)
@@ -611,6 +619,7 @@ public sealed class DonHangForm : Form
             .Viec("Xoá dòng đã chọn              Delete", XoaDong, Theme.Do);
 
         var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
+        trai.Controls.Add(btnNhieuDong);
         trai.Controls.Add(viecDong.Nut);
 
         void SetNhan(Label lbl, Color mau)

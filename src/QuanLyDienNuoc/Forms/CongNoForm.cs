@@ -119,7 +119,7 @@ public sealed class CongNoForm : Form
         var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
         trai.Controls.Add(Theme.Truong("NĂM", _cboNam, 190));
         trai.Controls.Add(Theme.Truong("TÌM KHÁCH HÀNG", _txtTim, 320));
-        trai.Controls.Add(Theme.Truong("CHỈ HIỆN NỢ QUÁ (NGÀY)", _numNgay, 200));
+        trai.Controls.Add(Theme.Truong("NỢ QUÁ (NGÀY)", _numNgay, 200));
 
         var btnQuaHan = Theme.NutPhu($"Nợ quá {_kho.CaiDat.SoNgayNhacNo} ngày", 230, 42);
         btnQuaHan.Margin = new Padding(0, 22, 10, 0);
