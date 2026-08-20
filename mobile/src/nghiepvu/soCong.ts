@@ -55,8 +55,14 @@ export interface SoCong {
  * Cắt sổ công của một thợ ra khỏi dữ liệu đầy đủ.
  *
  * Dùng cho cả hai máy: máy chủ cắt phần của đúng thợ đó để gửi xuống, máy thợ cắt sổ của
- * chính mình để gửi lên. Buổi nào ngoài khoảng ngày thì bỏ, vì đã khai là chỉ đầy đủ
- * trong khoảng ấy.
+ * chính mình để gửi lên.
+ *
+ * `gomTuNgay` là mốc dưới của **những dòng gửi kèm**, tách khỏi `tuNgay` là mốc dưới của
+ * **khoảng khai là đầy đủ**. Hai thứ khác nhau và phải để khác nhau được: máy thợ chấm bù
+ * ra trước hôm nó nhận vai máy thì buổi ấy vẫn phải đi lên nhóm (không thì công mất hút),
+ * nhưng mấy ngày trống quanh đó thì máy này *không biết* chứ không phải "thợ nghỉ" — kéo
+ * mốc khai xuống theo là nói dối, và `doiChieu` tin lời khai ấy mà báo lệch cả tuần.
+ * Bỏ trống thì hai mốc bằng nhau, đúng như cũ.
  */
 export function catSo(
   duLieu: DuLieuChamCong,
@@ -65,12 +71,13 @@ export function catSo(
   tuNgay: string,
   denNgay: string,
   taoLuc: string,
+  gomTuNgay: string = tuNgay,
 ): SoCong {
   const tho = timTho(duLieu, thoId);
   const chuaChot = new Set(banGhiChuaChot(duLieu).buoiCongs.map((b) => b.id));
 
   const dongs = duLieu.buoiCongs
-    .filter((b) => b.thoId === thoId && b.ngay >= tuNgay && b.ngay <= denNgay)
+    .filter((b) => b.thoId === thoId && b.ngay >= gomTuNgay && b.ngay <= denNgay)
     .map((b) => {
       const dong: DongCong = { ngay: b.ngay, buoi: b.buoi, soCong: b.soCong };
       // Chỉ ghi cờ khi đúng là đã chốt: gói nào cũng có `daChot: false` thì file to ra
@@ -102,26 +109,72 @@ export function catSo(
  */
 export const CUA_SO_NGAY = 90;
 
-/** Khoảng ngày máy chủ khai khi gửi sổ xuống cho thợ. */
-export function cuaSoCuaChu(homNay: string): { tuNgay: string; denNgay: string } {
-  return { tuNgay: Ngay.congNgay(homNay, -CUA_SO_NGAY), denNgay: homNay };
+/**
+ * Khoảng ngày **máy chủ** khai là đầy đủ: 90 ngày gần nhất, nhưng kẹp lại trong phần chủ
+ * thật sự đã ghi chép.
+ *
+ * Kẹp hai đầu chứ không khai thẳng 90 ngày, vì "khai là đầy đủ" là một lời quả quyết — ở
+ * trong khoảng ấy, không có dòng nghĩa là *thợ nghỉ*. Khai bừa cả 90 ngày là nói dối hai
+ * lần, mà lần nào cũng ra một màn hình đỏ rực đúng như chỗ `SoCong.tuNgay` cảnh báo:
+ *
+ * - **Đầu dưới.** Chủ mới chuyển từ sổ giấy sang app hôm nay, chấm bù được ba ngày. Sổ chủ
+ *   khai đầy đủ 90 ngày thì với một thợ đã dùng app cả tháng, đối chiếu ra hai bảy dòng
+ *   "chủ không chấm" — toàn là ngày chủ chưa có app.
+ * - **Đầu trên.** Chủ chấm cho cả nhóm theo lô, thường chậm một hai hôm; thợ thì chấm cho
+ *   mình ngay trong ngày. Khai tới `homNay` là quả quyết "hôm qua cả nhóm nghỉ" trong lúc
+ *   chủ chỉ chưa kịp nhập, nên sáng nào mở app thợ cũng thấy hai dòng đỏ của hôm qua.
+ *   Dừng ở ngày chủ ghi cuối cùng thì chỗ ấy thành *chưa so được* — đúng sự thật, và tự
+ *   liền lại ngay khi chủ nhập tới đó.
+ *
+ * Lấy theo ngày của **cả nhóm**, không phải của riêng thợ đang xem: chủ có nhập hôm ấy hay
+ * chưa là chuyện của cái máy, còn một thợ nghỉ hôm ấy là chuyện của thợ — trộn hai thứ vào
+ * nhau thì thợ nào nghỉ thật cũng bị cắt mất phần sổ quanh ngày nghỉ.
+ *
+ * Chủ chưa ghi gì trong cửa sổ thì khai đúng một ngày `homNay`: chưa có gì để so, và luật
+ * tạm gác buổi của hôm nay lo phần còn lại.
+ */
+export function cuaSoCuaChu(
+  duLieu: DuLieuChamCong,
+  homNay: string,
+): { tuNgay: string; denNgay: string } {
+  const dauCuaSo = Ngay.congNgay(homNay, -CUA_SO_NGAY);
+
+  let som: string | null = null;
+  let muon: string | null = null;
+  for (const buoi of duLieu.buoiCongs) {
+    if (buoi.ngay < dauCuaSo || buoi.ngay > homNay) {
+      continue;
+    }
+    if (som === null || buoi.ngay < som) {
+      som = buoi.ngay;
+    }
+    if (muon === null || buoi.ngay > muon) {
+      muon = buoi.ngay;
+    }
+  }
+
+  if (som === null || muon === null) {
+    return { tuNgay: homNay, denNgay: homNay };
+  }
+  return { tuNgay: som, denNgay: muon };
 }
 
 /**
- * Mốc dưới của sổ máy thợ: mốc bắt đầu chấm, nới ra tới buổi sớm nhất nếu thợ đã chấm bù ra
- * trước mốc ấy.
+ * Mốc dưới của **những dòng máy thợ gửi kèm** — mốc bắt đầu chấm, nới xuống tới buổi sớm
+ * nhất nếu thợ đã chấm bù ra trước mốc ấy.
  *
  * Vì sao phải nới: màn hình máy thợ mời chấm bù 13 ngày trước, mà `batDauTu` lại đặt đúng
- * hôm chọn vai máy. Giữ nguyên mốc thì mọi buổi chấm bù trước hôm ấy nằm ngoài khoảng sổ
- * khai là đầy đủ, và `catSo` cắt bỏ luôn — máy thợ hiện ô đã chấm, tổng công tuần cộng cả
- * buổi ấy, nhưng sổ gửi lên nhóm thì không có nó. Chủ không thấy gì mà đối chiếu cũng không
- * báo lệch, vì buổi ấy rơi ngoài phần giao hai khoảng. Công biến mất lặng lẽ.
+ * hôm chọn vai máy. Không nới thì `catSo` cắt bỏ luôn mấy buổi chấm bù — máy thợ hiện ô đã
+ * chấm, tổng công tuần cộng cả buổi ấy, nhưng sổ gửi lên nhóm thì không có nó. Chủ không
+ * thấy gì mà đối chiếu cũng không báo lệch. Công biến mất lặng lẽ.
  *
- * Nới tới buổi sớm nhất là **nói đúng sự thật**: máy này có biết về ngày ấy, chính người
- * dùng vừa khai. Mấy ngày trống nằm giữa thành "nghỉ" theo sổ thợ, nên chủ có chấm là đối
- * chiếu báo lệch — thà một dòng lệch nhìn thấy được còn hơn một buổi công mất hút.
+ * Nới **mốc gửi**, không nới mốc khai là đầy đủ — hai việc khác nhau, và trước đây gộp làm
+ * một chính là chỗ sai: thợ vừa cài app, chấm bù đúng một buổi cách đây năm hôm, thế là mấy
+ * ngày trống nằm giữa bị khai thành "thợ nghỉ" và đối chiếu ra chín dòng đỏ ngay lần mở đầu
+ * tiên. Máy thợ **không biết** những ngày ấy, nó chưa tồn tại. Buổi chấm bù vẫn đi lên và
+ * vẫn được so, vì `doiChieu` so cả những dòng nằm ngoài khoảng khai.
  */
-function mocDuoiCuaTho(duLieu: DuLieuChamCong, thoId: string, batDauTu: string): string {
+function mocGomCuaTho(duLieu: DuLieuChamCong, thoId: string, batDauTu: string): string {
   let som = batDauTu;
   for (const buoi of duLieu.buoiCongs) {
     if (buoi.thoId === thoId && buoi.ngay < som) {
@@ -132,7 +185,7 @@ function mocDuoiCuaTho(duLieu: DuLieuChamCong, thoId: string, batDauTu: string):
 }
 
 /**
- * Sổ của **máy này** về một thợ, cắt theo đúng khoảng mà máy này khai là đầy đủ.
+ * Sổ của **máy này** về một thợ, khai đúng khoảng mà máy này biết chắc.
  *
  * Nằm ở đây, cạnh `catSo`, chứ không nằm trong màn hình: cả màn hình đối chiếu, màn hình
  * của thợ và lớp điều phối hộp thư đều phải cắt y hệt nhau. Ba chỗ tự cắt theo ba kiểu là
@@ -149,11 +202,44 @@ export function soCuaMay(
   taoLuc = '',
 ): SoCong {
   if (may.vai === 'chu') {
-    const { tuNgay, denNgay } = cuaSoCuaChu(homNay);
+    // Không cần mốc gom riêng: `denNgay` đã đúng là ngày chủ ghi cuối cùng, sau nó không
+    // còn dòng nào để mà cắt mất.
+    const { tuNgay, denNgay } = cuaSoCuaChu(duLieu, homNay);
     return catSo(duLieu, thoId, 'chu', tuNgay, denNgay, taoLuc);
   }
-  const tuNgay = mocDuoiCuaTho(duLieu, thoId, may.batDauTu ?? homNay);
-  return catSo(duLieu, thoId, 'tho', tuNgay, homNay, taoLuc);
+
+  const khaiTu = may.batDauTu ?? homNay;
+  return catSo(
+    duLieu,
+    thoId,
+    'tho',
+    khaiTu,
+    homNay,
+    taoLuc,
+    mocGomCuaTho(duLieu, thoId, khaiTu),
+  );
+}
+
+/**
+ * Khoảng phủ hết những gì sổ này nói: khoảng khai là đầy đủ, nới ra cho chứa cả những dòng
+ * nằm ngoài nó.
+ *
+ * Dùng để **hiện sổ ra xem**, khác `tuNgay`/`denNgay` là dùng để *kết luận*. Máy thợ chấm bù
+ * ra trước hôm nó nhận vai máy: buổi ấy nằm ngoài khoảng khai, nhưng nó là công thật, thợ
+ * vừa tự bấm, mà lại không có trong danh sách sổ của chính mình thì thợ tưởng máy làm mất.
+ */
+export function khoangCuaSo(so: SoCong): { tuNgay: string; denNgay: string } {
+  let tuNgay = so.tuNgay;
+  let denNgay = so.denNgay;
+  for (const dong of so.dongs) {
+    if (dong.ngay < tuNgay) {
+      tuNgay = dong.ngay;
+    }
+    if (dong.ngay > denNgay) {
+      denNgay = dong.ngay;
+    }
+  }
+  return { tuNgay, denNgay };
 }
 
 /**

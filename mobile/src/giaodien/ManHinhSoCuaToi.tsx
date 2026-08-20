@@ -4,7 +4,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DongLech, doiChieu } from '../nghiepvu/doiChieu';
 import * as Ngay from '../nghiepvu/ngayViet';
-import { NgayTrongSo, SoCong, gomTheoNgay, ngayNghiTrongSo } from '../nghiepvu/soCong';
+import {
+  NgayTrongSo,
+  SoCong,
+  gomTheoNgay,
+  khoangCuaSo,
+  ngayNghiTrongSo,
+} from '../nghiepvu/soCong';
 import { LichCong } from './LichCong';
 import { DauTrang, HangO, TheSo, ThanhDoan, theTrang } from './ThanhPhan';
 import { Bong, Co, Mau, PhongChu } from './thietKe';
@@ -74,9 +80,14 @@ export function ManHinhSoCuaToi({ so, soChu, homNay, onDong }: Props) {
    * Chặn hai đầu thay vì để bấm ra tháng trống. Sổ này chỉ đầy đủ trong khoảng nó khai,
    * ngoài ra là *không biết* chứ không phải không đi làm — cho lùi mãi thì thợ xem được
    * mười tờ lịch trắng rồi tưởng máy mất dữ liệu.
+   *
+   * Chặn theo `khoangCuaSo` chứ không theo đúng khoảng khai: buổi thợ chấm bù ra trước hôm
+   * nhận vai máy nằm ngoài khoảng khai, mà nó là công thật thợ vừa tự bấm — chặn trước nó
+   * là màn hình chính hiện ô đã chấm còn sổ của chính mình lại không có ngày ấy.
    */
-  const cuoiSo = so.denNgay < homNay ? so.denNgay : homNay;
-  const coThangTruoc = Ngay.congNgay(dauThang, -1) >= so.tuNgay;
+  const khoangSo = khoangCuaSo(so);
+  const cuoiSo = khoangSo.denNgay < homNay ? khoangSo.denNgay : homNay;
+  const coThangTruoc = Ngay.congNgay(dauThang, -1) >= khoangSo.tuNgay;
   const coThangSau = Ngay.congNgay(cuoiThang, 1) <= cuoiSo;
 
   const ngayCongs = useMemo(() => gomTheoNgay(so, tuNgay, denNgay), [so, tuNgay, denNgay]);
@@ -111,7 +122,7 @@ export function ManHinhSoCuaToi({ so, soChu, homNay, onDong }: Props) {
    * Danh sách từng ngày, ngày mới nhất lên trên — giống danh sách chấm ở màn hình chính,
    * và cũng là thứ hay phải tra nhất. Chỉ chạy trong phần sổ khai là đầy đủ và đã trôi qua.
    */
-  const batDauDong = tuNgay > so.tuNgay ? tuNgay : so.tuNgay;
+  const batDauDong = tuNgay > khoangSo.tuNgay ? tuNgay : khoangSo.tuNgay;
   const ketThucDong = denNgay < cuoiSo ? denNgay : cuoiSo;
   const cacDong: NgayTrongSo[] = [];
   const congTheoNgay = new Map(ngayCongs.map((ngay) => [ngay.ngay, ngay]));

@@ -49,6 +49,27 @@ test('mở ra là tháng này, tóm tắt công và ngày nghỉ', () => {
   expect(screen.getByText('10 ngày')).toBeTruthy();
 });
 
+test('buổi chấm bù trước hôm nhận vai máy vẫn có mặt trong sổ', () => {
+  /*
+    Sổ khai đầy đủ từ 20/07, nhưng thợ đã chấm bù ra 18/07 — buổi ấy nằm ngoài khoảng khai
+    (cố ý: mấy ngày quanh nó máy này *không biết*, khai xuống là đối chiếu báo lệch cả tuần).
+    Nó vẫn phải hiện ra ở đây, không thì màn hình chính hiện ô đã chấm mà sổ của chính mình
+    lại bảo không có ngày ấy.
+  */
+  dung(
+    so([{ ngay: '2026-07-18', buoi: 'Sang', soCong: 1 }], {
+      tuNgay: BAT_DAU,
+      denNgay: HOM_NAY,
+    }),
+  );
+
+  fireEvent.press(screen.getByLabelText('Tháng trước'));
+
+  expect(screen.getByText('Tháng 7/2026')).toBeTruthy();
+  expect(screen.getByText('18/07')).toBeTruthy();
+  expect(screen.getByText('Sáng 1 · Chiều —')).toBeTruthy();
+});
+
 test('mỗi ngày một dòng, ghi rõ đi buổi nào mấy công', () => {
   dung(
     so([

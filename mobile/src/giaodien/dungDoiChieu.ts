@@ -27,7 +27,7 @@ import { HopThu, SoDaNhan } from '../nghiepvu/hopThu';
 import { DuLieuChamCong } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import * as SoBenKia from '../nghiepvu/soBenKia';
-import { catSo, cuaSoCuaChu, soCuaMay } from '../nghiepvu/soCong';
+import { soCuaMay } from '../nghiepvu/soCong';
 import { thoDangLam } from '../nghiepvu/thaoTac';
 import { CaiDatVai } from '../nghiepvu/vaiMay';
 
@@ -153,9 +153,10 @@ export function dungDoiChieu(
       if (vai.vai === 'chu') {
         // Chỉ gửi sổ cho thợ **đang làm**: thợ đã nghỉ thì máy họ không còn ai xem, mà mỗi
         // sổ là một lần gọi mạng.
-        const { tuNgay, denNgay } = cuaSoCuaChu(homNay);
+        // Cắt qua `soCuaMay` y như màn hình đối chiếu, không tự dựng khoảng ngày ở đây: hai
+        // chỗ cắt theo hai kiểu là sổ gửi lên nhóm khai khác sổ đang hiện trên máy.
         for (const tho of thoDangLam(hienTai)) {
-          await guiNeuDoi(catSo(hienTai, tho.id, 'chu', tuNgay, denNgay, taoLuc));
+          await guiNeuDoi(soCuaMay(hienTai, vai, tho.id, homNay, taoLuc));
         }
         datSoBenKia(await SoBenKia.luu(await hopThu.docSoCacTho()));
       } else if (vai.thoId !== null) {

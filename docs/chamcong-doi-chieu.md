@@ -30,15 +30,67 @@ chỉ có một bản, chạy đúng ở cả hai máy.
 
 ## Hai mốc ngày, và vì sao thiếu nó là vô dụng
 
-Mỗi sổ khai `tuNgay`/`denNgay`: khoảng mà nó nói là **đầy đủ**. Đối chiếu chỉ so trong phần
-giao của hai khoảng.
+Mỗi sổ khai `tuNgay`/`denNgay`: khoảng mà nó nói là **đầy đủ**. Đó là một *lời quả quyết* —
+trong khoảng ấy, không có dòng nghĩa là thợ thật sự nghỉ.
 
 Không có hai mốc ấy thì máy thợ mới cài hôm qua, đối chiếu với sổ chủ có ba tháng trước đó,
 sẽ ra một trăm dòng "thợ thiếu công" toàn là ngày thợ chưa có app. Người dùng nhìn một màn
 hình đỏ rực không sửa được gì rồi thôi, không mở lại nữa.
 
-- Máy thợ khai từ ngày nhận mã mời (`batDauTu`).
-- Máy chủ khai 90 ngày gần nhất (`CUA_SO_NGAY`) — đối chiếu là việc của kỳ đang làm.
+Nhưng có mốc rồi mà khai rộng hơn phần mình biết thì đúng ra lại cái màn hình đỏ ấy, chỉ là
+đường vòng. Nên mỗi bên khai **đúng phần nó biết chắc**, không hơn:
+
+- **Máy thợ** khai từ ngày nhận vai máy (`batDauTu`) tới hôm nay. Thợ chấm cho chính mình
+  ngay trong ngày, mà sổ chỉ được dựng lại lúc app đang mở — nên "tới hôm nay" là thật.
+- **Máy chủ** khai 90 ngày gần nhất (`CUA_SO_NGAY`), **kẹp lại trong phần chủ đã ghi chép**
+  (`cuaSoCuaChu`): từ ngày chủ có bản ghi sớm nhất, tới ngày chủ ghi muộn nhất.
+  - *Đầu dưới,* vì chủ mới chuyển từ sổ giấy sang app hôm nay, chấm bù được ba ngày. Khai
+    thẳng 90 ngày là quả quyết "ba tháng qua thợ nghỉ hết" — với một thợ đã dùng app cả
+    tháng, đối chiếu ra 27 dòng đỏ.
+  - *Đầu trên,* vì chủ chấm cho cả nhóm theo lô, chậm một hai hôm là thường; thợ thì chấm
+    trong ngày. Khai tới hôm nay là quả quyết "hôm qua cả nhóm nghỉ" trong lúc chủ chỉ chưa
+    kịp nhập, nên **sáng nào thợ mở app cũng thấy hai dòng đỏ của hôm qua**. Dừng ở ngày chủ
+    ghi cuối cùng thì chỗ ấy thành *chưa so được*, và tự liền lại ngay khi chủ nhập tới đó.
+  - Lấy theo ngày của **cả nhóm**, không của riêng thợ đang xem: chủ có nhập hôm ấy hay chưa
+    là chuyện của cái máy, còn một thợ nghỉ hôm ấy là chuyện của thợ. Trộn hai thứ thì thợ
+    nào nghỉ thật cũng bị cắt mất phần sổ quanh ngày nghỉ.
+
+## Gửi kèm một dòng, và khai là đầy đủ, là hai việc
+
+Máy thợ mời chấm bù 14 ngày trước, mà `batDauTu` lại đặt đúng hôm chọn vai máy. Buổi chấm bù
+rơi ra ngoài khoảng khai, nên phải quyết: cắt bỏ hay giữ lại?
+
+Cắt bỏ thì **công mất hút** — máy thợ hiện ô đã chấm, tổng công tuần cộng cả buổi ấy, mà sổ
+gửi lên nhóm không có nó, chủ không thấy gì và đối chiếu cũng không báo.
+
+Giữ lại bằng cách *nới mốc khai* xuống tận buổi chấm bù thì mấy ngày trống nằm giữa bị khai
+thành "thợ nghỉ" — thợ vừa cài app, chấm bù đúng một buổi cách đây năm hôm, mở đối chiếu ra
+**chín dòng đỏ** của những ngày máy nó chưa tồn tại. Đúng cái màn hình mà hai mốc ngày sinh
+ra để tránh.
+
+Nên tách làm hai: `catSo` nhận thêm `gomTuNgay` — mốc dưới của **những dòng gửi kèm** — còn
+`tuNgay` vẫn là mốc dưới của **khoảng khai là đầy đủ**. Buổi chấm bù đi lên nhóm bình thường,
+mấy ngày trống quanh nó thì không ai bị buộc là nói sai.
+
+Đổi lại, `doiChieu` không còn được phép chỉ so trong phần giao hai khoảng. Nó hỏi từng bên
+một câu hẹp hơn — `coYKien`: bên này **có ý kiến** gì về buổi ấy không?
+
+- Có dòng thì hiển nhiên là có.
+- Không có dòng thì chỉ tính là "nói không có công" khi ngày ấy nằm trong khoảng bên ấy khai.
+- Ngoài khoảng khai mà cũng không có dòng thì **không biết**, mà không biết thì không phải
+  một lời trái ý bên kia.
+
+Chỉ buổi nào **cả hai bên đều có ý kiến** mới được kết luận. Nhờ vậy cả hai việc đều đúng
+cùng lúc: dòng chấm bù vẫn được so (chủ có chấm khác là báo lệch ngay), còn ngày trống thì
+chỉ bên nào dám khai mới bị tính.
+
+Buổi bỏ qua vì một bên không biết thì cũng **không cộng vào hai tổng**, cùng lẽ với buổi tạm
+gác dưới đây. Còn khoảng ghi ở đầu trang được nới ra cho phủ hết những buổi thật sự đã so —
+bên dưới hiện một dòng ngày 15 mà đầu trang ghi "so từ ngày 20" là hai câu trái nhau.
+
+Màn hình *Sổ công của tôi* cũng phải theo: nó chặn hai đầu theo `khoangCuaSo` (khoảng khai,
+nới ra cho chứa mọi dòng sổ mang) chứ không theo đúng khoảng khai — nếu không thì màn hình
+chính hiện ô đã chấm mà sổ của chính mình lại bảo không có ngày ấy.
 
 ## Hôm nay còn dở thì chưa kết luận
 

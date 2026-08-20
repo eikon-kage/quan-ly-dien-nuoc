@@ -110,11 +110,18 @@ describe('ngayNghiTrongSo', () => {
 });
 
 /**
- * Sổ mà máy thợ gửi lên nhóm phải nói đủ những gì màn hình của nó đang hiện.
+ * Sổ mà máy thợ gửi lên nhóm phải nói đủ những gì màn hình của nó đang hiện, **mà không
+ * khai quá phần nó biết**.
  *
- * Chỗ này từng làm mất công thật: mốc `batDauTu` đặt đúng hôm chọn vai máy, mà màn hình
- * lại mời chấm bù 13 ngày trước — buổi chấm bù rơi ngoài mốc là bị cắt khỏi sổ, chủ không
- * thấy và đối chiếu cũng không báo lệch.
+ * Hai chỗ từng sai, ngược chiều nhau:
+ *   1. Mốc `batDauTu` đặt đúng hôm chọn vai máy, mà màn hình lại mời chấm bù 13 ngày trước
+ *      — buổi chấm bù rơi ngoài mốc là bị cắt khỏi sổ, chủ không thấy và đối chiếu cũng
+ *      không báo lệch. Công mất hút.
+ *   2. Chữa (1) bằng cách nới luôn mốc *khai là đầy đủ* xuống tới buổi chấm bù ấy — thành
+ *      ra máy thợ quả quyết "mấy ngày trống giữa đó tôi nghỉ", trong lúc nó chưa tồn tại.
+ *      Thợ vừa cài app, chấm bù một buổi, mở đối chiếu ra chín dòng đỏ.
+ *
+ * Nên bây giờ hai mốc tách hẳn: **gửi kèm** tới buổi sớm nhất, **khai đầy đủ** từ `batDauTu`.
  */
 describe('soCuaMay trên máy thợ', () => {
   const HOM_NAY = '2026-08-20';
@@ -129,7 +136,7 @@ describe('soCuaMay trên máy thợ', () => {
     return d;
   }
 
-  test('giữ buổi chấm bù trước mốc bắt đầu, và nới mốc dưới của sổ ra tới buổi ấy', () => {
+  test('gửi kèm buổi chấm bù trước mốc bắt đầu, nhưng không khai bừa mấy ngày trống đó', () => {
     const soGui = soCuaMay(
       duLieuTho({ ngay: '2026-08-20', buoi: 'Sang' }, { ngay: '2026-08-14', buoi: 'Sang' }),
       may,
@@ -137,21 +144,26 @@ describe('soCuaMay trên máy thợ', () => {
       HOM_NAY,
     );
 
-    expect(soGui.tuNgay).toBe('2026-08-14');
+    // Buổi chấm bù có mặt trong sổ — chủ phải thấy nó.
     expect(soGui.dongs.map((dong) => dong.ngay)).toEqual(['2026-08-14', '2026-08-20']);
+    // Nhưng khoảng khai là đầy đủ vẫn đúng từ hôm máy nhận vai: mấy ngày 15 → 17 máy này
+    // không biết, khai xuống tới 14 là nói dối và đối chiếu sẽ báo lệch cả tuần.
+    expect(soGui.tuNgay).toBe(BAT_DAU);
   });
 
-  test('không chấm bù gì thì mốc dưới vẫn là ngày bắt đầu, không nới bừa', () => {
+  test('không chấm bù gì thì mốc dưới vẫn là ngày bắt đầu', () => {
     const soGui = soCuaMay(duLieuTho({ ngay: '2026-08-19', buoi: 'Sang' }), may, 't1', HOM_NAY);
 
     expect(soGui.tuNgay).toBe(BAT_DAU);
   });
 
-  test('buổi của thợ khác trong máy không kéo mốc dưới đi', () => {
+  test('buổi của thợ khác trong máy không lọt vào sổ', () => {
     let d = duLieuTho({ ngay: '2026-08-19', buoi: 'Sang' });
     d = themTho(d, 'Người khác', 0, BAT_DAU, 't2').duLieu;
     d = cham(d, 't2', '2026-07-01', 'Sang', 1);
 
-    expect(soCuaMay(d, may, 't1', HOM_NAY).tuNgay).toBe(BAT_DAU);
+    const soGui = soCuaMay(d, may, 't1', HOM_NAY);
+    expect(soGui.tuNgay).toBe(BAT_DAU);
+    expect(soGui.dongs.map((dong) => dong.ngay)).toEqual(['2026-08-19']);
   });
 });

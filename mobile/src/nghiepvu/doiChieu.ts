@@ -35,12 +35,16 @@ export interface DongLech {
 }
 
 export interface KetQuaDoiChieu {
-  /** Khoảng thật sự so được: phần giao của hai sổ. */
+  /**
+   * Khoảng thật sự so được: phần giao của hai khoảng khai, nới ra cho phủ hết những buổi
+   * đã so được ngoài khoảng ấy (dòng chấm bù — xem `coYKien`). Nới vì đây là câu đầu trang,
+   * mà bên dưới hiện một dòng nằm ngoài khoảng đầu trang ghi là hai câu trái nhau.
+   */
   tuNgay: string;
   denNgay: string;
   /**
-   * Hai sổ không có ngày nào chung. Chưa kết luận được gì — thường là máy thợ mới cài,
-   * hoặc sổ bên kia gửi từ lâu quá.
+   * Không so được buổi nào, mà hai khoảng khai cũng không giao nhau. Chưa kết luận được gì —
+   * thường là máy thợ mới cài, hoặc sổ bên kia gửi từ lâu quá.
    */
   khongTrungKhoang: boolean;
   /** Số buổi hai bên khớp nhau, để nói được câu "khớp 42 buổi, lệch 3 buổi". */
@@ -62,21 +66,37 @@ function khoa(ngay: string, buoi: BuoiLam): string {
   return `${ngay}|${buoi}`;
 }
 
-function trongKhoang(dongs: DongCong[], tuNgay: string, denNgay: string): Map<string, DongCong> {
-  const theoKhoa = new Map<string, DongCong>();
+function theoKhoa(dongs: DongCong[]): Map<string, DongCong> {
+  const bang = new Map<string, DongCong>();
   for (const dong of dongs) {
-    if (dong.ngay >= tuNgay && dong.ngay <= denNgay) {
-      theoKhoa.set(khoa(dong.ngay, dong.buoi), dong);
-    }
+    bang.set(khoa(dong.ngay, dong.buoi), dong);
   }
-  return theoKhoa;
+  return bang;
+}
+
+/**
+ * Sổ này có ý kiến gì về buổi ấy hay không.
+ *
+ * Có dòng thì hiển nhiên là có. Không có dòng thì chỉ tính là *"nói không có công"* khi ngày
+ * ấy nằm trong khoảng sổ khai là đầy đủ; ngoài khoảng ấy là **không biết**, mà không biết thì
+ * không phải một lời trái ý bên kia.
+ *
+ * Đây là chỗ trước đây làm sai. Cũ chỉ so trong phần giao hai khoảng, nên một dòng chấm bù
+ * nằm ngoài khoảng khai thì cả buổi ấy biến mất khỏi đối chiếu — và để chữa việc mất ấy, máy
+ * thợ phải nới mốc khai xuống tận buổi chấm bù, tức là khai bừa "mấy ngày trống giữa đó tôi
+ * nghỉ". Tách ra thành hai câu hỏi riêng thì cả hai việc đều đúng: dòng nào có là được so, còn
+ * ngày trống thì chỉ bên nào dám khai mới bị tính.
+ */
+function coYKien(so: SoCong, dong: DongCong | undefined, ngay: string): boolean {
+  return dong !== undefined || (ngay >= so.tuNgay && ngay <= so.denNgay);
 }
 
 /**
  * So hai sổ, trả về những buổi nói khác nhau.
  *
- * Chỉ so trong **phần giao** của hai khoảng ngày. Ngoài phần giao thì có bên không khai là
- * đầy đủ, thiếu một buổi ở đó không có nghĩa là ai sai — xem ghi chú ở `SoCong.tuNgay`.
+ * Chỉ kết luận ở những buổi mà **cả hai bên đều có ý kiến** — xem `coYKien`. Bên nào không
+ * khai ngày ấy là đầy đủ và cũng không có dòng nào thì buổi ấy bỏ qua: thiếu một buổi ở đó
+ * không có nghĩa là ai sai, xem ghi chú ở `SoCong.tuNgay`.
  *
  * `homNay` để **tạm gác những buổi của hôm nay mà chỉ một bên có**. Ngày đang chạy thì bên
  * chưa chấm không có nghĩa là bên ấy nói "nghỉ": chủ chấm cả nhóm lúc nghỉ trưa, thợ mở app
@@ -89,33 +109,24 @@ function trongKhoang(dongs: DongCong[], tuNgay: string, denNgay: string): Map<st
  * người thật sự nói khác nhau, gác lại là che mất.
  *
  * Buổi tạm gác cũng **không cộng vào hai tổng**: tổng phải nói đúng những dòng đang hiện bên
- * dưới, chứ không thì đầu trang bảo lệch 2 công mà không có dòng nào giải thích.
+ * dưới, chứ không thì đầu trang bảo lệch 2 công mà không có dòng nào giải thích. Buổi bỏ qua
+ * vì một bên không biết cũng vậy.
  */
 export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQuaDoiChieu {
-  const tuNgay = soMinh.tuNgay > soBenKia.tuNgay ? soMinh.tuNgay : soBenKia.tuNgay;
-  const denNgay = soMinh.denNgay < soBenKia.denNgay ? soMinh.denNgay : soBenKia.denNgay;
+  const giaoTu = soMinh.tuNgay > soBenKia.tuNgay ? soMinh.tuNgay : soBenKia.tuNgay;
+  const giaoDen = soMinh.denNgay < soBenKia.denNgay ? soMinh.denNgay : soBenKia.denNgay;
 
-  if (tuNgay > denNgay) {
-    return {
-      tuNgay,
-      denNgay,
-      khongTrungKhoang: true,
-      soKhop: 0,
-      lechs: [],
-      tongCongMinh: 0,
-      tongCongBenKia: 0,
-      soTamGac: 0,
-    };
-  }
-
-  const minh = trongKhoang(soMinh.dongs, tuNgay, denNgay);
-  const benKia = trongKhoang(soBenKia.dongs, tuNgay, denNgay);
+  const minh = theoKhoa(soMinh.dongs);
+  const benKia = theoKhoa(soBenKia.dongs);
 
   const lechs: DongLech[] = [];
   let soKhop = 0;
   let soTamGac = 0;
   let tongCongMinh = 0;
   let tongCongBenKia = 0;
+  /** Ngày sớm nhất / muộn nhất thật sự so được, để đầu trang nói đúng khoảng đã so. */
+  let soTu: string | null = null;
+  let soDen: string | null = null;
 
   for (const k of new Set([...minh.keys(), ...benKia.keys()])) {
     const a = minh.get(k);
@@ -126,10 +137,22 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
       continue;
     }
 
+    // Một bên không biết ngày ấy thì không có chuyện hai bên nói khác nhau.
+    if (!coYKien(soMinh, a, goc.ngay) || !coYKien(soBenKia, b, goc.ngay)) {
+      continue;
+    }
+
     // Hôm nay mà chỉ một bên có: gác lại cả khỏi tổng, xem ghi chú ở đầu hàm.
     if (goc.ngay >= homNay && (!a || !b)) {
       soTamGac += 1;
       continue;
+    }
+
+    if (soTu === null || goc.ngay < soTu) {
+      soTu = goc.ngay;
+    }
+    if (soDen === null || goc.ngay > soDen) {
+      soDen = goc.ngay;
     }
 
     tongCongMinh += a ? a.soCong : 0;
@@ -152,6 +175,25 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
     });
   }
 
+  /*
+    Chưa so được buổi nào — kể cả buổi tạm gác — thì nói thẳng là hai sổ chưa có ngày nào
+    chung. Xét theo *kết quả* chứ theo hai mốc khai: khoảng giao có thể rộng mà vẫn không
+    buổi nào được chấm, mà cũng có thể hẹp tới mức rỗng trong lúc một buổi chấm bù ngoài
+    khoảng vẫn so được.
+  */
+  if (soTu === null && soTamGac === 0) {
+    return {
+      tuNgay: giaoTu,
+      denNgay: giaoDen,
+      khongTrungKhoang: giaoTu > giaoDen,
+      soKhop: 0,
+      lechs: [],
+      tongCongMinh: 0,
+      tongCongBenKia: 0,
+      soTamGac: 0,
+    };
+  }
+
   lechs.sort((x, y) =>
     x.ngay === y.ngay
       ? THU_TU_BUOI[x.buoi] - THU_TU_BUOI[y.buoi]
@@ -159,8 +201,11 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
   );
 
   return {
-    tuNgay,
-    denNgay,
+    // Nới khoảng nói ở đầu trang ra cho phủ hết những buổi thật sự đã so: một dòng chấm bù
+    // ngoài khoảng khai vẫn hiện bên dưới, mà đầu trang lại ghi khoảng không chứa nó thì
+    // người dùng đọc thành hai điều trái nhau.
+    tuNgay: soTu !== null && soTu < giaoTu ? soTu : giaoTu,
+    denNgay: soDen !== null && soDen > giaoDen ? soDen : giaoDen,
     khongTrungKhoang: false,
     soKhop,
     lechs,
