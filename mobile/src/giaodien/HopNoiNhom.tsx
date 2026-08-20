@@ -122,6 +122,24 @@ export function HopNoiNhom({ vai, dieuKhien, onDong }: Props) {
             <Feather name="user-plus" size={16} color={Mau.chinh} />
             <Text style={kieu.chuNutPhuXanh}>Lần đầu — tạo tài khoản</Text>
           </Pressable>
+
+          {/*
+            Đường nối nhanh, không email không mật khẩu. Có mặt vì nhiều chủ cửa hàng không
+            dùng email, và vì lúc chạy thử thì chờ thư xác nhận là tắc.
+
+            Nói thẳng cái giá ngay dưới nút: tài khoản ẩn danh chỉ sống trong cái máy này,
+            mất máy là mất quyền nhóm. Về sau gắn email vào chính tài khoản ấy được, giữ
+            nguyên nhóm và sổ.
+          */}
+          <Pressable style={kieu.nutPhu} onPress={noiAnDanh} disabled={dangChay}>
+            <Feather name="zap" size={16} color={Mau.xam} />
+            <Text style={[kieu.chuNutPhu, { color: Mau.xam }]}>Nối nhanh, không cần email</Text>
+          </Pressable>
+
+          <Text style={kieu.chuChan}>
+            Nối nhanh thì nhóm chỉ gắn với cái máy này — mất máy là mất quyền nhóm. Dùng email
+            thì đổi máy vẫn vào lại được.
+          </Text>
         </>
       )}
 

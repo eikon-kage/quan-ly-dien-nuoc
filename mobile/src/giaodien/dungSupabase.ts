@@ -100,6 +100,11 @@ export function dungSupabase(vai: Vai): DieuKhienNhom {
     try {
       await viec();
     } catch (loiChay) {
+      // Bản dev in nguyên văn lỗi ra log Metro. Câu hiện lên màn hình cố tình gọn cho người
+      // dùng đọc, nhưng lúc dựng app thì phải thấy được câu gốc mới lần ra được nguyên nhân.
+      if (__DEV__) {
+        console.warn('Nối nhóm hụt:', loiChay);
+      }
       datLoi(
         loiChay instanceof LoiDangNhap || loiChay instanceof LoiNhom
           ? loiChay.message
