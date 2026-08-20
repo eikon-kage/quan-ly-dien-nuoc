@@ -7,25 +7,49 @@ Chỉ đọc, và đó là chủ ý. Máy tính ghi vào đấy nữa thì hai b
 app điện thoại mới là chỗ có đủ luồng hỏi lại kèm số liệu trước khi ghi đè
 (xem [chamcong-sao-luu.md](chamcong-sao-luu.md)). Sửa chấm công thì sửa trên điện thoại.
 
-## Cần điền gì một lần
+## Người dùng chỉ gõ email và mật khẩu
 
-| Ô | Lấy ở đâu |
+Địa chỉ project và khoá công khai **nằm sẵn trong bản dựng**, y như app điện thoại lấy chúng từ
+biến môi trường lúc dựng. Màn hình chỉ hỏi hai thứ:
+
+| Ô | |
 | --- | --- |
-| ĐỊA CHỈ SUPABASE | Supabase → Project Settings → Data API → *Project URL* |
-| KHOÁ CÔNG KHAI | cùng chỗ đó, *anon key* (bản mới gọi là *publishable key*) |
-| EMAIL CHỦ | đúng tài khoản đang dùng trên điện thoại |
-| MẬT KHẨU | gõ mỗi lần mở, **không được lưu lại** |
-
-Địa chỉ, khoá và email nhớ vào `caidat.json` cạnh file dữ liệu. **Mật khẩu thì không**: file ấy
-là văn bản thường, ai mở máy ra cũng đọc được.
-
-Khoá công khai không phải bí mật — nó nằm trong mọi bản app điện thoại đã cài, ai gỡ app ra cũng
-đọc được, và Supabase phát nó ra để làm đúng việc ấy. Thứ chặn người này đọc sổ người kia là
-**RLS trong database**. Tuyệt đối đừng điền `service_role` key: khoá ấy **bỏ qua RLS**, ai moi
-được là đọc và xoá được cả database.
+| EMAIL CHỦ | đúng tài khoản đang dùng trên điện thoại. Nhớ vào `caidat.json` cho khỏi gõ lại |
+| MẬT KHẨU | gõ mỗi lần mở, **không được lưu lại** — `caidat.json` là văn bản thường, ai mở máy ra cũng đọc được |
 
 Phải là **tài khoản chủ đăng nhập bằng email** — đúng tài khoản đã đẩy sổ lên, vì bảng `sao_luu`
 khoá theo `user_id`. Máy thợ đăng nhập ẩn danh nên không có bản nào ở đây.
+
+### Nhét khoá vào bản dựng
+
+```bash
+dotnet publish src/QuanLyDienNuoc -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true \
+  -p:ChamCongSupabaseUrl=https://<project>.supabase.co \
+  -p:ChamCongSupabaseAnonKey=<anon key>
+```
+
+Hai giá trị ấy lấy ở Supabase → Project Settings → Data API (*Project URL* và *anon key*, bản mới
+gọi là *publishable key*) — cùng hai giá trị app điện thoại đang dùng.
+
+[`CauHinhChamCong`](../src/ChamCong.Core/SoDiDong/CauHinhChamCong.cs) tìm theo thứ tự:
+
+1. **bản dựng** — hai tham số ở trên, hoặc biến môi trường `CHAMCONG_SUPABASE_URL` /
+   `CHAMCONG_SUPABASE_ANON_KEY` lúc dựng;
+2. **biến môi trường** lúc chạy, cùng tên `ChamCongSupabaseUrl` / `ChamCongSupabaseAnonKey`;
+3. **file `supabase.json`** cạnh file chạy: `{ "diaChi": "...", "khoaCongKhai": "..." }` — cho ai
+   đã có bản dựng sẵn mà muốn trỏ sang project khác, khỏi dựng lại;
+4. **những gì người dùng đã tự dán** trong phần mềm.
+
+Nguồn nào **thiếu một trong hai** giá trị thì bỏ qua cả nguồn ấy, không ghép nửa vời: địa chỉ của
+nơi này với khoá của nơi khác chỉ ra một lỗi mạng khó hiểu. Không nguồn nào có thì màn hình hiện
+thêm hai ô để tự dán vào — phần mềm vẫn chạy được, không kẹt.
+
+Khoá công khai **không phải bí mật**: nó nằm trong mọi bản app đã phát ra, ai gỡ ra cũng đọc được,
+và Supabase phát nó ra để làm đúng việc ấy. Thứ chặn người này đọc sổ người kia là **RLS trong
+database**. Nhưng *không phải bí mật* khác *nên đưa lên git*: khoá nằm trong repo công khai là ai
+cũng gọi được vào project, nên nó đi vào bản dựng qua biến môi trường chứ không nằm trong mã nguồn
+(`supabase.json` cũng đã nằm trong `.gitignore`). Tuyệt đối không dùng `service_role` key: khoá ấy
+**bỏ qua RLS**, ai moi được là đọc và xoá được cả database.
 
 ## Bốn cách xem cùng một sổ
 

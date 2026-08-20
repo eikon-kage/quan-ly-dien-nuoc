@@ -15,6 +15,9 @@ bld/
 [Ll]ogs/
 [Oo]ut/
 
+## Cấu hình Supabase để cạnh phần mềm máy tính — có khoá thật, không commit.
+supabase.json
+
 ## Biến môi trường — có khoá thật, tuyệt đối không commit.
 ## Riêng file mẫu (*.example) thì vẫn theo dõi: nó chỉ có tên biến, không có giá trị.
 .env

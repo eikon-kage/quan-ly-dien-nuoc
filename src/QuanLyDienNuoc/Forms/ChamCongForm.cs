@@ -43,6 +43,8 @@ public sealed class ChamCongForm : Form
     /// <summary>Cách vẽ lại lưới cho trang đang xem. Đổi bảng là đổi luôn cách vẽ này.</summary>
     private Action _veLaiTrang = () => { };
 
+    private readonly CauHinhChamCong _cauHinh;
+
     private NguonSupabase? _nguon;
     private SoChamCong _so = new();
     private string _taoLuc = string.Empty;
@@ -59,16 +61,19 @@ public sealed class ChamCongForm : Form
         Font = Theme.FontThuong;
         AutoScaleMode = AutoScaleMode.Dpi;
 
+        // Địa chỉ và khoá lấy từ bản dựng nếu có sẵn — người dùng chỉ gõ email với mật khẩu.
+        _cauHinh = CauHinhChamCong.MacDinh(_kho.CaiDat.ChamCongDiaChi, _kho.CaiDat.ChamCongKhoaCongKhai);
+
         TaoGiaoDien();
 
-        _txtDiaChi.Text = _kho.CaiDat.ChamCongDiaChi;
-        _txtKhoa.Text = _kho.CaiDat.ChamCongKhoaCongKhai;
+        _txtDiaChi.Text = _cauHinh.DiaChi;
+        _txtKhoa.Text = _cauHinh.KhoaCongKhai;
         _txtEmail.Text = _kho.CaiDat.ChamCongEmail;
         DatTrangThaiChoTai(false);
 
-        _lblTrangThai.Text = _kho.CaiDat.ChamCongDiaChi.Length == 0
-            ? "Chưa nối với Supabase. Điền địa chỉ project và khoá công khai (anon key) rồi đăng nhập bằng tài khoản chủ."
-            : "Điền mật khẩu tài khoản chủ rồi bấm ĐĂNG NHẬP VÀ TẢI SỔ.";
+        _lblTrangThai.Text = _cauHinh.DaCoSan
+            ? $"Gõ email và mật khẩu tài khoản chủ rồi bấm ĐĂNG NHẬP VÀ TẢI SỔ. (Khoá Supabase lấy từ {_cauHinh.Nguon}.)"
+            : "Bản dựng này chưa có khoá Supabase. Dán địa chỉ project và khoá công khai (anon key) vào rồi đăng nhập.";
 
         FormClosed += (_, _) => _nguon?.Dispose();
     }
@@ -158,10 +163,18 @@ public sealed class ChamCongForm : Form
             AutoScroll = true,
             Margin = new Padding(0),
         };
-        hang.Controls.Add(Theme.Truong("ĐỊA CHỈ SUPABASE", _txtDiaChi, 320, CaoO, Le));
-        hang.Controls.Add(Theme.Truong("KHOÁ CÔNG KHAI", _txtKhoa, 260, CaoO, Le));
-        hang.Controls.Add(Theme.Truong("EMAIL CHỦ", _txtEmail, 220, CaoO, Le));
-        hang.Controls.Add(Theme.Truong("MẬT KHẨU", _txtMatKhau, 160, CaoO, Le));
+
+        // Khoá đã nằm trong bản dựng thì **không hiện hai ô ấy ra nữa**: đưa địa chỉ với khoá
+        // công khai ra trước mặt chủ cửa hàng chỉ làm họ hoang mang, mà cũng chẳng có gì để họ
+        // sửa. Bản dựng chưa có khoá thì vẫn phải hiện, không thì kẹt hẳn.
+        if (!_cauHinh.DaCoSan)
+        {
+            hang.Controls.Add(Theme.Truong("ĐỊA CHỈ SUPABASE", _txtDiaChi, 320, CaoO, Le));
+            hang.Controls.Add(Theme.Truong("KHOÁ CÔNG KHAI", _txtKhoa, 260, CaoO, Le));
+        }
+
+        hang.Controls.Add(Theme.Truong("EMAIL CHỦ", _txtEmail, 260, CaoO, Le));
+        hang.Controls.Add(Theme.Truong("MẬT KHẨU", _txtMatKhau, 200, CaoO, Le));
         hang.Controls.Add(Theme.Truong(" ", _btnDangNhap, 240, 40, Le));
 
         nen.Controls.Add(hang);
@@ -265,7 +278,7 @@ public sealed class ChamCongForm : Form
 
         if (diaChi.Length == 0 || khoa.Length == 0)
         {
-            HopThoai.CanhBao(this, "Hãy điền địa chỉ Supabase và khoá công khai.");
+            HopThoai.CanhBao(this, "Bản dựng này chưa có khoá Supabase. Hãy dán địa chỉ project và khoá công khai vào.");
             return;
         }
 
@@ -275,10 +288,16 @@ public sealed class ChamCongForm : Form
             return;
         }
 
-        // Nhớ lại địa chỉ, khoá và email cho khỏi gõ mỗi lần. Mật khẩu thì không nhớ.
-        _kho.CaiDat.ChamCongDiaChi = diaChi;
-        _kho.CaiDat.ChamCongKhoaCongKhai = khoa;
+        // Email nhớ lại cho khỏi gõ mỗi lần; mật khẩu thì không. Địa chỉ với khoá chỉ lưu khi
+        // người dùng tự dán vào — khoá đã có trong bản dựng thì chép lại vào file cài đặt chỉ
+        // tổ thêm một bản nữa phải đi sửa mỗi lần đổi project.
         _kho.CaiDat.ChamCongEmail = _txtEmail.Text.Trim();
+        if (!_cauHinh.DaCoSan)
+        {
+            _kho.CaiDat.ChamCongDiaChi = diaChi;
+            _kho.CaiDat.ChamCongKhoaCongKhai = khoa;
+        }
+
         _kho.LuuCaiDat();
 
         _nguon?.Dispose();

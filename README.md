@@ -241,8 +241,19 @@ Hoặc mở `QuanLyDienNuoc.sln` bằng Visual Studio rồi bấm F5.
 ## Đóng gói thành 1 file exe
 
 ```bash
-dotnet publish src/QuanLyDienNuoc -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish src/QuanLyDienNuoc -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true \
+  -p:ChamCongSupabaseUrl=https://<project>.supabase.co \
+  -p:ChamCongSupabaseAnonKey=<khoá công khai của project>
 ```
 
 File chạy nằm ở `src/QuanLyDienNuoc/bin/Release/net8.0-windows/win-x64/publish/QuanLyDienNuoc.exe`,
 copy sang máy khác dùng được ngay, không cần cài .NET.
+
+Hai tham số `ChamCong*` nhét khoá Supabase vào bản dựng để màn **Chấm công thợ** chỉ hỏi email và
+mật khẩu, đúng như app điện thoại. Không truyền thì lấy theo biến môi trường
+`CHAMCONG_SUPABASE_URL` / `CHAMCONG_SUPABASE_ANON_KEY`; không có nữa thì phần mềm vẫn chạy, chỉ là
+màn ấy mời tự dán địa chỉ với khoá vào. Xem [docs/chamcong-tren-may-tinh.md](docs/chamcong-tren-may-tinh.md).
+
+Khoá công khai không phải bí mật (mọi bản app đã phát ra đều mang nó), nhưng **đừng đưa vào mã
+nguồn**: repo công khai thì ai cũng gọi được vào project. Tuyệt đối không dùng `service_role` key —
+khoá ấy bỏ qua RLS.

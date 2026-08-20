@@ -17,6 +17,39 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
+  <!--
+    Khoá Supabase của app chấm công, nhét vào bản dựng y như app điện thoại làm: người dùng chỉ
+    gõ email và mật khẩu. Truyền lúc dựng:
+
+      dotnet publish src/QuanLyDienNuoc -c Release ^
+        -p:ChamCongSupabaseUrl=https://abc.supabase.co -p:ChamCongSupabaseAnonKey=<khoá công khai>
+
+    Không truyền thì lấy theo biến môi trường cùng tên. Khoá **không nằm trong mã nguồn**: nó
+    không phải bí mật (mọi bản app đã phát ra đều mang nó), nhưng để trong repo công khai là ai
+    cũng gọi được vào project. Không điền thì phần mềm vẫn chạy, chỉ là màn Chấm công thợ mời
+    người dùng tự dán địa chỉ với khoá vào.
+  -->
+  <PropertyGroup>
+    <ChamCongSupabaseUrl Condition="'$(ChamCongSupabaseUrl)' == ''">$(CHAMCONG_SUPABASE_URL)</ChamCongSupabaseUrl>
+    <ChamCongSupabaseAnonKey Condition="'$(ChamCongSupabaseAnonKey)' == ''">$(CHAMCONG_SUPABASE_ANON_KEY)</ChamCongSupabaseAnonKey>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(ChamCongSupabaseUrl)' != '' AND '$(ChamCongSupabaseAnonKey)' != ''">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
+      <_Parameter1>ChamCongSupabaseUrl</_Parameter1>
+      <_Parameter2>$(ChamCongSupabaseUrl)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadata">
+      <_Parameter1>ChamCongSupabaseAnonKey</_Parameter1>
+      <_Parameter2>$(ChamCongSupabaseAnonKey)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Có file cấu hình cạnh mã nguồn thì chép ra cạnh file chạy (file này không lên git). -->
+    <None Include="supabase.json" Condition="Exists('supabase.json')" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\QuanLyDienNuoc.Core\QuanLyDienNuoc.Core.csproj" />
     <!-- Đọc sổ chấm công do app điện thoại đẩy lên Supabase. -->
