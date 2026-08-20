@@ -169,7 +169,9 @@ src/
   QuanLyDienNuoc/               ứng dụng WinForms (net8.0-windows)
     Program.cs                  điểm khởi động, đặt ngôn ngữ vi-VN, khoá file, tự sao lưu
     MauHoaDon/                  hai file mẫu hoá đơn giấy
-    Ui/Theme.cs                 màu, phông chữ, lưới, nút dùng chung
+    Ui/Theme.cs                 màu, phông chữ, thẻ, nút, ô nhập, lưới dùng chung
+    Ui/ThanhBen.cs              thanh bên trái của màn hình chính, hình vẽ bằng nét
+    Ui/OThongKe.cs              một ô số liệu trong thẻ tổng quan
     Ui/InHoaDon.cs              vẽ hoá đơn ra giấy để xem trước và in
     Forms/MainForm.cs           màn hình chính (khách hàng theo năm, dải nhắc nợ)
     Forms/DonHangForm.cs        hoá đơn và chi tiết hàng của một khách
@@ -193,6 +195,7 @@ tests/
   anh-giao-dien.yml             dựng trên máy Windows của GitHub, chụp ảnh từng màn hình
 docs/
   anh-giao-dien/                ảnh giao diện mới nhất, do workflow tự commit lên
+  giao-dien-may-tinh.md         bảng màu, các mảnh dùng chung và quy tắc dựng giao diện
 ```
 
 ## Xem giao diện mà không có máy Windows
