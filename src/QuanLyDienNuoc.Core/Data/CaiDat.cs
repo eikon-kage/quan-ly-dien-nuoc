@@ -39,6 +39,22 @@ public sealed class CaiDat
     /// <summary>Hỏi lại khi thêm một dòng giống hệt dòng đã có (cùng ngày, cùng hàng, cùng số lượng).</summary>
     public bool CanhBaoDongTrung { get; set; } = true;
 
+    /// <summary>Địa chỉ project Supabase của app chấm công, ví dụ https://abc.supabase.co.</summary>
+    public string ChamCongDiaChi { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Khoá công khai (anon / publishable key) của project ấy. Khoá này **không phải bí mật** —
+    /// nó nằm trong mọi bản app điện thoại đã cài; thứ chặn người này đọc sổ người kia là RLS
+    /// trong database. Tuyệt đối không điền service_role key: khoá ấy bỏ qua RLS.
+    /// </summary>
+    public string ChamCongKhoaCongKhai { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Email tài khoản chủ, nhớ lại cho khỏi gõ mỗi lần. **Mật khẩu thì không nhớ** — file cài
+    /// đặt này nằm cạnh file dữ liệu, ai mở máy ra cũng đọc được.
+    /// </summary>
+    public string ChamCongEmail { get; set; } = string.Empty;
+
     /// <summary>Cài đặt mặc định nằm cạnh file dữ liệu, tên là caidat.json.</summary>
     public static string DuongDanBenCanh(string duongDanDuLieu)
     {

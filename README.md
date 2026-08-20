@@ -166,6 +166,11 @@ src/
     Ui/DongNhapNhanh.cs         tách "ống 27 x10, co 90 x5" thành từng món
     Ui/ThuTuDong.cs             thứ tự dòng hàng: chèn vào giữa, đổi chỗ, giữ đúng thứ tự khi in
     Ui/DocSo.cs                 đọc số tiền thành chữ
+  ChamCong.Core/                thư viện chấm công thợ (net8.0)
+    SoDiDong/SoChamCong.cs      dáng sổ đúng như app điện thoại ghi ra
+    SoDiDong/Goi.cs             mở gói sao lưu, vá dáng cũ, từ chối gói của bản app mới hơn
+    SoDiDong/BangLuongSo.cs     bảng lương kỳ đang mở, tính đúng như app điện thoại
+    SoDiDong/NguonSupabase.cs   đọc bảng sao_luu trên Supabase (chỉ đọc, không ghi)
   QuanLyDienNuoc/               ứng dụng WinForms (net8.0-windows)
     Program.cs                  điểm khởi động, đặt ngôn ngữ vi-VN, khoá file, tự sao lưu
     MauHoaDon/                  hai file mẫu hoá đơn giấy
@@ -173,6 +178,7 @@ src/
     Ui/ThanhBen.cs              thanh bên trái của màn hình chính, hình vẽ bằng nét
     Ui/InHoaDon.cs              vẽ hoá đơn ra giấy để xem trước và in
     Forms/MainForm.cs           màn hình chính (khách hàng theo năm, dải nhắc nợ)
+    Forms/ChamCongForm.cs       xem chấm công thợ, đọc từ Supabase (chỉ đọc)
     Forms/DonHangForm.cs        hoá đơn và chi tiết hàng của một khách
     Forms/CongNoForm.cs         sổ công nợ của cả cửa hàng
     Forms/KhachHangForm.cs      thêm/sửa khách
@@ -190,11 +196,13 @@ src/
     Forms/NhapExcelForm.cs      nhập hoá đơn từ file Excel
 tests/
   QuanLyDienNuoc.Tests/         kiểm thử phần nghiệp vụ (xUnit): `dotnet test`
+  ChamCong.Tests/               kiểm thử phần chấm công, kể cả bộ đọc Supabase
 .github/workflows/
   anh-giao-dien.yml             dựng trên máy Windows của GitHub, chụp ảnh từng màn hình
 docs/
   anh-giao-dien/                ảnh giao diện mới nhất, do workflow tự commit lên
   giao-dien-may-tinh.md         bảng màu, các mảnh dùng chung và quy tắc dựng giao diện
+  chamcong-tren-may-tinh.md     cách máy tính đọc sổ chấm công từ Supabase
 ```
 
 ## Xem giao diện mà không có máy Windows

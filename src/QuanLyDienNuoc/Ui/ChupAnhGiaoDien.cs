@@ -66,6 +66,10 @@ public static class ChupAnhGiaoDien
                     $"{khach.Ten} — chép rồi dán sang Zalo.",
                     BaoCao.TinNhacNo.Soan(khach, kho.HoaDonCuaKhach(khach.Id), new DateTime(2026, 8, 3), ThongTinCuaHang.DocTuMau())));
 
+            // Chụp lúc chưa nối Supabase — đúng cái người dùng thấy lần đầu mở ra. Không gọi
+            // mạng: cửa sổ chỉ gọi khi bấm đăng nhập.
+            loi += ChupForm(thuMucRa, "17-cham-cong", () => new ChamCongForm());
+
             var fileToanBo = Path.Combine(thuMucRa, "toan-bo-du-lieu.xlsx");
             XuatToanBo.Xuat(kho.DuLieu, fileToanBo, new DateTime(2026, 8, 3));
             Ghi($"Đã xuất Excel toàn bộ dữ liệu: {fileToanBo}");

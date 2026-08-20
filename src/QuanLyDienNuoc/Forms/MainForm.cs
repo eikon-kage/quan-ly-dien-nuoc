@@ -96,6 +96,15 @@ public sealed class MainForm : Form
             form.ShowDialog(this);
         });
         _thanhBen.Ngan();
+
+        // Chấm công thợ là sổ của app điện thoại, máy tính chỉ đọc — để riêng một khoang cho
+        // khỏi lẫn với các mục về đơn hàng phía trên.
+        _thanhBen.Them("Chấm công thợ", KieuIcon.Bang, () =>
+        {
+            using var form = new ChamCongForm();
+            form.ShowDialog(this);
+        });
+        _thanhBen.Ngan();
         _thanhBen.Them("Sao lưu và khôi phục", KieuIcon.Luu, () =>
         {
             using var form = new SaoLuuForm();

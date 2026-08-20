@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\QuanLyDienNuoc.Core\QuanLyDienNuoc.Core.csproj" />
+    <!-- Đọc sổ chấm công do app điện thoại đẩy lên Supabase. -->
+    <ProjectReference Include="..\ChamCong.Core\ChamCong.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
