@@ -358,12 +358,19 @@ public sealed class DonHangForm : Form
             AutoScroll = true,
             Margin = new Padding(0),
         };
+        // Nhãn để đúng một hai chữ cho khỏi cắt, còn cách gõ thì để trong chú thích hiện ra khi
+        // trỏ chuột vào ô — nhãn dài như "ĐƠN GIÁ (tính được: 3+2*4)" không bao giờ vừa ô.
+        var mach = new ToolTip { InitialDelay = 250, AutoPopDelay = 10000 };
+        mach.SetToolTip(_cboHang, "Gõ tắt cũng ra: \"o27\", \"27 ong\"");
+        mach.SetToolTip(_txtDonGia, "Gõ được cả phép tính, ví dụ: 3+2*4");
+        mach.SetToolTip(_txtSoLuong, "Số âm là trả lại hàng, ví dụ: -2");
+
         const int CaoO = 40;
         hang.Controls.Add(Theme.Truong("NGÀY LẤY", _dtNgay, 200, CaoO));
-        hang.Controls.Add(Theme.Truong("TÊN HÀNG (gõ tắt cũng ra: \"o27\", \"27 ong\")", _cboHang, 300, CaoO));
+        hang.Controls.Add(Theme.Truong("TÊN HÀNG", _cboHang, 300, CaoO));
         hang.Controls.Add(Theme.Truong("ĐƠN VỊ", _txtDonVi, 100, CaoO));
-        hang.Controls.Add(Theme.Truong("ĐƠN GIÁ (tính được: 3+2*4)", _txtDonGia, 140, CaoO));
-        hang.Controls.Add(Theme.Truong("SỐ LƯỢNG (số âm là trả lại)", _txtSoLuong, 120, CaoO));
+        hang.Controls.Add(Theme.Truong("ĐƠN GIÁ", _txtDonGia, 140, CaoO));
+        hang.Controls.Add(Theme.Truong("SỐ LƯỢNG", _txtSoLuong, 120, CaoO));
         hang.Controls.Add(Theme.Truong("THÀNH TIỀN", _lblTamTinh, 150, CaoO));
         hang.Controls.Add(Theme.Truong(" ", btnThem, 170, CaoO));
         hang.Controls.Add(Theme.Truong(" ", btnTraLai, 140, CaoO));

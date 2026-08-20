@@ -566,6 +566,32 @@ public static class Theme
         };
     }
 
+    /// <summary>
+    /// Phông vừa bề ngang cho một dòng chữ: chữ dài hơn chỗ có thì hạ cỡ từng nửa điểm cho vừa.
+    /// Nhãn trên ô nhập đặt cứng theo bề ngang của ô, mà chữ tiếng Việt đủ dấu thì dài hơn ước
+    /// lượng — không đo lại là cắt mất chữ.
+    /// </summary>
+    public static Font PhongVuaBeNgang(string chu, Font goc, int rong, float coNhoNhat = 8.5F)
+    {
+        if (string.IsNullOrEmpty(chu) || TextRenderer.MeasureText(chu, goc).Width <= rong)
+        {
+            return goc;
+        }
+
+        for (var co = goc.Size - 0.5F; co >= coNhoNhat; co -= 0.5F)
+        {
+            var thu = new Font(goc.FontFamily, co, goc.Style);
+            if (TextRenderer.MeasureText(chu, thu).Width <= rong)
+            {
+                return thu;
+            }
+
+            thu.Dispose();
+        }
+
+        return new Font(goc.FontFamily, coNhoNhat, goc.Style);
+    }
+
     /// <summary>Một ô nhập có nhãn nằm phía trên, gộp trong một panel để xếp bằng FlowLayoutPanel.</summary>
     /// <param name="cao">
     /// Chiều cao ô nhập. Để 0 là lấy mặc định (36 cho ô chữ, 34 cho nút và ô chọn ngày).
@@ -589,11 +615,14 @@ public static class Theme
         var lbl = new Label
         {
             Text = nhan,
-            Font = FontNhan,
+            Font = PhongVuaBeNgang(nhan, FontNhan, rong),
             ForeColor = Xam,
             Location = new Point(0, 0),
             Size = new Size(rong, 20),
             TextAlign = ContentAlignment.MiddleLeft,
+
+            // Chốt cuối: nhãn quá dài thì cắt bằng "…" chứ đừng cắt giữa từ như trước.
+            AutoEllipsis = true,
         };
 
         // TextBox thì bọc khung bo góc cho giống bản thiết kế; nút hay ô chọn ngày thì để
