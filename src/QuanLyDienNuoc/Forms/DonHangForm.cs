@@ -319,9 +319,14 @@ public sealed class DonHangForm : Form
         _cboHang.DropDownStyle = ComboBoxStyle.DropDown;
         _cboHang.Font = Theme.FontNhap;
 
-        // Tự lọc theo kiểu gõ tắt thay cho gợi ý mặc định của Windows (chỉ khớp đúng đầu chữ và cần đủ dấu).
+        // Không gợi ý gì trong lúc gõ. Danh sách vẫn nằm sẵn trong ô, muốn chọn thì bấm mũi tên
+        // mở ra — nhưng gõ tới đâu bung tới đó rồi hỏi "ý anh là ... phải không" thì đang nhập
+        // liền tay bị cắt nhịp. Gõ tắt để riêng cho màn "Nhập nhiều dòng".
         _cboHang.AutoCompleteMode = AutoCompleteMode.None;
-        _cboHang.TextUpdate += (_, _) => LocDanhMucHang();
+
+        // Rời ô mới điền đơn vị và đơn giá, và chỉ khi tên **khớp hẳn** một mặt hàng trong danh
+        // mục. Không đoán, không hỏi.
+        _cboHang.Leave += (_, _) => DienTheoDanhMuc();
         _cboHang.SelectedIndexChanged += (_, _) =>
         {
             if (_dangNap || _cboHang.SelectedItem is not VatTu vatTu || Khach is not { } khach)
@@ -390,54 +395,50 @@ public sealed class DonHangForm : Form
         return nen;
     }
 
-    /// <summary>Lọc danh mục theo kiểu gõ tắt và bung gợi ý ngay khi đang gõ.</summary>
-    private void LocDanhMucHang()
+    /// <summary>
+    /// Tên vừa gõ khớp hẳn một mặt hàng trong danh mục thì điền hộ đơn vị và đơn giá của khách.
+    /// Chỉ điền vào ô đang trống — người dùng đã gõ giá riêng thì đừng ghi đè.
+    /// </summary>
+    private void DienTheoDanhMuc()
     {
-        if (_dangNap)
+        if (_dangNap || Khach is not { } khach)
         {
             return;
         }
 
-        var dangGo = _cboHang.Text;
-        var khop = _danhMucHang
-            .Select(v => (VatTu: v, Diem: TimHang.Diem(v.Ten, v.MaTat, dangGo)))
-            .Where(x => x.Diem > 0)
-            .OrderByDescending(x => x.Diem)
-            .ThenBy(x => x.VatTu.Ten.Length)
-            .ThenBy(x => x.VatTu.Ten, StringComparer.CurrentCultureIgnoreCase)
-            .Select(x => x.VatTu)
-            .Take(50)
-            .ToList();
-
-        _dangNap = true;
-        _cboHang.BeginUpdate();
-        _cboHang.Items.Clear();
-        foreach (var vatTu in khop)
+        var ten = _cboHang.Text.Trim();
+        if (ten.Length == 0 || _kho.TimVatTuTheoTen(ten) is not { } vatTu)
         {
-            _cboHang.Items.Add(vatTu);
+            return;
         }
 
-        _cboHang.EndUpdate();
-        _cboHang.Text = dangGo;
-
-        // Bung danh sách gợi ý — nhưng chỉ bung khi đang đóng. Mỗi lần bung, Windows tự tìm
-        // dòng khớp đầu chữ, chọn nó rồi **viết luôn tên dòng đó vào ô**: gõ "o" là ô đã
-        // thành "ống 27...", gõ tiếp thì lẫn vào giữa tên cũ thành chữ vô nghĩa.
-        var nenBung = dangGo.Length > 0 && khop.Count > 0;
-        if (nenBung != _cboHang.DroppedDown)
+        if (_txtDonVi.Text.Trim().Length == 0)
         {
-            _cboHang.DroppedDown = nenBung;
+            _txtDonVi.Text = vatTu.DonVi;
         }
 
-        // Nên sau khi bung phải bỏ dòng Windows tự chọn và viết lại đúng những gì đang gõ.
-        // Danh sách vẫn hiện, ai muốn lấy thì bấm chuột hoặc ↓ rồi Enter.
-        _cboHang.SelectedIndex = -1;
-        _cboHang.Text = dangGo;
-        _dangNap = false;
+        if (So.Tinh(_txtDonGia.Text) <= 0m)
+        {
+            _txtDonGia.Text = So.Tien(_kho.GiaCho(khach, vatTu));
+        }
+    }
 
-        Cursor.Current = Cursors.Default;
-        _cboHang.SelectionStart = dangGo.Length;
-        _cboHang.SelectionLength = 0;
+    /// <summary>
+    /// Ô số nhận cả phép tính ("3+2*4"). Gõ chữ vào đó thì **xoá trắng luôn** rồi nhắc một câu:
+    /// để nguyên chữ vô nghĩa trong ô thì người ta gõ tiếp vào giữa nó, ra một chuỗi sai nữa.
+    /// </summary>
+    private bool OSoHopLe(TextBox o, string tenO)
+    {
+        var chu = o.Text.Trim();
+        if (chu.Length == 0 || So.TryTinh(chu, out _))
+        {
+            return true;
+        }
+
+        _lblTrangThai.Text = $"Ô {tenO} phải là số — đã xoá \"{chu}\". Gõ số, hoặc phép tính như 3+2*4.";
+        o.Clear();
+        o.Focus();
+        return false;
     }
 
     /// <summary>Sau khi rời ô, thay phép tính bằng kết quả để nhìn là thấy con số thật.</summary>
@@ -693,14 +694,6 @@ public sealed class DonHangForm : Form
     }
 
     /// <summary>Mặt hàng khớp nhất với chuỗi đang gõ, kể cả gõ tắt. Trả về kèm điểm khớp.</summary>
-    private (VatTu VatTu, int Diem)? TimHangGanNhat(string ten) => _danhMucHang
-        .Select(v => (VatTu: v, Diem: TimHang.Diem(v.Ten, v.MaTat, ten)))
-        .Where(x => x.Diem > 0)
-        .OrderByDescending(x => x.Diem)
-        .ThenBy(x => x.VatTu.Ten.Length)
-        .Cast<(VatTu VatTu, int Diem)?>()
-        .FirstOrDefault();
-
     private void NapHoaDon(Guid? chon)
     {
         if (Khach is not { } khach)
@@ -865,6 +858,11 @@ public sealed class DonHangForm : Form
             return;
         }
 
+        if (!OSoHopLe(_txtDonGia, "ĐƠN GIÁ") || !OSoHopLe(_txtSoLuong, "SỐ LƯỢNG"))
+        {
+            return;
+        }
+
         var soLuong = So.Tinh(_txtSoLuong.Text);
         if (traLai)
         {
@@ -984,32 +982,6 @@ public sealed class DonHangForm : Form
         if (vatTu is null || !string.Equals(vatTu.Ten, ten, StringComparison.CurrentCultureIgnoreCase))
         {
             vatTu = _kho.TimVatTuTheoTen(ten);
-        }
-
-        // Gõ tắt: chuỗi vừa gõ không có trong danh mục nhưng khớp một mặt hàng.
-        // Mã tắt khớp hẳn thì dùng luôn, còn khớp mờ thì hỏi lại — tránh gõ tắt lại đẻ ra hàng mới.
-        if (vatTu is null && TimHangGanNhat(ten) is { } goiY)
-        {
-            var dungGoiY = goiY.Diem >= 90
-                || HopThoai.Hoi(
-                    this,
-                    $"Danh mục chưa có \"{ten}\".\n\nÝ anh là \"{goiY.VatTu.Ten}\" phải không?\n\n" +
-                    $"Chọn Không nếu muốn thêm \"{ten}\" thành mặt hàng mới.");
-
-            if (dungGoiY)
-            {
-                vatTu = goiY.VatTu;
-                ten = vatTu.Ten;
-                if (donVi.Length == 0)
-                {
-                    donVi = vatTu.DonVi;
-                }
-
-                if (donGia <= 0m)
-                {
-                    donGia = _kho.GiaCho(khach, vatTu);
-                }
-            }
         }
 
         if (_kho.CaiDat.CanhBaoDongTrung
@@ -1233,13 +1205,9 @@ public sealed class DonHangForm : Form
             return;
         }
 
-        // Mã tắt khớp hẳn thì thay luôn; khớp mờ cứ để nguyên, lúc ghi vào sổ sẽ hỏi lại.
+        // Khớp hẳn tên trong danh mục thì điền hộ đơn vị với đơn giá, còn không thì để nguyên
+        // đúng chữ người dùng gõ. Gõ tắt là việc của màn "Nhập nhiều dòng".
         var vatTu = _kho.TimVatTuTheoTen(ten);
-        if (vatTu is null && TimHangGanNhat(ten) is { } goiY && goiY.Diem >= 90)
-        {
-            vatTu = goiY.VatTu;
-        }
-
         if (vatTu is null)
         {
             return;

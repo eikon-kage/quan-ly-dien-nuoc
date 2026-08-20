@@ -15,7 +15,11 @@ public sealed class CongNoForm : Form
     private const string TatCaCacNam = "Tất cả các năm";
 
     private readonly KhoDuLieu _kho = KhoDuLieu.Instance;
+    /// <summary>Cả sổ sau khi lọc. Lưới chỉ nhận đúng một trang trong này.</summary>
+    private readonly List<DongLuoi> _tatCa = new();
+
     private readonly BindingList<DongLuoi> _nguon = new();
+    private readonly ThanhPhanTrang _phanTrang = new();
 
     private readonly ComboBox _cboNam = new();
     private readonly TextBox _txtTim = Theme.O(300);
@@ -201,9 +205,15 @@ public sealed class CongNoForm : Form
         _lblTongKet.Font = Theme.FontSo;
         _lblTongKet.ForeColor = Theme.Do;
         _lblTongKet.AutoSize = false;
-        _lblTongKet.Width = 560;
+        _lblTongKet.Width = 520;
 
+        _phanTrang.Dock = DockStyle.Right;
+        _phanTrang.Padding = new Padding(0, 6, 12, 0);
+        _phanTrang.DoiTrang += (_, _) => HienTrang();
+
+        // Thêm sau cùng là nằm ngoài cùng bên phải.
         nen.Controls.Add(trai);
+        nen.Controls.Add(_phanTrang);
         nen.Controls.Add(_lblTongKet);
         return nen;
     }
@@ -252,11 +262,10 @@ public sealed class CongNoForm : Form
                         || ChuViet.Chua(d.Khach.DiaChi, tuKhoa))
             .ToList();
 
-        _nguon.RaiseListChangedEvents = false;
-        _nguon.Clear();
+        _tatCa.Clear();
         foreach (var d in dong)
         {
-            _nguon.Add(new DongLuoi
+            _tatCa.Add(new DongLuoi
             {
                 Nguon = d,
                 Ten = d.Khach.Ten,
@@ -271,8 +280,18 @@ public sealed class CongNoForm : Form
             });
         }
 
-        _nguon.RaiseListChangedEvents = true;
-        _nguon.ResetBindings();
+        // Khách đang chọn nằm trang nào thì mở đúng trang ấy.
+        _phanTrang.DatTong(_tatCa.Count);
+        if (dangChon is { } cu)
+        {
+            var viTri = _tatCa.FindIndex(d => d.Nguon.Khach.Id == cu);
+            if (viTri >= 0)
+            {
+                _phanTrang.VeTrang(PhanTrang.TrangCuaDong(viTri));
+            }
+        }
+
+        HienTrang();
 
         if (dangChon is { } id)
         {
@@ -289,6 +308,20 @@ public sealed class CongNoForm : Form
         var tongNo = dong.Sum(d => d.ConNo);
         var quaHan = dong.Count(d => d.SoNgayNo >= _kho.CaiDat.SoNgayNhacNo);
         _lblTongKet.Text = $"{dong.Count} khách đang nợ   ·   Tổng: {So.Tien(tongNo)}   ·   quá {_kho.CaiDat.SoNgayNhacNo} ngày: {quaHan} khách";
+    }
+
+    /// <summary>Đổ đúng trang đang xem vào lưới.</summary>
+    private void HienTrang()
+    {
+        _nguon.RaiseListChangedEvents = false;
+        _nguon.Clear();
+        foreach (var dong in _phanTrang.Cat(_tatCa))
+        {
+            _nguon.Add(dong);
+        }
+
+        _nguon.RaiseListChangedEvents = true;
+        _nguon.ResetBindings();
     }
 
     private void Luoi_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
@@ -385,7 +418,7 @@ public sealed class CongNoForm : Form
 
     private void XuatExcel()
     {
-        if (_nguon.Count == 0)
+        if (_tatCa.Count == 0)
         {
             HopThoai.CanhBao(this, "Không có khách nào đang nợ để xuất.");
             return;

@@ -43,6 +43,7 @@ Lấy đúng biến màu của bộ thiết kế, khai báo ở [`Ui/Theme.cs`](
 | `Theme.The` | Theme.cs | thẻ trắng bo góc, có bóng nhẹ |
 | `Theme.Nut` / `Theme.NutPhu` | Theme.cs | nút bo góc tự vẽ, có trạng thái trỏ chuột / đang bấm / đang được bàn phím chọn; chữ không vừa nút thì tự hạ cỡ chứ không để bị cắt |
 | `Theme.NutBaCham` | Theme.cs | nút ⋯ gom các việc ít dùng vào một menu |
+| `ThanhPhanTrang` | ThanhPhanTrang.cs | thanh phân trang: hai nút lùi/tiến và câu "Trang 2/7" |
 | `Theme.HopO` / `Theme.HopTim` | Theme.cs | ô nhập bo góc; ô tìm kiếm có kính lúp và chữ gợi ý mờ |
 | `Theme.ApDungLuoi` | Theme.cs | bảng kiểu mới: đầu bảng trắng, kẻ dòng mảnh |
 | `Theme.ThanhTieuDe` | Theme.cs | dải tiêu đề đầu mỗi cửa sổ con: nền trắng, kẻ một vạch dưới |
@@ -120,7 +121,39 @@ theo Figma đầu tiên.
 Thanh dưới cùng không còn dòng nhắc phím tắt dài; nó chỉ nói việc vừa làm ("Đã xoá 3 dòng. Bấm
 Ctrl+Z để lấy lại.") và nhắc ô còn thiếu.
 
+## Bảng dài thì chia trang, 30 dòng một trang
+
+Ba bảng dài nhất — **khách hàng** (trang chủ), **sổ công nợ**, và các bảng của màn **chấm công**
+— chỉ đổ 30 dòng vào lưới một lúc. Phép chia trang nằm ở
+[`PhanTrang.cs`](../src/QuanLyDienNuoc.Core/Ui/PhanTrang.cs) (hàm thuần, có test), thanh nút ở
+[`ThanhPhanTrang.cs`](../src/QuanLyDienNuoc/Ui/ThanhPhanTrang.cs).
+
+Hai chỗ dễ sai lặng lẽ, cả hai đều có test canh:
+
+1. **Trang đang xem vượt quá cuối sổ.** Xoá dòng cuối của trang cuối, hay lọc hẹp lại, thì con
+   trỏ trang vẫn trỏ vào một trang không còn tồn tại — bảng hiện ra trống trơn trong khi sổ vẫn
+   đầy dòng. Nên trang luôn bị kẹp về khoảng còn hợp lệ.
+2. **Câu tổng ở chân bảng phải cộng trên cả sổ, không cộng trên trang đang xem.** "5 khách hàng
+   trong năm 2026" mà chỉ đếm 30 dòng đang hiện thì sai hẳn nghĩa. Xuất Excel cũng vậy: xuất cả
+   sổ chứ không xuất một trang.
+
+Nạp lại sau khi sửa thì **mở đúng trang có dòng đang chọn**, chứ không quăng về trang 1 — đang dò
+dở giữa sổ mà bị đẩy về đầu là phải bấm lại cả chục lần. Vừa một trang thì hai nút ẩn hẳn.
+
+Bảng chi tiết hoá đơn **không** chia trang: dòng vàng đang gõ dở phải luôn nằm ở cuối bảng, chia
+trang là gõ ở trang 1 không thấy nó đâu.
+
 ## Nhập hàng: Enter đi một đường
+
+**Không gợi ý gì trong lúc gõ.** Trước đây gõ tới đâu bung danh sách tới đó, rồi lúc ghi vào sổ
+lại hỏi *"Danh mục chưa có «a». Ý anh là «abc» phải không?"* — đang nhập liền tay bị cắt nhịp hai
+lần. Nay: gõ gì ra nấy. Danh sách vẫn nằm sẵn trong ô, muốn chọn thì bấm mũi tên mở ra; rời ô mà
+tên **khớp hẳn** một mặt hàng thì phần mềm điền hộ đơn vị và đơn giá của khách, không đoán, không
+hỏi. Gõ tắt ("o27", "27 ong") để riêng cho màn **Nhập nhiều dòng** — đó là chỗ nó có ích thật.
+
+Ô ĐƠN GIÁ và SỐ LƯỢNG nhận cả phép tính (`3+2*4`). Gõ chữ vào đó rồi Enter thì **xoá trắng ô ấy**
+và nhắc một câu ở thanh dưới: để nguyên chữ vô nghĩa thì người ta gõ tiếp vào giữa nó, ra một
+chuỗi sai nữa.
 
 Gõ tên hàng → `Enter` sang thẳng **ô số lượng** (đơn vị và đơn giá phần mềm tự điền theo danh
 mục, gõ tay chỉ khi cần sửa) → `Enter` là ghi dòng. Thiếu ô nào thì **không có hộp thoại chặn

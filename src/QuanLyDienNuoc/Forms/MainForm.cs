@@ -10,7 +10,12 @@ namespace QuanLyDienNuoc.Forms;
 public sealed class MainForm : Form
 {
     private readonly KhoDuLieu _kho = KhoDuLieu.Instance;
+
+    /// <summary>Cả danh sách sau khi lọc. Lưới chỉ nhận đúng một trang trong này.</summary>
+    private readonly List<DongKhach> _tatCa = new();
+
     private readonly BindingList<DongKhach> _nguon = new();
+    private readonly ThanhPhanTrang _phanTrang = new();
 
     private readonly ComboBox _cboNam = new();
     private readonly TextBox _txtTim = Theme.O(440);
@@ -364,6 +369,11 @@ public sealed class MainForm : Form
         trai.Controls.Add(btnThuTien);
         trai.Controls.Add(viecKhach.Nut);
 
+        _phanTrang.Dock = DockStyle.Right;
+        _phanTrang.BackColor = Theme.Trang;
+        _phanTrang.Padding = new Padding(0, 2, 16, 0);
+        _phanTrang.DoiTrang += (_, _) => HienTrang();
+
         _lblTongKet.Dock = DockStyle.Right;
         _lblTongKet.TextAlign = ContentAlignment.MiddleRight;
         _lblTongKet.Font = Theme.FontThuong;
@@ -372,7 +382,10 @@ public sealed class MainForm : Form
         _lblTongKet.Width = 420;
         _lblTongKet.BackColor = Theme.Trang;
 
+        // Thêm sau cùng là được đặt trước, tức là nằm ngoài cùng bên phải: câu tổng kết ở mép
+        // phải, thanh phân trang lui vào trong một bậc.
         nen.Controls.Add(trai);
+        nen.Controls.Add(_phanTrang);
         nen.Controls.Add(_lblTongKet);
         return nen;
     }
@@ -442,8 +455,7 @@ public sealed class MainForm : Form
         var nam = NamDangChon;
         var tuKhoa = _txtTim.Text;
 
-        _nguon.RaiseListChangedEvents = false;
-        _nguon.Clear();
+        _tatCa.Clear();
 
         foreach (var khach in _kho.DuLieu.KhachHangs.OrderBy(k => k.Ten, StringComparer.CurrentCultureIgnoreCase))
         {
@@ -463,7 +475,7 @@ public sealed class MainForm : Form
             var tong = hoaDons.Sum(h => h.TongTien);
             var daTra = hoaDons.Sum(h => h.DaThanhToan);
 
-            _nguon.Add(new DongKhach
+            _tatCa.Add(new DongKhach
             {
                 Khach = khach,
                 Ten = khach.Ten,
@@ -476,12 +488,23 @@ public sealed class MainForm : Form
             });
         }
 
-        _nguon.RaiseListChangedEvents = true;
-        _nguon.ResetBindings();
-
+        // Khách đang chọn nằm ở trang nào thì mở đúng trang ấy: nạp lại sau khi sửa một khách mà
+        // bị quăng về trang 1 thì đang dò dở giữa sổ là mất chỗ.
+        _phanTrang.DatTong(_tatCa.Count);
         if (dangChon is { } id)
         {
-            ChonLaiKhach(id);
+            var viTri = _tatCa.FindIndex(d => d.Khach.Id == id);
+            if (viTri >= 0)
+            {
+                _phanTrang.VeTrang(PhanTrang.TrangCuaDong(viTri));
+            }
+        }
+
+        HienTrang();
+
+        if (dangChon is { } lai)
+        {
+            ChonLaiKhach(lai);
         }
 
         CapNhatTongKet(nam);
@@ -491,7 +514,7 @@ public sealed class MainForm : Form
     /// <summary>Viết lại dòng tổng kết ở chân bảng theo đúng danh sách đang hiện.</summary>
     private void CapNhatTongKet(int nam)
     {
-        _lblTongKet.Text = $"{_nguon.Count} khách hàng trong năm {nam}";
+        _lblTongKet.Text = $"{_tatCa.Count} khách hàng trong năm {nam}";
     }
 
     /// <summary>Tính lại dải nhắc nợ trên đầu màn hình (tính tất cả các năm, không riêng năm đang xem).</summary>
@@ -528,6 +551,20 @@ public sealed class MainForm : Form
         // nên đổi màu là phải vẽ lại, không thì nút giữ nền màu cũ.
         _lblNhacNo.BackColor = _nenNhacNo.BackColor;
         _nenNhacNo.Invalidate(true);
+    }
+
+    /// <summary>Đổ đúng trang đang xem vào lưới.</summary>
+    private void HienTrang()
+    {
+        _nguon.RaiseListChangedEvents = false;
+        _nguon.Clear();
+        foreach (var dong in _phanTrang.Cat(_tatCa))
+        {
+            _nguon.Add(dong);
+        }
+
+        _nguon.RaiseListChangedEvents = true;
+        _nguon.ResetBindings();
     }
 
     private void ChonLaiKhach(Guid id)

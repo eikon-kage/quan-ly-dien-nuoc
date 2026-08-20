@@ -38,6 +38,10 @@ public sealed class ChamCongForm : Form
     private readonly Label _lblTrangThai = new();
 
     private readonly List<(Button Nut, Bang Bang)> _nutBang = new();
+    private readonly ThanhPhanTrang _phanTrang = new();
+
+    /// <summary>Cách vẽ lại lưới cho trang đang xem. Đổi bảng là đổi luôn cách vẽ này.</summary>
+    private Action _veLaiTrang = () => { };
 
     private NguonSupabase? _nguon;
     private SoChamCong _so = new();
@@ -192,6 +196,10 @@ public sealed class ChamCongForm : Form
         trai.Controls.Add(_cboBan);
         trai.Controls.Add(_btnTaiLai);
 
+        _phanTrang.Dock = DockStyle.Right;
+        _phanTrang.Padding = new Padding(0, 8, 0, 0);
+        _phanTrang.DoiTrang += (_, _) => _veLaiTrang();
+
         // Bốn nút chuyển bảng, nút đang xem tô đặc — cùng cách sổ công nợ làm với hai nút lọc.
         foreach (var (bang, chu, rong) in new[]
                  {
@@ -209,6 +217,7 @@ public sealed class ChamCongForm : Form
         }
 
         nen.Controls.Add(trai);
+        nen.Controls.Add(_phanTrang);
         SonNutBang();
         return nen;
     }
@@ -410,6 +419,8 @@ public sealed class ChamCongForm : Form
 
     private void HienBang()
     {
+        // Đổi bảng thì về trang đầu — số trang của bảng cũ không nói gì về bảng mới.
+        _phanTrang.VeTrangDau();
         _luoi.DataSource = null;
         _luoi.Columns.Clear();
 
@@ -430,6 +441,19 @@ public sealed class ChamCongForm : Form
         }
     }
 
+    /// <summary>
+    /// Gắn cả danh sách vào lưới qua thanh phân trang: lưới chỉ nhận 30 dòng một lúc, còn câu
+    /// tổng ở chân màn hình vẫn cộng trên **cả** danh sách.
+    /// </summary>
+    private void Gan<T>(List<T> tatCa)
+    {
+        void Ve() => _luoi.DataSource = new BindingList<T>(_phanTrang.Cat(tatCa));
+
+        _veLaiTrang = Ve;
+        _phanTrang.DatTong(tatCa.Count);
+        Ve();
+    }
+
     private void HienKyDangMo()
     {
         _luoi.Columns.AddRange(
@@ -443,7 +467,7 @@ public sealed class ChamCongForm : Form
             Theme.Cot(nameof(DongKyMo.ConLai), "CÒN PHẢI TRẢ", 140, "#,##0", canPhai: true));
 
         var ky = BangLuongSo.KyHienTai(_so);
-        _luoi.DataSource = new BindingList<DongKyMo>(ky.Dongs
+        Gan(ky.Dongs
             .Select(d => new DongKyMo
             {
                 TenTho = d.Tho.Ten,
@@ -501,7 +525,7 @@ public sealed class ChamCongForm : Form
             })
             .ToList();
 
-        _luoi.DataSource = new BindingList<DongBuoi>(dongs);
+        Gan(dongs);
         _lblTong.Text =
             $"{dongs.Count} buổi công   ·   {So.Luong(dongs.Sum(d => d.SoCong))} công   ·   "
             + $"thành tiền {So.Tien(dongs.Sum(d => d.ThanhTien))}";
@@ -529,7 +553,7 @@ public sealed class ChamCongForm : Form
             })
             .ToList();
 
-        _luoi.DataSource = new BindingList<DongUng>(dongs);
+        Gan(dongs);
         _lblTong.Text = $"{dongs.Count} lần ứng   ·   tổng {So.Tien(dongs.Sum(d => d.SoTien))}";
     }
 
@@ -562,7 +586,7 @@ public sealed class ChamCongForm : Form
             })
             .ToList();
 
-        _luoi.DataSource = new BindingList<DongKy>(dongs);
+        Gan(dongs);
         _lblTong.Text = dongs.Count == 0
             ? "Chưa chốt kỳ nào."
             : $"{dongs.Count} kỳ đã chốt   ·   đã trả tất cả {So.Tien(dongs.Sum(d => d.DaTra))}";
