@@ -51,7 +51,6 @@ public static class ChupAnhGiaoDien
             loi += ChupForm(thuMucRa, "08-tao-hoa-don", () => new HoaDonForm(null, "HD2026-03", 2026));
             loi += ChupForm(thuMucRa, "09-nhap-tu-excel", () => new NhapExcelForm(khach.Id, 2026, hoaDon.Id, fileExcel));
             loi += ChupForm(thuMucRa, "11-so-cong-no", () => new CongNoForm());
-            loi += ChupForm(thuMucRa, "12-bo-hang", () => new BoHangForm());
             loi += ChupForm(
                 thuMucRa,
                 "13-nhap-nhieu-dong",
@@ -69,6 +68,12 @@ public static class ChupAnhGiaoDien
             // Chụp lúc chưa nối Supabase — đúng cái người dùng thấy lần đầu mở ra. Không gọi
             // mạng: cửa sổ chỉ gọi khi bấm đăng nhập.
             loi += ChupForm(thuMucRa, "17-cham-cong", () => new ChamCongForm());
+
+            // BỘ HÀNG ĐỂ CUỐI CÙNG, có lý do: trên máy dựng của GitHub, cửa sổ này **treo** lúc
+            // chụp (bước chụp bị cắt sau 5 phút, xem log workflow ngày 20/08/2026). Chưa tìm ra
+            // chỗ treo, mà để nó ở giữa danh sách thì mọi màn sau nó không bao giờ được chụp —
+            // tính đến hôm nay là mất sáu màn. Để cuối thì cùng lắm mất đúng một ảnh này.
+            loi += ChupForm(thuMucRa, "12-bo-hang", () => new BoHangForm());
 
             var fileToanBo = Path.Combine(thuMucRa, "toan-bo-du-lieu.xlsx");
             XuatToanBo.Xuat(kho.DuLieu, fileToanBo, new DateTime(2026, 8, 3));
