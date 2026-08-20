@@ -15,7 +15,7 @@ import { ManHinhChamCong } from './src/giaodien/ManHinhChamCong';
 import { ManHinhLichSuKy } from './src/giaodien/ManHinhLichSuKy';
 import { ManHinhTho } from './src/giaodien/ManHinhTho';
 import { ManHinhThoTuCham } from './src/giaodien/ManHinhThoTuCham';
-import { dungDoiChieu } from './src/giaodien/dungDoiChieu';
+import { KetNoiHopThu, dungDoiChieu } from './src/giaodien/dungDoiChieu';
 import { dungSaoLuu } from './src/giaodien/dungSaoLuu';
 import { dungSupabase } from './src/giaodien/dungSupabase';
 import { Bong, Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './src/giaodien/thietKe';
@@ -78,7 +78,47 @@ export default function App() {
     [nhom.trangThai.thanhVien],
   );
 
-  const doiChieu = dungDoiChieu(duLieu, caiDat ?? VaiMay.MAC_DINH, hopThu);
+  /**
+   * Hộp thư đang dùng đã nối được chưa, và nếu chưa thì chỉ đường cho người dùng.
+   *
+   * Chỗ này phải nằm ở đây vì đây là chỗ duy nhất biết đang chạy hộp thư nào. Trước đây hook
+   * đối chiếu tự hỏi Google, nên lúc chuyển sang Supabase nó vẫn báo "cần nối Google" rồi ẩn
+   * nút đồng bộ — sổ có nơi để gửi mà không có nút để bấm.
+   */
+  const ketNoi = useMemo<KetNoiHopThu>(() => {
+    const { hoTro: coSupabase, taiKhoan: taiKhoanNhom, thanhVien } = nhom.trangThai;
+
+    if (coSupabase) {
+      if (thanhVien !== null) {
+        return { sanSang: true, chuaSanSang: null };
+      }
+      return {
+        sanSang: false,
+        chuaSanSang:
+          taiKhoanNhom !== null
+            ? 'Đã đăng nhập nhưng chưa vào nhóm. Mở mục Thợ → Nhóm chấm công.'
+            : 'Chưa nối nhóm. Mở mục Thợ → Nhóm chấm công để nối.',
+      };
+    }
+
+    const { hoTro: coDrive, taiKhoan: taiKhoanDrive } = saoLuu.trangThai;
+    if (!coDrive) {
+      return {
+        sanSang: false,
+        chuaSanSang: 'Máy này chưa nối được hộp thư nào. Cần bản app cài thẳng vào máy.',
+      };
+    }
+    if (taiKhoanDrive === null) {
+      return {
+        sanSang: false,
+        chuaSanSang: 'Hai máy phải nối cùng một tài khoản Google thì mới thấy sổ của nhau.',
+        noi: saoLuu.noiDrive,
+      };
+    }
+    return { sanSang: true, chuaSanSang: null };
+  }, [nhom.trangThai, saoLuu.trangThai, saoLuu.noiDrive]);
+
+  const doiChieu = dungDoiChieu(duLieu, caiDat ?? VaiMay.MAC_DINH, hopThu, ketNoi);
 
   useEffect(() => {
     LuuTru.doc().then(datDuLieu);

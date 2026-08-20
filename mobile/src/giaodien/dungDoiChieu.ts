@@ -14,7 +14,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ChuaDangNhap, HetPhien } from '../nghiepvu/dangNhapGoogle';
-import * as Google from '../nghiepvu/dangNhapGoogle';
 import { HopThu, SoDaNhan, hopThuDrive } from '../nghiepvu/hopThu';
 import { DuLieuChamCong } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
@@ -25,10 +24,24 @@ import { CaiDatVai } from '../nghiepvu/vaiMay';
 
 const KHOA_LAN_CUOI = 'chamcong.hopthu.lancuoi.v1';
 
+/**
+ * Hộp thư đang dùng đã nối được chưa, và nếu chưa thì nói gì với người dùng.
+ *
+ * Hook này **không tự hỏi Google nữa**. Trước đây nó hỏi, và khi hộp thư chuyển sang Supabase
+ * thì màn hình Đối chiếu vẫn báo "cần nối Google" rồi ẩn luôn nút đồng bộ — sổ có nơi để gửi
+ * mà không có nút để bấm. Ai chọn hộp thư thì người đó nói luôn trạng thái của nó.
+ */
+export interface KetNoiHopThu {
+  /** Hộp thư dùng được chưa. */
+  sanSang: boolean;
+  /** Câu chỉ đường khi chưa sẵn sàng, ví dụ "vào mục Thợ để nối nhóm". */
+  chuaSanSang: string | null;
+  /** Nối được ngay tại màn hình đối chiếu thì đưa hàm vào; không thì để trống. */
+  noi?: () => Promise<void>;
+}
+
 export interface TrangThaiDoiChieu {
-  /** Máy này nối được Google không (Expo Go và web thì không). */
-  hoTro: boolean;
-  daNoi: boolean;
+  ketNoi: KetNoiHopThu;
   dangChay: boolean;
   /** Lần đồng bộ xong gần nhất, dạng ISO. */
   lucCuoi: string | null;
@@ -41,7 +54,6 @@ export interface DieuKhienDoiChieu {
   soBenKia: Map<string, SoDaNhan>;
   /** Gửi sổ của máy này rồi nhận sổ bên kia. */
   dongBo: () => Promise<void>;
-  noiGoogle: () => Promise<void>;
 }
 
 /**
@@ -52,14 +64,12 @@ export function dungDoiChieu(
   duLieu: DuLieuChamCong | null,
   caiDat: CaiDatVai,
   hopThu: HopThu = hopThuDrive(),
+  ketNoi: KetNoiHopThu = { sanSang: false, chuaSanSang: 'Chưa nối hộp thư nào.' },
 ): DieuKhienDoiChieu {
-  const [daNoi, datDaNoi] = useState(false);
   const [dangChay, datDangChay] = useState(false);
   const [lucCuoi, datLucCuoi] = useState<string | null>(null);
   const [loi, datLoi] = useState<string | null>(null);
   const [soBenKia, datSoBenKia] = useState<Map<string, SoDaNhan>>(new Map());
-
-  const hoTro = Google.hoTro();
 
   /** Dữ liệu mới nhất giữ trong ref: hàm `dongBo` không phải dựng lại mỗi lần chấm một ô. */
   const moiNhat = useRef(duLieu);
@@ -71,10 +81,7 @@ export function dungDoiChieu(
   useEffect(() => {
     SoBenKia.doc().then(datSoBenKia);
     AsyncStorage.getItem(KHOA_LAN_CUOI).then(datLucCuoi);
-    if (hoTro) {
-      Google.taiKhoanDaLuu().then((taiKhoan) => datDaNoi(taiKhoan !== null));
-    }
-  }, [hoTro]);
+  }, []);
 
   const dongBo = useCallback(async () => {
     const hienTai = moiNhat.current;
@@ -110,12 +117,12 @@ export function dungDoiChieu(
       datLucCuoi(xong);
       datLoi(null);
     } catch (loiChay) {
-      if (loiChay instanceof ChuaDangNhap) {
-        datDaNoi(false);
-        datLoi(null);
-      } else if (loiChay instanceof HetPhien) {
-        datDaNoi(false);
-        datLoi('Kết nối Google đã hết hạn. Bấm Nối lại.');
+      if (loiChay instanceof ChuaDangNhap || loiChay instanceof HetPhien) {
+        datLoi('Kết nối đã hết hạn. Nối lại ở mục Thợ.');
+      } else if (loiChay instanceof Error && loiChay.message !== '') {
+        // Lỗi từ hộp thư đã là câu viết cho người dùng (xem nhomSupabase, hopThuSupabase),
+        // nên hiện thẳng. Che nó thành "thử lại sau" là bỏ mất chỗ chỉ đường duy nhất.
+        datLoi(loiChay.message);
       } else {
         datLoi('Chưa đồng bộ được. Kiểm tra mạng rồi bấm lại.');
       }
@@ -125,7 +132,7 @@ export function dungDoiChieu(
   }, [hopThu]);
 
   /**
-   * Đồng bộ một lần lúc mở app, nếu đã nối Google.
+   * Đồng bộ một lần lúc mở app, nếu hộp thư đã sẵn sàng.
    *
    * Đúng một lần, không phải sau mỗi lần chấm như sao lưu: sổ đối chiếu là để *ngồi soát
    * với nhau*, mà lúc soát thì người ta bấm mũi tên đồng bộ. Đẩy đi sau từng ô chấm chỉ
@@ -134,30 +141,16 @@ export function dungDoiChieu(
   const daDongBoLanDau = useRef(false);
 
   useEffect(() => {
-    if (!daNoi || duLieu === null || daDongBoLanDau.current) {
+    if (!ketNoi.sanSang || duLieu === null || daDongBoLanDau.current) {
       return;
     }
     daDongBoLanDau.current = true;
     dongBo();
-  }, [daNoi, duLieu, dongBo]);
-
-  const noiGoogle = useCallback(async () => {
-    datLoi(null);
-    try {
-      const moi = await Google.dangNhap();
-      if (moi) {
-        datDaNoi(true);
-        await dongBo();
-      }
-    } catch {
-      datLoi('Chưa nối được với Google. Kiểm tra mạng rồi thử lại.');
-    }
-  }, [dongBo]);
+  }, [ketNoi.sanSang, duLieu, dongBo]);
 
   return {
-    trangThai: { hoTro, daNoi, dangChay, lucCuoi, loi },
+    trangThai: { ketNoi, dangChay, lucCuoi, loi },
     soBenKia,
     dongBo,
-    noiGoogle,
   };
 }

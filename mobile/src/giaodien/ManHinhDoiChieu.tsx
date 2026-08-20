@@ -35,7 +35,8 @@ interface Props {
 const TEN_BUOI: Record<BuoiLam, string> = { Sang: 'Sáng', Chieu: 'Chiều' };
 
 export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, onDong }: Props) {
-  const { trangThai, soBenKia, dongBo, noiGoogle } = dieuKhien;
+  const { trangThai, soBenKia, dongBo } = dieuKhien;
+  const { ketNoi } = trangThai;
 
   /** Máy thợ chỉ có một người nên mở thẳng vào chi tiết, không qua danh sách. */
   const [dangXem, datDangXem] = useState<string | null>(
@@ -77,17 +78,15 @@ export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, onDong }: 
     }
   }
 
-  const chuTrangThai = !trangThai.hoTro
-    ? 'Cần bản app cài thẳng vào máy'
-    : !trangThai.daNoi
-      ? 'Chưa nối Google'
-      : trangThai.loi !== null
-        ? trangThai.loi
-        : trangThai.dangChay
-          ? 'Đang đồng bộ…'
-          : trangThai.lucCuoi !== null
-            ? `Đồng bộ lúc ${Ngay.gioPhut(trangThai.lucCuoi)}`
-            : 'Chưa đồng bộ lần nào';
+  const chuTrangThai = !ketNoi.sanSang
+    ? (ketNoi.chuaSanSang ?? 'Chưa nối hộp thư')
+    : trangThai.loi !== null
+      ? trangThai.loi
+      : trangThai.dangChay
+        ? 'Đang đồng bộ…'
+        : trangThai.lucCuoi !== null
+          ? `Đồng bộ lúc ${Ngay.gioPhut(trangThai.lucCuoi)}`
+          : 'Chưa đồng bộ lần nào';
 
   return (
     <View style={kieu.khung}>
@@ -96,7 +95,7 @@ export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, onDong }: 
         phu={chuTrangThai}
         onLui={onDong}
         phai={
-          trangThai.hoTro && trangThai.daNoi ? (
+          ketNoi.sanSang ? (
             <Pressable
               style={kieu.nutDongBo}
               onPress={dongBo}
@@ -114,19 +113,16 @@ export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, onDong }: 
       />
 
       <ScrollView contentContainerStyle={kieu.than}>
-        {!trangThai.hoTro && (
-          <Text style={kieu.chuNhac}>
-            Bản chạy thử trong Expo Go không nối được Google. Cài bản app thật vào máy rồi
-            mới đối chiếu được.
-          </Text>
-        )}
-
-        {trangThai.hoTro && !trangThai.daNoi && (
+        {/*
+          Chưa nối được hộp thư thì nói **cách sửa**, không chỉ nói là chưa nối. Câu chỉ đường
+          do bên chọn hộp thư đưa vào, vì chỉ bên ấy biết đang chạy trên đường nào.
+        */}
+        {!ketNoi.sanSang && (
           <View style={kieu.theNhac}>
-            <Text style={kieu.chuNhac}>
-              Hai máy phải nối cùng một tài khoản Google thì mới thấy sổ của nhau.
-            </Text>
-            <NutChip nhan="Nối Google" icon="cloud" onPress={noiGoogle} />
+            <Text style={kieu.chuNhac}>{ketNoi.chuaSanSang ?? 'Chưa nối hộp thư nào.'}</Text>
+            {ketNoi.noi !== undefined && (
+              <NutChip nhan="Nối ngay" icon="link" onPress={ketNoi.noi} />
+            )}
           </View>
         )}
 

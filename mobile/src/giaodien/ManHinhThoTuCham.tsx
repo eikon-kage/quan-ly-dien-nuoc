@@ -106,18 +106,16 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
     );
   }
 
-  const { dangChay, daNoi, hoTro, lucCuoi, loi } = dieuKhien.trangThai;
-  const chuDongBo = !hoTro
-    ? 'Cần bản app cài thẳng vào máy'
-    : !daNoi
-      ? 'Chưa nối Google — sổ chưa gửi cho chủ'
-      : loi !== null
-        ? loi
-        : dangChay
-          ? 'Đang gửi sổ…'
-          : lucCuoi !== null
-            ? `Đã gửi sổ lúc ${Ngay.gioPhut(lucCuoi)}`
-            : 'Chưa gửi sổ lần nào';
+  const { dangChay, ketNoi, lucCuoi, loi } = dieuKhien.trangThai;
+  const chuDongBo = !ketNoi.sanSang
+    ? (ketNoi.chuaSanSang ?? 'Chưa nối nhóm — sổ chưa gửi cho chủ')
+    : loi !== null
+      ? loi
+      : dangChay
+        ? 'Đang gửi sổ…'
+        : lucCuoi !== null
+          ? `Đã gửi sổ lúc ${Ngay.gioPhut(lucCuoi)}`
+          : 'Chưa gửi sổ lần nào';
 
   return (
     <View style={kieu.khung}>
@@ -127,14 +125,18 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
         phai={
           <Pressable
             style={kieu.nutDongBo}
-            onPress={daNoi ? dieuKhien.dongBo : dieuKhien.noiGoogle}
-            disabled={!hoTro || dangChay}
-            accessibilityLabel={daNoi ? 'Gửi sổ cho chủ' : 'Nối Google'}
+            onPress={ketNoi.sanSang ? dieuKhien.dongBo : ketNoi.noi}
+            disabled={dangChay || (!ketNoi.sanSang && ketNoi.noi === undefined)}
+            accessibilityLabel={ketNoi.sanSang ? 'Gửi sổ cho chủ' : 'Nối nhóm'}
           >
             {dangChay ? (
               <ActivityIndicator color={Mau.chinh} />
             ) : (
-              <Feather name={daNoi ? 'refresh-cw' : 'cloud'} size={18} color={Mau.chinh} />
+              <Feather
+                name={ketNoi.sanSang ? 'refresh-cw' : 'link'}
+                size={18}
+                color={Mau.chinh}
+              />
             )}
           </Pressable>
         }

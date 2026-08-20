@@ -35,10 +35,14 @@ function saoLuuGia(sua: Partial<TrangThaiSaoLuu> = {}): DieuKhienSaoLuu {
 /** Hộp thư giả: chưa thợ nào gửi sổ lên. */
 function doiChieuGia(sua: Partial<DieuKhienDoiChieu> = {}): DieuKhienDoiChieu {
   return {
-    trangThai: { hoTro: true, daNoi: false, dangChay: false, lucCuoi: null, loi: null },
+    trangThai: {
+      ketNoi: { sanSang: true, chuaSanSang: null },
+      dangChay: false,
+      lucCuoi: null,
+      loi: null,
+    },
     soBenKia: new Map(),
     dongBo: jest.fn(() => Promise.resolve()),
-    noiGoogle: jest.fn(() => Promise.resolve()),
     ...sua,
   };
 }

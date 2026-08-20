@@ -38,10 +38,14 @@ function soChuGuiXuong(duLieu: DuLieuChamCong, thoId: string, tenTho: string): S
 
 function dieuKhienGia(cac: SoDaNhan[] = []): DieuKhienDoiChieu {
   return {
-    trangThai: { hoTro: true, daNoi: true, dangChay: false, lucCuoi: null, loi: null },
+    trangThai: {
+      ketNoi: { sanSang: true, chuaSanSang: null },
+      dangChay: false,
+      lucCuoi: null,
+      loi: null,
+    },
     soBenKia: new Map(cac.map((daNhan) => [daNhan.so.thoId, daNhan])),
     dongBo: jest.fn(() => Promise.resolve()),
-    noiGoogle: jest.fn(() => Promise.resolve()),
   };
 }
 
