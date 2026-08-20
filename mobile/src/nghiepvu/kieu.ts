@@ -155,8 +155,8 @@ function chuyenDoiTho(tho: ThoBanCu): Tho {
 /**
  * Vá dữ liệu đọc từ ngoài vào cho đủ hình đủ dạng, và chuyển các dáng cũ sang dáng mới.
  *
- * Dùng chung cho cả hai đường vào: đọc từ bộ nhớ máy, và khôi phục từ file sao lưu trên
- * Drive. Hai đường ấy phải chuyển đổi y hệt nhau — tách ra làm hai bản thì sớm muộn một
+ * Dùng chung cho cả hai đường vào: đọc từ bộ nhớ máy, và khôi phục từ một file sao lưu.
+ * Hai đường ấy phải chuyển đổi y hệt nhau — tách ra làm hai bản thì sớm muộn một
  * bên quên vá một chỗ, và bản khôi phục về sẽ khác bản đã sao lưu đi.
  *
  * Nằm ở đây, cạnh các kiểu dữ liệu, chứ không nằm trong luuTru: thêm một mảng mới vào

@@ -31,7 +31,7 @@ export function khoaCongKhai(): string {
 
 /**
  * Chưa điền thì coi như tính năng chưa bật — giao diện ẩn hẳn phần nhóm đi thay vì để người
- * dùng bấm vào rồi nhận một lỗi mạng khó hiểu. Giống hệt cách phần Drive đang làm.
+ * dùng bấm vào rồi nhận một lỗi mạng khó hiểu.
  */
 export function daCauHinh(): boolean {
   return DIA_CHI !== '' && KHOA !== '';

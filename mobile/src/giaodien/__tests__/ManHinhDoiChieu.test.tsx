@@ -6,7 +6,7 @@
  * không có nút để mà bấm.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import { quyetToan } from '../../nghiepvu/ky';
@@ -16,6 +16,7 @@ import { SoCong, catSo } from '../../nghiepvu/soCong';
 import { cham, dangCham, themTho } from '../../nghiepvu/thaoTac';
 import { CaiDatVai, MAC_DINH } from '../../nghiepvu/vaiMay';
 import { DieuKhienDoiChieu } from '../dungDoiChieu';
+import { DieuKhienNhom } from '../dungSupabase';
 import { ManHinhDoiChieu } from '../ManHinhDoiChieu';
 
 const HOM_NAY = Ngay.homNay();
@@ -50,11 +51,35 @@ function dieuKhienGia(cac: SoDaNhan[] = []): DieuKhienDoiChieu {
   };
 }
 
+/** Nhóm Supabase giả: máy chủ đã vào nhóm, phát mã được. */
+function nhomGia(sua: Partial<DieuKhienNhom['trangThai']> = {}): DieuKhienNhom {
+  return {
+    trangThai: {
+      hoTro: true,
+      taiKhoan: { userId: 'u1', email: 'chu@cuahang.vn', anDanh: false },
+      thanhVien: { nhomId: 'n1', vai: 'chu', thoId: null },
+      dangDoc: false,
+      traHut: false,
+      dangChay: false,
+      loi: null,
+      nhac: null,
+      ...sua,
+    },
+    noiEmail: jest.fn(() => Promise.resolve()),
+    taoTaiKhoan: jest.fn(() => Promise.resolve()),
+    lapNhom: jest.fn(() => Promise.resolve()),
+    phatMa: jest.fn(() => Promise.resolve('K7MQP4')),
+    doiMa: jest.fn(() => Promise.resolve(null)),
+    ngat: jest.fn(() => Promise.resolve()),
+  };
+}
+
 function dung(
   duLieu: DuLieuChamCong,
   dieuKhien: DieuKhienDoiChieu,
   capNhat = jest.fn(),
   caiDat: CaiDatVai = MAC_DINH,
+  nhom: DieuKhienNhom = nhomGia(),
 ) {
   render(
     <ManHinhDoiChieu
@@ -62,6 +87,7 @@ function dung(
       capNhat={capNhat}
       caiDat={caiDat}
       dieuKhien={dieuKhien}
+      nhom={nhom}
     />,
   );
   return capNhat;
@@ -149,6 +175,52 @@ describe('máy thợ', () => {
     expect(screen.queryByText('Thợ khác')).toBeNull();
   });
 
+  /**
+   * Máy thợ vừa cài xong, chưa chấm ô nào: **không được hiện dòng lệch nào cả**. Ngày còn
+   * đang chạy, thợ chưa chấm không có nghĩa là thợ nói "hôm nay tôi nghỉ" — mà đây lại đúng
+   * là màn hình đầu tiên người ta thấy, hiện đỏ ở đấy là mất lòng tin ngay.
+   */
+  test('chưa chấm gì mà chủ đã chấm hôm nay thì chưa báo lệch', () => {
+    const { duLieu, thoId } = kho();
+    const cuaChu = cham(cham(duLieu, thoId, HOM_NAY, 'Sang'), thoId, HOM_NAY, 'Chieu');
+    const soChu: SoCong = {
+      ...catSo(cuaChu, thoId, 'chu', Ngay.congNgay(HOM_NAY, -90), HOM_NAY, ''),
+      tenTho: 'Anh Tuấn',
+    };
+
+    // Sổ của máy thợ khai đúng từ hôm nay: hôm nay mới nhận mã mời.
+    dung(duLieu, dieuKhienGia([{ so: soChu, suaLuc: '' }]), jest.fn(), {
+      ...CAI_DAT,
+      thoId,
+      batDauTu: HOM_NAY,
+    });
+
+    expect(screen.queryByText('Lấy theo sổ chủ')).toBeNull();
+    expect(screen.queryByText('Chưa chấm')).toBeNull();
+    expect(screen.getByText('Chưa có gì để so')).toBeTruthy();
+    // Gác thì phải nói ra, kẻo hai tổng ở trên nói khác màn hình chấm công.
+    expect(screen.getByText(/Hôm nay còn dở: 2 buổi/)).toBeTruthy();
+  });
+
+  test('hôm nay hai bên đều chấm mà lệch số công thì vẫn báo', () => {
+    const { duLieu, thoId } = kho();
+    const cuaToi = cham(duLieu, thoId, HOM_NAY, 'Sang', 0.5);
+    const soChu: SoCong = {
+      ...catSo(cham(duLieu, thoId, HOM_NAY, 'Sang', 1), thoId, 'chu', Ngay.congNgay(HOM_NAY, -90), HOM_NAY, ''),
+      tenTho: 'Anh Tuấn',
+    };
+
+    dung(cuaToi, dieuKhienGia([{ so: soChu, suaLuc: '' }]), jest.fn(), {
+      ...CAI_DAT,
+      thoId,
+      batDauTu: HOM_NAY,
+    });
+
+    expect(screen.getByText('Lấy theo sổ chủ')).toBeTruthy();
+    expect(screen.getByText('0,5 công')).toBeTruthy();
+    expect(screen.getByText('1 công')).toBeTruthy();
+  });
+
   test('lấy tên do chủ đặt, không phải chữ "Tôi" đặt tạm lúc nhận mã mời', () => {
     // Máy thợ để tên nội bộ là "Tôi" cho tới khi sổ chủ về. Nếu màn hình này lấy tên nội bộ
     // trước thì màn hình chính gọi "Anh Tuấn" mà mở đối chiếu ra lại thành "Tôi".
@@ -165,3 +237,44 @@ describe('máy thợ', () => {
     expect(screen.queryByText('Tôi')).toBeNull();
   });
 });
+
+describe('phát mã mời cho thợ chưa gửi sổ', () => {
+  test('máy chủ: bấm là phát cho đúng thợ đang xem, rồi hiện mã ra đọc', async () => {
+    const { duLieu, thoId } = kho();
+    const nhom = nhomGia();
+    // Chưa thợ nào gửi sổ lên: đúng lúc chủ cần cái mã.
+    dung(duLieu, dieuKhienGia(), jest.fn(), MAC_DINH, nhom);
+
+    fireEvent.press(screen.getByText('Anh Tuấn'));
+    fireEvent.press(screen.getByText('Phát mã mời'));
+
+    await waitFor(() => expect(nhom.phatMa).toHaveBeenCalledWith(thoId));
+    expect(await screen.findByText('K7MQP4')).toBeTruthy();
+    expect(screen.getByText(/dán mã. Mã dùng một lần và sống ba ngày/)).toBeTruthy();
+  });
+
+  test('phát hụt thì hiện câu lỗi của nhóm, không hiện mã nào', async () => {
+    const { duLieu } = kho();
+    const nhom = nhomGia({ loi: 'Chỉ máy chủ phát được mã mời.' });
+    nhom.phatMa = jest.fn(() => Promise.resolve(null));
+    dung(duLieu, dieuKhienGia(), jest.fn(), MAC_DINH, nhom);
+
+    fireEvent.press(screen.getByText('Anh Tuấn'));
+    fireEvent.press(screen.getByText('Phát mã mời'));
+
+    await waitFor(() => expect(nhom.phatMa).toHaveBeenCalled());
+    expect(screen.getByText('Chỉ máy chủ phát được mã mời.')).toBeTruthy();
+    expect(screen.queryByText('K7MQP4')).toBeNull();
+  });
+
+  /** Máy thợ không phát mã cho ai — nó chỉ đợi sổ chủ gửi xuống. */
+  test('máy thợ không có nút phát mã, và nói đúng việc phải làm', () => {
+    const { duLieu, thoId } = kho();
+    const caiDat: CaiDatVai = { vai: 'tho', thoId, batDauTu: Ngay.congNgay(HOM_NAY, -30) };
+    dung(duLieu, dieuKhienGia(), jest.fn(), caiDat);
+
+    expect(screen.queryByText('Phát mã mời')).toBeNull();
+    expect(screen.getByText(/Chủ chưa gửi sổ xuống/)).toBeTruthy();
+  });
+});
+

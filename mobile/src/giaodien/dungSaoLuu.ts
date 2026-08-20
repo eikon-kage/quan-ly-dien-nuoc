@@ -1,32 +1,33 @@
 /**
- * Trạng thái sao lưu Drive dùng chung cho cả app, gói lại thành một hook.
+ * Trạng thái sao lưu dùng chung cho cả app, gói lại thành một hook.
  *
- * Sao lưu chạy ngầm, không có nút Lưu — giống hệt cách app ghi xuống bộ nhớ máy. Người
- * dùng nối Drive đúng một lần rồi thôi; từ đó cứ đổi dữ liệu là ít phút sau bản trên
- * Drive tự khớp lại.
+ * Sao lưu chạy ngầm, không có nút Lưu — giống hệt cách app ghi xuống bộ nhớ máy. Không phải
+ * nối tài khoản nào, không hỏi gì người dùng: bản sao nằm ngay trong máy, cứ đổi dữ liệu là
+ * ít phút sau có bản mới của ngày hôm nay.
+ *
+ * Chạy trên **cả hai vai**. Bản Drive trước đây phải tắt trên máy thợ vì cả nhóm nối chung
+ * một tài khoản Google mà tên file chỉ theo ngày — hai máy cùng sao lưu là ghi đè lên nhau.
+ * Sao lưu vào máy thì mỗi máy một thư mục riêng, không có chuyện đụng nhau nữa.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 
-import { ChuaDangNhap, HetPhien, TaiKhoan } from '../nghiepvu/dangNhapGoogle';
-import * as Google from '../nghiepvu/dangNhapGoogle';
 import { DuLieuChamCong } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
-import * as SaoLuu from '../nghiepvu/saoLuuDrive';
+import * as SaoLuu from '../nghiepvu/saoLuuMay';
 
 /**
- * Đổi xong chờ 20 giây yên tĩnh mới đẩy lên.
+ * Đổi xong chờ 20 giây yên tĩnh mới ghi.
  *
- * Chấm công là bấm liên tiếp mấy chục ô một lượt; đẩy ngay theo từng ô thì tốn pin, tốn
- * 3G của người dùng mà kết quả cuối cùng vẫn thế. 20 giây đủ để một lượt chấm xong hẳn.
+ * Chấm công là bấm liên tiếp mấy chục ô một lượt; ghi lại cả sổ theo từng ô thì tốn pin mà
+ * kết quả cuối cùng vẫn thế. 20 giây đủ để một lượt chấm xong hẳn.
  */
 const CHO_YEN = 20_000;
 
 export interface TrangThaiSaoLuu {
-  /** Máy này có nối Drive được không (Expo Go và web thì không). */
+  /** Máy này ghi được file sao lưu không. Bản chạy trên web thì không có thư mục nào để ghi. */
   hoTro: boolean;
-  /** null = chưa nối Drive. */
-  taiKhoan: TaiKhoan | null;
   dangChay: boolean;
   /** Lần sao lưu xong gần nhất, dạng ISO. */
   lucCuoi: string | null;
@@ -36,30 +37,19 @@ export interface TrangThaiSaoLuu {
 
 export interface DieuKhienSaoLuu {
   trangThai: TrangThaiSaoLuu;
-  noiDrive: () => Promise<void>;
-  ngatDrive: () => Promise<void>;
   saoLuuNgay: () => Promise<void>;
 }
 
-/**
- * `bat` để tắt hẳn sao lưu trên **máy thợ**.
- *
- * Không phải để tiết kiệm: cả nhóm nối chung một tài khoản Google, mà tên file sao lưu chỉ
- * theo ngày ("Cham-cong-2026-08-19.json"). Hai máy cùng sao lưu là ghi đè lên nhau, và bản
- * còn lại trên Drive là của máy bấm sau — mất bản sao lưu của chủ. Sổ máy thợ vốn đã nằm
- * trong hộp thư nên không mất gì.
- */
-export function dungSaoLuu(duLieu: DuLieuChamCong | null, bat = true): DieuKhienSaoLuu {
-  const [taiKhoan, datTaiKhoan] = useState<TaiKhoan | null>(null);
+export function dungSaoLuu(duLieu: DuLieuChamCong | null): DieuKhienSaoLuu {
   const [dangChay, datDangChay] = useState(false);
   const [lucCuoi, datLucCuoi] = useState<string | null>(null);
   const [loi, datLoi] = useState<string | null>(null);
 
-  const hoTro = Google.hoTro() && bat;
+  const hoTro = Platform.OS !== 'web';
 
   /**
-   * Dữ liệu mới nhất, giữ trong ref chứ không bắt các hàm bên dưới phụ thuộc vào nó —
-   * nếu phụ thuộc thì mỗi lần chấm một ô là hẹn giờ bị dựng lại từ đầu.
+   * Dữ liệu mới nhất, giữ trong ref chứ không bắt các hàm bên dưới phụ thuộc vào nó — nếu
+   * phụ thuộc thì mỗi lần chấm một ô là hẹn giờ bị dựng lại từ đầu.
    */
   const duLieuMoiNhat = useRef(duLieu);
   duLieuMoiNhat.current = duLieu;
@@ -68,47 +58,39 @@ export function dungSaoLuu(duLieu: DuLieuChamCong | null, bat = true): DieuKhien
     if (!hoTro) {
       return;
     }
-    Google.taiKhoanDaLuu().then(datTaiKhoan);
     SaoLuu.lanCuoi().then(datLucCuoi);
   }, [hoTro]);
 
   const chay = useCallback(async () => {
     const hienTai = duLieuMoiNhat.current;
-    if (!hienTai) {
+    if (!hienTai || !hoTro) {
       return;
     }
 
     datDangChay(true);
     try {
-      await SaoLuu.saoLuu(hienTai, Ngay.homNay());
-      datLucCuoi(new Date().toISOString());
+      const ban = await SaoLuu.saoLuu(hienTai, Ngay.homNay());
+      datLucCuoi(ban.suaLuc);
       datLoi(null);
-    } catch (loiChay) {
-      if (loiChay instanceof ChuaDangNhap) {
-        datTaiKhoan(null);
-        datLoi(null);
-      } else if (loiChay instanceof HetPhien) {
-        datTaiKhoan(null);
-        datLoi('Kết nối Google Drive đã hết hạn. Bấm Nối lại.');
-      } else {
-        // Thường là mất mạng. Không đáng doạ người dùng — lần đổi dữ liệu sau sẽ thử lại.
-        datLoi('Chưa đẩy lên Drive được. Sẽ tự thử lại sau.');
-      }
+    } catch {
+      // Ghi hụt gần như chỉ có một lý do: máy hết chỗ. Nói đúng lý do ấy chứ đừng "thử lại
+      // sau" — dọn chỗ là việc người dùng làm được, mà không nói thì họ không biết phải dọn.
+      datLoi('Chưa ghi được bản sao lưu. Máy có thể đã hết chỗ trống.');
     } finally {
       datDangChay(false);
     }
-  }, []);
+  }, [hoTro]);
 
   /**
-   * Hẹn giờ đẩy lên sau mỗi lần dữ liệu đổi.
+   * Hẹn giờ ghi sau mỗi lần dữ liệu đổi.
    *
-   * Bỏ qua lần chạy đầu: lúc ấy dữ liệu vừa đọc lên từ máy chứ chưa ai sửa gì, sao lưu
-   * chỉ để ghi đè đúng cái đang có trên Drive.
+   * Bỏ qua lần chạy đầu: lúc ấy dữ liệu vừa đọc lên từ máy chứ chưa ai sửa gì, sao lưu chỉ
+   * để ghi đè đúng cái đang có.
    */
   const daBoQuaLanDau = useRef(false);
 
   useEffect(() => {
-    if (!hoTro || !taiKhoan || duLieu === null) {
+    if (!hoTro || duLieu === null) {
       return;
     }
     if (!daBoQuaLanDau.current) {
@@ -118,33 +100,10 @@ export function dungSaoLuu(duLieu: DuLieuChamCong | null, bat = true): DieuKhien
 
     const hen = setTimeout(chay, CHO_YEN);
     return () => clearTimeout(hen);
-  }, [duLieu, hoTro, taiKhoan, chay]);
-
-  const noiDrive = useCallback(async () => {
-    datLoi(null);
-    try {
-      const moi = await Google.dangNhap();
-      if (moi) {
-        datTaiKhoan(moi);
-        // Đẩy luôn bản đầu tiên. Nối xong mà Drive vẫn trống thì người dùng tưởng hỏng —
-        // mà đợi tới lần chấm công sau mới có bản đầu thì đúng là đang hở thật.
-        await chay();
-      }
-    } catch {
-      datLoi('Chưa nối được với Google. Kiểm tra mạng rồi thử lại.');
-    }
-  }, [chay]);
-
-  const ngatDrive = useCallback(async () => {
-    await Google.dangXuat();
-    datTaiKhoan(null);
-    datLoi(null);
-  }, []);
+  }, [duLieu, hoTro, chay]);
 
   return {
-    trangThai: { hoTro, taiKhoan, dangChay, lucCuoi, loi },
-    noiDrive,
-    ngatDrive,
+    trangThai: { hoTro, dangChay, lucCuoi, loi },
     saoLuuNgay: chay,
   };
 }

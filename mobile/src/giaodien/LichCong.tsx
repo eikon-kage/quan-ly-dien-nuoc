@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { NgayCong, ngayTrongThang } from '../nghiepvu/baoCao';
+import { ngayTrongThang } from '../nghiepvu/baoCao';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { Co, HeSoChuToiDaLuoi, Mau, PhongChu, Tuoi } from './thietKe';
 
@@ -19,10 +19,20 @@ import { Co, HeSoChuToiDaLuoi, Mau, PhongChu, Tuoi } from './thietKe';
 /** Một ngày đi đủ cả ngày là hai công: một sáng, một chiều. */
 const CONG_CA_NGAY = 2;
 
+/**
+ * Ngày đi làm, khai theo **hình dáng** chứ không nhận thẳng `NgayCong` của báo cáo: tờ lịch
+ * chỉ cần ngày nào và mấy công, mà máy thợ vẽ cùng tờ lịch này từ *sổ công* — mẩu dữ liệu
+ * cố tình không có đồng tiền nào, nên không dựng nổi một `NgayCong` (kiểu ấy có trường tiền).
+ */
+export interface NgayCoCong {
+  ngay: string;
+  tongCong: number;
+}
+
 interface Props {
   nam: number;
   thang: number;
-  ngayCongs: NgayCong[];
+  ngayCongs: NgayCoCong[];
   /** Ngày trong kỳ mà thợ không có công nào — đã cắt phần tương lai từ trước. */
   ngayNghis: string[];
 }
@@ -93,7 +103,7 @@ function ONgay({
 }: {
   ngay: string;
   soTrongThang: number;
-  cong: NgayCong | undefined;
+  cong: NgayCoCong | undefined;
   nghi: boolean;
 }) {
   const ngayVaThu = `${Ngay.ngayGon(ngay).slice(0, 5)} ${Ngay.thu(ngay)}`;

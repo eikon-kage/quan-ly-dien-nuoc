@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { DuLieuChamCong } from './kieu';
 import { Vai } from './soCong';
-import { themTho } from './thaoTac';
+import { doiThoId, themTho } from './thaoTac';
 
 const KHOA = 'chamcong.vaimay.v1';
 
@@ -25,6 +25,21 @@ export interface CaiDatVai {
    * chiếu sẽ báo chủ chấm khống mấy chục buổi. Xem ghi chú ở `SoCong.tuNgay`.
    */
   batDauTu: string | null;
+  /**
+   * `thoId` này do **máy tự đặt**, chưa phải id trong sổ chủ — thợ tải app về tự chấm trước
+   * khi xin được mã mời.
+   *
+   * Phải nhớ, không đoán được từ đâu khác: tới lúc dán mã, database trả về id thật và mọi
+   * buổi đã chấm phải chuyển sang id ấy (`doiThoId`). Không có cờ này thì không phân biệt
+   * được id tự đặt với id thật của một nhóm khác — mà chuyển bừa là gộp sổ hai người.
+   */
+  thoIdTuTao?: boolean;
+  /**
+   * Người dùng đã chọn **dùng app một mình**, không nối nhóm. Khác hẳn *Để sau*: để sau là
+   * hoãn, nên lần mở app sau vẫn hỏi; còn đây là một quyết định, hỏi lại mỗi lần mở app là
+   * phiền đúng người đã trả lời rồi.
+   */
+  dungMotMinh?: boolean;
 }
 
 /**
@@ -33,7 +48,13 @@ export interface CaiDatVai {
  * Bắt buộc phải thế: mọi máy đang cài app đều là máy của chủ, bản cập nhật này không được
  * làm họ mất màn hình nào. Máy thợ là thứ phải chủ động chọn.
  */
-export const MAC_DINH: CaiDatVai = { vai: 'chu', thoId: null, batDauTu: null };
+export const MAC_DINH: CaiDatVai = {
+  vai: 'chu',
+  thoId: null,
+  batDauTu: null,
+  thoIdTuTao: false,
+  dungMotMinh: false,
+};
 
 export async function doc(): Promise<CaiDatVai> {
   try {
@@ -43,16 +64,22 @@ export async function doc(): Promise<CaiDatVai> {
     }
 
     const daDoc = JSON.parse(noiDung) as Partial<CaiDatVai>;
+    // Giữ lại kể cả khi về làm máy chủ: *dùng một mình* là chuyện của cái máy, không phải
+    // của vai. Máy chủ chọn dùng một mình rồi thì cũng đừng hỏi nối nhóm nữa.
+    const dungMotMinh = daDoc.dungMotMinh === true;
+
     // Máy thợ mà thiếu id thì không chấm cho ai được, cũng không đối chiếu được — coi như
     // chưa cài đặt gì, quay về làm máy chủ để người dùng chọn lại từ đầu.
     if (daDoc.vai !== 'tho' || typeof daDoc.thoId !== 'string' || daDoc.thoId === '') {
-      return MAC_DINH;
+      return { ...MAC_DINH, dungMotMinh };
     }
 
     return {
       vai: 'tho',
       thoId: daDoc.thoId,
       batDauTu: typeof daDoc.batDauTu === 'string' ? daDoc.batDauTu : null,
+      thoIdTuTao: daDoc.thoIdTuTao === true,
+      dungMotMinh,
     };
   } catch {
     return MAC_DINH;
@@ -64,24 +91,9 @@ export async function ghi(caiDat: CaiDatVai): Promise<void> {
 }
 
 /**
- * Mã mời máy chủ đọc cho thợ: chính id của thợ, thêm tiền tố cho ra dáng một cái mã.
- *
- * Không nhồi tên thợ vào mã: tên có dấu, có khoảng trắng, gõ lại qua Zalo là sai. Máy thợ
- * lấy tên từ chính sổ chủ gửi xuống, khỏi phải gõ.
- */
-export function maMoi(thoId: string): string {
-  return `CC-${thoId}`;
-}
-
-/** Đọc mã người dùng dán vào. Không đúng khuôn thì trả null. */
-export function docMaMoi(ma: string): string | null {
-  const gon = ma.trim().replace(/^CC-/i, '');
-  return /^[A-Za-z0-9_-]+$/.test(gon) ? gon : null;
-}
-
-/**
- * Kết nạp máy này thành máy của một thợ: đảm bảo trong sổ có bản ghi thợ mang **đúng id
- * của mã mời**, vì đó là chỗ mọi buổi công chấm trên máy này sẽ móc vào.
+ * Kết nạp máy này thành máy của một thợ: đảm bảo trong sổ có bản ghi thợ mang **đúng id mà
+ * database trả về lúc đổi mã mời**, vì đó là chỗ mọi buổi công chấm trên máy này sẽ móc vào,
+ * và là thứ để lúc đối chiếu hai máy ghép được người với người.
  *
  * `xoaNguoiKhac` dành cho máy cũ chuyền tay: một cái điện thoại từng là máy chủ, giờ đưa
  * cho thợ dùng. Bỏ hết bản ghi của người khác và **xoá sạch tiền** — kể cả mốc lương của
@@ -93,19 +105,27 @@ export function ketNap(
   thoId: string,
   homNay: string,
   xoaNguoiKhac: boolean,
+  /**
+   * Id cũ **do máy tự đặt** của chính người này, nếu có: thợ đã tự chấm trước khi xin được
+   * mã mời. Mọi buổi đã chấm chuyển sang id thật, kẻo sổ trông như trống trơn.
+   */
+  thoIdTuTaoCu: string | null = null,
 ): DuLieuChamCong {
+  const daChuyen =
+    thoIdTuTaoCu !== null ? doiThoId(duLieu, thoIdTuTaoCu, thoId) : duLieu;
+
   const goc = xoaNguoiKhac
     ? {
-        thos: duLieu.thos
+        thos: daChuyen.thos
           .filter((tho) => tho.id === thoId)
           // Mốc lương là tiền: về 0 hết. Bảng lương trên máy thợ vốn không hiện ra.
           .map((tho) => ({ ...tho, mocLuong: [{ tuNgay: tho.ngayTao, tienMotCong: 0 }] })),
-        buoiCongs: duLieu.buoiCongs.filter((b) => b.thoId === thoId),
+        buoiCongs: daChuyen.buoiCongs.filter((b) => b.thoId === thoId),
         // Ứng tiền và kỳ đã chốt đều là tiền, và là chuyện của sổ chủ.
         ungTiens: [],
         kyLuongs: [],
       }
-    : duLieu;
+    : daChuyen;
 
   if (goc.thos.some((tho) => tho.id === thoId)) {
     return goc;

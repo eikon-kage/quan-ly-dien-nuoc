@@ -1,53 +1,21 @@
 /**
- * Ghi file Excel ra bộ nhớ máy rồi mở bảng chia sẻ của hệ điều hành, để gửi qua Zalo,
- * gửi mail hay lưu vào Files/Drive.
+ * Gửi các file Excel của app đi: toàn bộ sổ sách của chủ, file mẫu để gõ trên máy tính, và
+ * sổ công của một thợ.
  *
- * File nằm ở thư mục tạm: gửi xong là xong, hệ điều hành tự dọn khi máy hết chỗ. Không
- * cần xin quyền gì cả — người dùng chọn gửi đi đâu ngay trên bảng chia sẻ.
+ * Phần ghi file rồi mở bảng chia sẻ nằm ở [chiaSeFile](./chiaSeFile.ts) — ở đây chỉ ghép
+ * "dựng nội dung nào" với "gửi đi kèm tên gì".
  */
 
-import { File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-
+import { KIEU_EXCEL, guiFile } from './chiaSeFile';
 import { DuLieuChamCong } from './kieu';
 import { taoFileMau, tenFileMau } from './nhapExcel';
+import { SoCong } from './soCong';
 import { tenFileExcel, xuatExcel } from './xuatExcel';
+import { tenFileSoCong, xuatSoCong } from './xuatSoCong';
 
-const KIEU_FILE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
-/** Máy không chia sẻ file được (rất hiếm, chủ yếu là lúc chạy trên web). */
-export class KhongChiaSeDuoc extends Error {
-  constructor() {
-    super('Máy này không gửi file đi được.');
-  }
-}
-
-/**
- * Ghi khối byte ra thư mục tạm rồi mở bảng chia sẻ. Người dùng bấm huỷ thì hàm vẫn kết
- * thúc êm — hệ điều hành không cho biết họ đã gửi hay đã huỷ, nên đừng khoe "đã gửi xong".
- */
-async function gui(noiDung: Uint8Array, tenFile: string, tieuDe: string): Promise<string> {
-  const file = new File(Paths.cache, tenFile);
-  // Gửi lần thứ hai cùng một tên file thì ghi đè lên file cũ.
-  file.create({ overwrite: true });
-  file.write(noiDung);
-
-  if (!(await Sharing.isAvailableAsync())) {
-    throw new KhongChiaSeDuoc();
-  }
-
-  await Sharing.shareAsync(file.uri, {
-    mimeType: KIEU_FILE,
-    UTI: 'org.openxmlformats.spreadsheetml.sheet',
-    dialogTitle: tieuDe,
-  });
-
-  return file.uri;
-}
-
-/** Toàn bộ sổ sách, gửi đi để mở bằng Excel trên máy tính. */
+/** Toàn bộ sổ sách, gửi đi để mở bằng Excel trên máy tính. Chỉ dùng trên **máy chủ**. */
 export async function chiaSeExcel(duLieu: DuLieuChamCong, homNay: string): Promise<string> {
-  return gui(xuatExcel(duLieu, homNay), tenFileExcel(homNay), 'Gửi file chấm công');
+  return guiFile(xuatExcel(duLieu, homNay), tenFileExcel(homNay), KIEU_EXCEL, 'Gửi file chấm công');
 }
 
 /**
@@ -61,9 +29,20 @@ export async function chiaSeFileMau(
   tuNgay: string,
   denNgay: string,
 ): Promise<string> {
-  return gui(
+  return guiFile(
     taoFileMau(tenTho, tuNgay, denNgay),
     tenFileMau(tenTho, tuNgay),
+    KIEU_EXCEL,
     'Gửi file mẫu chấm công',
   );
+}
+
+/**
+ * Sổ công của một thợ — dùng trên **máy thợ**.
+ *
+ * Nhận `SoCong` chứ không nhận `DuLieuChamCong`, và đó là chỗ chặn tiền lọt ra file:
+ * xem ghi chú đầu [xuatSoCong](./xuatSoCong.ts).
+ */
+export async function chiaSeSoCong(so: SoCong): Promise<string> {
+  return guiFile(xuatSoCong(so), tenFileSoCong(so), KIEU_EXCEL, 'Gửi sổ công');
 }

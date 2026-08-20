@@ -17,6 +17,8 @@ import { cham, dangCham, themTho, themUng } from '../thaoTac';
 
 const NGAY_TAO = '2026-07-01';
 const TAO_LUC = '2026-08-19T08:00:00.000Z';
+/** Đứng sau mọi ngày trong bài này, để không vướng luật tạm gác buổi của hôm nay. */
+const HOM_NAY = '2026-08-31';
 
 function kho(): { duLieu: DuLieuChamCong; tuan: string } {
   const them = themTho(duLieuRong(), 'Anh Tuấn', 300_000, NGAY_TAO);
@@ -96,10 +98,14 @@ describe('doiChieu', () => {
     duLieu = cham(duLieu, tuan, '2026-08-10', 'Sang');
     duLieu = cham(duLieu, tuan, '2026-08-10', 'Chieu');
 
-    const ket = doiChieu(soChu(duLieu, tuan), soTho(tuan, [
-      { ngay: '2026-08-10', buoi: 'Sang', soCong: 1 },
-      { ngay: '2026-08-10', buoi: 'Chieu', soCong: 1 },
-    ]));
+    const ket = doiChieu(
+      soChu(duLieu, tuan),
+      soTho(tuan, [
+        { ngay: '2026-08-10', buoi: 'Sang', soCong: 1 },
+        { ngay: '2026-08-10', buoi: 'Chieu', soCong: 1 },
+      ]),
+      HOM_NAY,
+    );
 
     expect(ket.lechs).toEqual([]);
     expect(ket.soKhop).toBe(2);
@@ -112,10 +118,14 @@ describe('doiChieu', () => {
     duLieu = cham(duLieu, tuan, '2026-08-10', 'Sang'); // thợ không chấm
     duLieu = cham(duLieu, tuan, '2026-08-11', 'Sang', 0.5); // hai bên lệch số công
 
-    const ket = doiChieu(soChu(duLieu, tuan), soTho(tuan, [
-      { ngay: '2026-08-11', buoi: 'Sang', soCong: 1 },
-      { ngay: '2026-08-12', buoi: 'Chieu', soCong: 1 }, // chủ không có
-    ]));
+    const ket = doiChieu(
+      soChu(duLieu, tuan),
+      soTho(tuan, [
+        { ngay: '2026-08-11', buoi: 'Sang', soCong: 1 },
+        { ngay: '2026-08-12', buoi: 'Chieu', soCong: 1 }, // chủ không có
+      ]),
+      HOM_NAY,
+    );
 
     expect(ket.lechs).toEqual([
       { ngay: '2026-08-10', buoi: 'Sang', soCongMinh: 1, soCongBenKia: null, loai: 'chiMinhCo', daChot: false },
@@ -133,6 +143,7 @@ describe('doiChieu', () => {
     const ket = doiChieu(
       soChu(duLieu, tuan),
       soTho(tuan, [{ ngay: '2026-08-20', buoi: 'Sang', soCong: 1 }], '2026-08-15', '2026-08-31'),
+      HOM_NAY,
     );
 
     // Buổi ngày 5 không bị mang ra bắt lỗi: hôm ấy thợ chưa có app.
@@ -141,11 +152,75 @@ describe('doiChieu', () => {
     expect(ket.denNgay).toBe('2026-08-31');
   });
 
+  /**
+   * Luật của **hôm nay**: bên chưa chấm không phải là bên nói "nghỉ", vì ngày còn đang chạy.
+   * Đây là chỗ máy thợ vừa cài xong mở đối chiếu ra đã thấy đỏ, xem ghi chú ở `doiChieu`.
+   */
+  describe('buổi của hôm nay', () => {
+    it('chỉ một bên chấm thì tạm gác, không báo lệch và không cộng vào tổng', () => {
+      let { duLieu, tuan } = kho();
+      duLieu = cham(duLieu, tuan, '2026-08-20', 'Sang');
+      duLieu = cham(duLieu, tuan, '2026-08-20', 'Chieu');
+
+      const ket = doiChieu(
+        soChu(duLieu, tuan),
+        // Máy thợ vừa cài hôm nay, chưa chấm ô nào.
+        soTho(tuan, [], '2026-08-20', '2026-08-20'),
+        '2026-08-20',
+      );
+
+      expect(ket.lechs).toEqual([]);
+      expect(ket.soTamGac).toBe(2);
+      expect(ket.soKhop).toBe(0);
+      expect(ket.tongCongMinh).toBe(0);
+      expect(ket.tongCongBenKia).toBe(0);
+    });
+
+    it('cả hai bên đều chấm mà số công khác nhau thì vẫn báo lệch', () => {
+      let { duLieu, tuan } = kho();
+      duLieu = cham(duLieu, tuan, '2026-08-20', 'Sang', 1);
+
+      const ket = doiChieu(
+        soChu(duLieu, tuan),
+        soTho(tuan, [{ ngay: '2026-08-20', buoi: 'Sang', soCong: 0.5 }], '2026-08-20', '2026-08-20'),
+        '2026-08-20',
+      );
+
+      expect(ket.lechs).toEqual([
+        { ngay: '2026-08-20', buoi: 'Sang', soCongMinh: 1, soCongBenKia: 0.5, loai: 'lechSoCong', daChot: false },
+      ]);
+      expect(ket.soTamGac).toBe(0);
+      expect(ket.tongCongMinh).toBe(1);
+      expect(ket.tongCongBenKia).toBe(0.5);
+    });
+
+    it('ngày đã qua thì thiếu một bên vẫn là lệch', () => {
+      let { duLieu, tuan } = kho();
+      duLieu = cham(duLieu, tuan, '2026-08-19', 'Sang');
+
+      const ket = doiChieu(soChu(duLieu, tuan), soTho(tuan, []), '2026-08-20');
+
+      expect(ket.lechs.map((l) => l.loai)).toEqual(['chiMinhCo']);
+      expect(ket.soTamGac).toBe(0);
+    });
+  });
+
+  it('trong một ngày thì Sáng đứng trước Chiều', () => {
+    let { duLieu, tuan } = kho();
+    duLieu = cham(duLieu, tuan, '2026-08-10', 'Sang');
+    duLieu = cham(duLieu, tuan, '2026-08-10', 'Chieu');
+
+    const ket = doiChieu(soChu(duLieu, tuan), soTho(tuan, []), HOM_NAY);
+
+    expect(ket.lechs.map((lech) => lech.buoi)).toEqual(['Sang', 'Chieu']);
+  });
+
   it('hai sổ không có ngày nào chung thì nói thẳng là chưa so được', () => {
     const { duLieu, tuan } = kho();
     const ket = doiChieu(
       soChu(duLieu, tuan),
       soTho(tuan, [], '2026-09-01', '2026-09-30'),
+      HOM_NAY,
     );
 
     expect(ket.khongTrungKhoang).toBe(true);
@@ -161,6 +236,7 @@ describe('layTheoBenKia', () => {
     const ket = doiChieu(
       catSo(duLieu, tuan, 'chu', '2026-08-01', '2026-08-31', TAO_LUC),
       soTho(tuan, [{ ngay: '2026-08-11', buoi: 'Sang', soCong: 1 }]),
+      HOM_NAY,
     );
 
     duLieu = layTheoBenKia(duLieu, tuan, ket.lechs[0]);
@@ -174,6 +250,7 @@ describe('layTheoBenKia', () => {
     const ket = doiChieu(
       catSo(duLieu, tuan, 'chu', '2026-08-01', '2026-08-31', TAO_LUC),
       soTho(tuan, []),
+      HOM_NAY,
     );
 
     duLieu = layTheoBenKia(duLieu, tuan, ket.lechs[0]);
@@ -193,6 +270,7 @@ describe('layTheoBenKia', () => {
     const ket = doiChieu(
       catSo(duLieu, tuan, 'chu', '2026-08-01', '2026-08-31', TAO_LUC),
       soTho(tuan, [{ ngay: '2026-08-10', buoi: 'Sang', soCong: 2 }]),
+      HOM_NAY,
     );
 
     expect(ket.lechs[0].daChot).toBe(true);

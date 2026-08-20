@@ -1,10 +1,10 @@
 /**
- * Hộp thư chạy trên Supabase — bản thay ruột cho [hopThuDrive](./hopThu.ts).
+ * Hộp thư chạy trên Supabase — bản hiện thực duy nhất của [HopThu](./hopThu.ts).
  *
  * Cùng đúng ba hàm `gui` / `doc` / `docSoCacTho`, nên màn hình đối chiếu và toàn bộ phần tính
- * toán không biết và không cần biết là đang chạy trên Drive hay Supabase.
+ * toán không biết và không cần biết sổ đang được đặt ở đâu.
  *
- * Khác Drive ở một chỗ đáng nói: **không có câu lọc "chỉ lấy phần của tôi" trong app.** Máy
+ * Một chỗ đáng nói: **không có câu lọc "chỉ lấy phần của tôi" trong app.** Máy
  * thợ gọi `select` cả bảng thì Postgres tự cắt còn đúng hai dòng của nó, theo RLS. App viết
  * sai cũng không lộ được dữ liệu người khác — chặn nằm ở database, xem thiet-lap.sql.
  */
@@ -88,7 +88,7 @@ export function hopThuSupabase(): HopThu {
             tao_luc: so.taoLuc,
           },
           // Mỗi (nhóm, thợ, bên gửi) đúng một hàng, ghi đè mãi lên nó — giống hệt cách bên
-          // Drive ghi đè lên một file.
+          // hộp thư cũ ghi đè lên một file.
           { onConflict: 'nhom_id,tho_id,nguon' },
         );
 

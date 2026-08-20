@@ -2,7 +2,7 @@
  * Đóng gói một sổ công thành file JSON để đặt vào hộp thư, và mở gói ấy ra lúc nhận.
  *
  * Nhãn app khác hẳn nhãn của bản sao lưu (`cham-cong` ở goiSaoLuu): hai loại file nằm
- * cùng một chỗ trên Drive, mà nuốt lẫn nhau thì hậu quả nặng — mở một bản sao lưu ra rồi
+ * cùng một khuôn JSON, mà nuốt lẫn nhau thì hậu quả nặng — mở một bản sao lưu ra rồi
  * tưởng là sổ đối chiếu sẽ báo lệch sạch cả tháng, còn ngược lại thì tệ hơn nữa.
  */
 
@@ -48,7 +48,7 @@ function docDong(daDoc: unknown): DongCong {
 }
 
 /**
- * Kiểm một sổ đọc từ ngoài vào — dù đọc từ file trên Drive hay từ một hàng trong database.
+ * Kiểm một sổ đọc từ ngoài vào — dù đọc từ một file hay từ một hàng trong database.
  *
  * Một bộ kiểm dùng chung cho mọi đường vào, không phải mỗi đường một bộ: hai bộ thì sớm muộn
  * lệch nhau, và đường nào lỏng hơn sẽ thành đường dữ liệu rác đi vào sổ. Dữ liệu từ Postgres

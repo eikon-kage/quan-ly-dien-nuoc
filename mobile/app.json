@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "cham-cong",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.quanlydiennuoc.chamcong"
@@ -27,7 +28,6 @@
       "expo-font",
       "expo-sharing",
       "expo-document-picker",
-      "expo-web-browser",
       "expo-secure-store"
     ]
   }

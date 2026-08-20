@@ -4,7 +4,7 @@
  *
  * Vì trong phiên có refresh token. AsyncStorage là file thường, máy đã root hay jailbreak là
  * đọc được; mà cầm refresh token của máy chủ thì đọc được sổ công của cả nhóm cho tới khi bị
- * thu hồi. Đây cũng đúng nguyên tắc token Google đang theo (xem docs/chamcong-sao-luu-drive.md).
+ * thu hồi.
  *
  * Rắc rối duy nhất: **SecureStore chỉ nhận giá trị dưới 2048 byte**, mà phiên Supabase gồm
  * JWT, refresh token và cả thông tin người dùng nên thường vượt. Vì vậy phải cắt thành khúc.

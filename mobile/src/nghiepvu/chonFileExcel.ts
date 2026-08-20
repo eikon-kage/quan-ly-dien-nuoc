@@ -1,17 +1,11 @@
 /**
- * Mở bảng chọn file của hệ điều hành rồi đọc file người dùng chọn ra thành byte.
+ * Chọn một file .xlsx để nhập công vào app.
  *
- * Tách riêng khỏi [nhapExcel.ts](./nhapExcel.ts) vì đây là phần **chạm vào máy** — không
- * chạy được trong bài kiểm thử, phải thay bằng hàng giả. Phần hiểu nội dung file thì là
- * TypeScript thuần và kiểm thử được thoải mái.
- *
- * `copyToCacheDirectory` để mặc định (bật): trên Android, file chọn từ Zalo hay Google
- * Drive về là đường dẫn `content://` mà đọc thẳng không được — bật lên thì hệ điều hành
- * chép ra thư mục tạm và trả về `file://` đọc được ngay.
+ * Phần mở bảng chọn của hệ điều hành nằm ở [chonFile](./chonFile.ts); ở đây chỉ soát đuôi
+ * tên trước khi đọc, để nói cho người dùng biết họ chọn nhầm thứ gì.
  */
 
-import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
+import { chonFile } from './chonFile';
 
 /** Người dùng chọn nhầm thứ không phải bảng tính. */
 export class KhongPhaiFileExcel extends Error {}
@@ -21,22 +15,13 @@ export interface FileDaChon {
   noiDung: Uint8Array;
 }
 
-/**
- * Chọn một file .xlsx. Người dùng bấm huỷ thì trả về `null` — huỷ không phải là lỗi.
- *
- * Không lọc theo kiểu file trong bảng chọn mà tự xem đuôi tên sau: nhiều app gửi file
- * đi kèm kiểu "octet-stream" chung chung, lọc chặt thì đúng file cần lại bị làm mờ
- * không bấm được, mà người dùng thì không hiểu vì sao.
- */
 export async function chonFileExcel(): Promise<FileDaChon | null> {
-  const chon = await DocumentPicker.getDocumentAsync({ multiple: false });
-  if (chon.canceled) {
+  const chon = await chonFile();
+  if (!chon) {
     return null;
   }
 
-  const file = chon.assets[0];
-  const ten = file.name ?? '';
-  const duoi = ten.toLowerCase();
+  const duoi = chon.ten.toLowerCase();
 
   if (duoi.endsWith('.xls')) {
     throw new KhongPhaiFileExcel(
@@ -47,5 +32,5 @@ export async function chonFileExcel(): Promise<FileDaChon | null> {
     throw new KhongPhaiFileExcel('Anh chọn file Excel đuôi .xlsx nhé.');
   }
 
-  return { ten, noiDung: await new File(file.uri).bytes() };
+  return { ten: chon.ten, noiDung: await chon.file.bytes() };
 }

@@ -13,10 +13,16 @@ import { Co, Mau, PhongChu } from './thietKe';
  *
  * Hai vai hai kiểu đăng nhập, và đó là chủ ý chứ không phải làm cho khác nhau:
  *
- *   Chủ — email và mật khẩu. Tài khoản này nắm sổ của cả nhóm, không được để nó chỉ tồn tại
- *         trong một cái điện thoại; mất máy thì đăng nhập lại trên máy mới là còn nguyên.
- *   Thợ — bấm một nút, xong. Không email, không mật khẩu, không mã OTP. Thợ ở công trường,
+ *   Chủ — email và mật khẩu, **bắt buộc**. Tài khoản này nắm nhóm của cả cửa hàng, không được
+ *         để nó chỉ tồn tại trong một cái điện thoại: mất máy thì đăng nhập lại trên máy mới
+ *         là nhóm và sổ thợ còn nguyên.
+ *   Thợ — một cái mã mời, xong. Không email, không mật khẩu, không mã OTP. Thợ ở công trường,
  *         mỗi thứ phải nhớ thêm là một lý do để họ thôi không dùng app nữa.
+ *
+ * **Máy thợ không vào nhóm từ đây.** Nó vào bằng mã mời trong hộp *Máy của thợ*, vì cùng một
+ * lần dán mã ấy còn đặt luôn vai máy và `thoId`. Tách ra hai chỗ thì thợ vào được nhóm mà máy
+ * vẫn là máy chủ — đăng nhập xong vẫn không gửi được sổ nào. Ở đây máy thợ chỉ xem trạng thái
+ * và ngắt.
  */
 
 interface Props {
@@ -26,7 +32,7 @@ interface Props {
 }
 
 export function HopNoiNhom({ vai, dieuKhien, onDong }: Props) {
-  const { trangThai, noiAnDanh, noiEmail, taoTaiKhoan, lapNhom, ngat } = dieuKhien;
+  const { trangThai, noiEmail, taoTaiKhoan, lapNhom, ngat } = dieuKhien;
   const { hoTro, taiKhoan, thanhVien, dangChay, loi, nhac } = trangThai;
 
   const [email, datEmail] = useState('');
@@ -64,46 +70,54 @@ export function HopNoiNhom({ vai, dieuKhien, onDong }: Props) {
             đúng lúc lập nhóm. Không có nút thử lại thì người dùng mắc cạn — đăng nhập rồi nên
             nút Nối biến mất, mà nhóm thì vẫn chưa có.
           */}
-          {thanhVien === null && (
-            <Pressable style={kieu.nutChinh} onPress={vai === 'chu' ? lapNhom : undefined} disabled={dangChay}>
-              {dangChay ? (
-                <ActivityIndicator color={Mau.trang} />
-              ) : (
-                <Feather name="refresh-cw" size={17} color={Mau.trang} />
-              )}
-              <Text style={kieu.chuNutChinh}>
-                {vai === 'chu' ? 'Lập nhóm, thử lại' : 'Đợi mã mời của chủ'}
+          {thanhVien === null &&
+            (vai === 'chu' ? (
+              <Pressable style={kieu.nutChinh} onPress={lapNhom} disabled={dangChay}>
+                {dangChay ? (
+                  <ActivityIndicator color={Mau.trang} />
+                ) : (
+                  <Feather name="refresh-cw" size={17} color={Mau.trang} />
+                )}
+                <Text style={kieu.chuNutChinh}>Lập nhóm, thử lại</Text>
+              </Pressable>
+            ) : (
+              /*
+                Không để một cái nút bấm không ăn ở đây như bản trước ("Đợi mã mời của chủ"):
+                nút bấm không ăn thì người dùng bấm mãi rồi tưởng app hỏng. Chỉ đường sang
+                đúng chỗ dán mã.
+              */
+              <Text style={kieu.chuNhac}>
+                Chưa vào nhóm. Xin chủ phát mã mời, rồi dán vào mục{' '}
+                <Text style={kieu.chuDam}>Máy của thợ · đổi lại</Text> ở đáy màn hình.
               </Text>
-            </Pressable>
-          )}
+            ))}
 
+          {/*
+            Đường ra, và với máy thợ thì đây **là** cái nút đăng xuất — gọi thẳng là *thoát
+            nhóm* chứ không gọi "ngắt": thợ tìm chữ đăng xuất hay chữ thoát, không tìm một từ
+            kỹ thuật. Vẫn để nút phụ viền đỏ, không phải nút chính: cả tháng không ai bấm.
+          */}
           <Pressable style={kieu.nutPhu} onPress={ngat} disabled={dangChay}>
             <Feather name="log-out" size={16} color={Mau.do} />
-            <Text style={kieu.chuNutPhu}>Ngắt khỏi nhóm</Text>
+            <Text style={kieu.chuNutPhu}>
+              {vai === 'tho' ? 'Thoát nhóm, đăng xuất máy này' : 'Ngắt khỏi nhóm'}
+            </Text>
           </Pressable>
 
           <Text style={kieu.chuChan}>
             {vai === 'tho'
-              ? 'Ngắt thì máy này thôi gửi sổ cho chủ. Những buổi đã chấm vẫn còn trong máy.'
+              ? 'Thoát thì máy này thôi gửi sổ cho chủ, nhưng những buổi đã chấm vẫn còn ' +
+                'nguyên trong máy. Muốn vào lại phải xin chủ một mã mời mới — mã cũ dùng một ' +
+                'lần là hết.'
               : 'Ngắt thì máy này thôi nhận sổ của thợ. Sổ của cửa hàng vẫn còn trong máy.'}
           </Text>
         </>
       ) : vai === 'tho' ? (
-        <>
-          <Text style={kieu.chuChan}>
-            Bấm nối là xong — không cần email hay mật khẩu. Máy này tự có một tài khoản riêng
-            để gửi sổ công cho chủ.
-          </Text>
-
-          <Pressable style={kieu.nutChinh} onPress={noiAnDanh} disabled={dangChay}>
-            {dangChay ? (
-              <ActivityIndicator color={Mau.trang} />
-            ) : (
-              <Feather name="link" size={17} color={Mau.trang} />
-            )}
-            <Text style={kieu.chuNutChinh}>{dangChay ? 'Đang nối…' : 'Nối vào nhóm'}</Text>
-          </Pressable>
-        </>
+        <Text style={kieu.chuChan}>
+          Máy thợ vào nhóm bằng mã mời của chủ — không cần email hay mật khẩu. Dán mã ở mục{' '}
+          <Text style={kieu.chuDam}>Máy của thợ · đổi lại</Text> ở đáy màn hình; một lần dán mã
+          là xong cả việc vào nhóm.
+        </Text>
       ) : (
         <>
           <ONhap
@@ -148,21 +162,17 @@ export function HopNoiNhom({ vai, dieuKhien, onDong }: Props) {
           </Pressable>
 
           {/*
-            Đường nối nhanh, không email không mật khẩu. Có mặt vì nhiều chủ cửa hàng không
-            dùng email, và vì lúc chạy thử thì chờ thư xác nhận là tắc.
+            **Đừng thêm lại đường "nối nhanh, không cần email" ở đây.** Bản trước có, và cái
+            giá của nó rơi đúng vào chỗ đau nhất: tài khoản ẩn danh chỉ sống trong một cái
+            điện thoại, nên chủ mất máy là mất cả nhóm — mọi thợ trong nhóm phải nhận mã mời
+            lại từ một nhóm mới, mà sổ họ đã gửi lên thì nằm ở nhóm cũ không ai vào được nữa.
 
-            Nói thẳng cái giá ngay dưới nút: tài khoản ẩn danh chỉ sống trong cái máy này,
-            mất máy là mất quyền nhóm. Về sau gắn email vào chính tài khoản ấy được, giữ
-            nguyên nhóm và sổ.
+            Máy thợ thì vẫn ẩn danh, và đúng: sổ thật của thợ nằm trong máy họ, mất máy chỉ
+            việc dán mã mời mới.
           */}
-          <Pressable style={kieu.nutPhu} onPress={noiAnDanh} disabled={dangChay}>
-            <Feather name="zap" size={16} color={Mau.xam} />
-            <Text style={[kieu.chuNutPhu, { color: Mau.xam }]}>Nối nhanh, không cần email</Text>
-          </Pressable>
-
           <Text style={kieu.chuChan}>
-            Nối nhanh thì nhóm chỉ gắn với cái máy này — mất máy là mất quyền nhóm. Dùng email
-            thì đổi máy vẫn vào lại được.
+            Tài khoản này nắm nhóm của cả cửa hàng, nên phải là email — mất máy thì đăng nhập
+            lại trên máy mới là nhóm và sổ thợ còn nguyên.
           </Text>
         </>
       )}
@@ -214,6 +224,7 @@ const kieu = StyleSheet.create({
   chuNutPhuXanh: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.chinh },
 
   chuChan: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+  chuDam: { fontFamily: PhongChu.vua, color: Mau.chu },
   chuLoi: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.do },
   chuNhac: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xanhLa },
 });

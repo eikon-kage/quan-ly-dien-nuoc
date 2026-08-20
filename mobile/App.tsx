@@ -13,13 +13,13 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ManHinhBangLuong } from './src/giaodien/ManHinhBangLuong';
 import { ManHinhChamCong } from './src/giaodien/ManHinhChamCong';
 import { ManHinhLichSuKy } from './src/giaodien/ManHinhLichSuKy';
+import { ManHinhMoDau } from './src/giaodien/ManHinhMoDau';
 import { ManHinhTho } from './src/giaodien/ManHinhTho';
 import { ManHinhThoTuCham } from './src/giaodien/ManHinhThoTuCham';
 import { KetNoiHopThu, dungDoiChieu } from './src/giaodien/dungDoiChieu';
 import { dungSaoLuu } from './src/giaodien/dungSaoLuu';
 import { dungSupabase } from './src/giaodien/dungSupabase';
 import { Bong, Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './src/giaodien/thietKe';
-import { hopThuDrive } from './src/nghiepvu/hopThu';
 import { hopThuSupabase } from './src/nghiepvu/hopThuSupabase';
 import { DuLieuChamCong } from './src/nghiepvu/kieu';
 import * as LuuTru from './src/nghiepvu/luuTru';
@@ -45,6 +45,12 @@ export default function App() {
   /** null = chưa đọc xong. Đọc rồi mới biết vẽ màn hình của chủ hay của thợ. */
   const [caiDat, datCaiDat] = useState<CaiDatVai | null>(null);
   const [muc, datMuc] = useState<Muc>('cham');
+  /**
+   * Đã bấm *Để sau* ở màn hình nối nhóm. Chỉ nhớ trong lượt mở app này, **không ghi xuống
+   * máy**: sổ chưa nối thì vẫn chưa ai nhận được, nên lần mở sau hỏi lại là đúng. Ghi xuống
+   * máy là một cú bấm nhầm khiến người dùng không bao giờ thấy màn hình ấy nữa.
+   */
+  const [deSau, datDeSau] = useState(false);
 
   const [fontDaNap] = useFonts({
     Lexend_300Light,
@@ -54,29 +60,37 @@ export default function App() {
   });
 
   /**
-   * Sao lưu Drive đặt ở đây chứ không trong màn hình Thợ: nó phải theo dõi *mọi* thay đổi
-   * dữ liệu, mà dữ liệu thì nằm ở đây. Để trong màn hình Thợ thì lúc người dùng đang ở
-   * màn hình Chấm công — tức là lúc dữ liệu đổi nhiều nhất — nó không chạy.
+   * Sao lưu đặt ở đây chứ không trong màn hình Thợ: nó phải theo dõi *mọi* thay đổi dữ liệu,
+   * mà dữ liệu thì nằm ở đây. Để trong màn hình Thợ thì lúc người dùng đang ở màn hình Chấm
+   * công — tức là lúc dữ liệu đổi nhiều nhất — nó không chạy.
+   *
+   * Chạy cho cả hai vai. Bản Drive trước đây phải tắt trên máy thợ vì hai máy ghi đè bản sao
+   * lưu của nhau trên tài khoản dùng chung; sao lưu vào máy thì mỗi máy một thư mục riêng.
    */
-  const saoLuu = dungSaoLuu(duLieu, caiDat?.vai !== 'tho');
+  const saoLuu = dungSaoLuu(duLieu);
 
   /**
    * Hộp thư đối chiếu cũng đặt ở đây và vì đúng một lý do như sao lưu: nó gửi *dữ liệu*
    * đi, mà dữ liệu nằm ở đây. Cả hai vai đều dùng, nên đừng đẩy xuống một màn hình.
    */
-  /** Kết nối vào nhóm trên Supabase — cả hai vai đều dùng, nên cũng giữ ở đây. */
-  const nhom = dungSupabase(caiDat?.vai ?? 'chu');
+  /**
+   * Kết nối vào nhóm trên Supabase — cả hai vai đều dùng, nên cũng giữ ở đây.
+   *
+   * Truyền `null` khi chưa đọc xong vai máy, **không truyền tạm `'chu'`**: hook lấy vai để
+   * biết có được tự lập nhóm lúc mở app hay không, mà lập nhóm cho một máy thợ là đặt nó vào
+   * một nhóm một người rồi mã mời của chủ không đổi được nữa.
+   */
+  const nhom = dungSupabase(caiDat?.vai ?? null);
 
   /**
-   * Hộp thư: đã nối nhóm Supabase thì đi qua Supabase, chưa nối thì vẫn là Drive.
+   * Hộp thư: chỉ còn một đường, Supabase. Trước đây còn đường Drive dùng chung một tài khoản
+   * Google, đã bỏ — cách ấy không chặn được ai đọc của ai, máy nào cũng xoá được sổ của máy
+   * khác.
    *
-   * Chỗ duy nhất trong cả app biết mình đang chạy trên đường nào. Màn hình đối chiếu và phần
-   * tính toán không biết, và không cần biết — đó là mục đích của việc bọc hộp thư lại.
+   * Vẫn dựng ở đây, một chỗ duy nhất, chứ không để màn hình tự gọi: đổi ruột hộp thư lần nữa
+   * thì chỉ sửa đúng dòng này.
    */
-  const hopThu = useMemo(
-    () => (nhom.trangThai.thanhVien !== null ? hopThuSupabase() : hopThuDrive()),
-    [nhom.trangThai.thanhVien],
-  );
+  const hopThu = useMemo(() => hopThuSupabase(), []);
 
   /**
    * Hộp thư đang dùng đã nối được chưa, và nếu chưa thì chỉ đường cho người dùng.
@@ -88,37 +102,59 @@ export default function App() {
   const ketNoi = useMemo<KetNoiHopThu>(() => {
     const { hoTro: coSupabase, taiKhoan: taiKhoanNhom, thanhVien } = nhom.trangThai;
 
-    if (coSupabase) {
-      if (thanhVien !== null) {
-        return { sanSang: true, chuaSanSang: null };
-      }
-      return {
-        sanSang: false,
-        chuaSanSang:
-          taiKhoanNhom !== null
-            ? 'Đã đăng nhập nhưng chưa vào nhóm. Mở mục Thợ → Nhóm chấm công.'
-            : 'Chưa nối nhóm. Mở mục Thợ → Nhóm chấm công để nối.',
-      };
-    }
-
-    const { hoTro: coDrive, taiKhoan: taiKhoanDrive } = saoLuu.trangThai;
-    if (!coDrive) {
+    if (!coSupabase) {
       return {
         sanSang: false,
         chuaSanSang: 'Máy này chưa nối được hộp thư nào. Cần bản app cài thẳng vào máy.',
       };
     }
-    if (taiKhoanDrive === null) {
-      return {
-        sanSang: false,
-        chuaSanSang: 'Hai máy phải nối cùng một tài khoản Google thì mới thấy sổ của nhau.',
-        noi: saoLuu.noiDrive,
-      };
+    if (thanhVien !== null) {
+      return { sanSang: true, chuaSanSang: null };
     }
-    return { sanSang: true, chuaSanSang: null };
-  }, [nhom.trangThai, saoLuu.trangThai, saoLuu.noiDrive]);
+    /*
+      Chỉ đường **theo vai**: máy chủ có mục Thợ để mở, còn máy thợ thì không có mục nào, cả
+      thanh tab cũng không. Câu chung cho hai vai là câu sai với một vai — thợ đọc "mở mục
+      Thợ" rồi ngồi tìm một mục không tồn tại.
+    */
+    const laTho = caiDat?.vai === 'tho';
+    return {
+      sanSang: false,
+      chuaSanSang:
+        taiKhoanNhom !== null
+          ? laTho
+            ? 'Đã đăng nhập nhưng chưa vào nhóm. Bấm dải Chưa vào nhóm ở đầu trang.'
+            : 'Đã đăng nhập nhưng chưa vào nhóm. Mở mục Thợ → Nhóm chấm công.'
+          : laTho
+            ? 'Chưa nối nhóm — sổ chưa gửi cho chủ. Bấm dải ở đầu trang để dán mã mời.'
+            : 'Chưa nối nhóm. Mở mục Thợ → Nhóm chấm công để nối.',
+    };
+  }, [nhom.trangThai, caiDat?.vai]);
 
   const doiChieu = dungDoiChieu(duLieu, caiDat ?? VaiMay.MAC_DINH, hopThu, ketNoi);
+
+  /**
+   * Mở app ra là hỏi nối nhóm luôn, chứ không đợi người dùng mò vào mục Thợ. Chỉ hỏi khi máy
+   * chưa ở trong nhóm nào, và thêm bốn điều kiện nữa — mỗi điều kiện chặn một cách hỏi sai:
+   *
+   *   `hoTro`     — bản app không có địa chỉ Supabase thì hỏi cũng chẳng nối được gì.
+   *   `!dangDoc`  — lượt nối lúc mở app còn đang chạy: chưa biết thì chưa hỏi, kẻo máy đã
+   *                 nối rồi vẫn thấy màn hình đăng nhập nhoáng lên một nhịp.
+   *   `!traHut`   — mất mạng nên *không biết* đã ở nhóm nào chưa. Máy chủ ngoài vùng phủ
+   *                 sóng phải mở app ra chấm công được, không phải nhìn màn hình đăng nhập.
+   *   `!deSau`    — người dùng đã nói để sau (chỉ tính cho lượt mở app này).
+   *   `!dungMotMinh` — người dùng đã **chọn** dùng app một mình. Khác *để sau*: đó là một
+   *                 câu trả lời, ghi vào máy rồi, hỏi lại mỗi lần mở app là phiền đúng người
+   *                 đã trả lời xong.
+   *
+   * Nối được rồi thì `thanhVien` khác null và màn hình này tự biến, không cần ai đóng.
+   */
+  const hoiNoiNhom =
+    nhom.trangThai.hoTro &&
+    !nhom.trangThai.dangDoc &&
+    !nhom.trangThai.traHut &&
+    nhom.trangThai.thanhVien === null &&
+    caiDat?.dungMotMinh !== true &&
+    !deSau;
 
   useEffect(() => {
     LuuTru.doc().then(datDuLieu);
@@ -149,6 +185,15 @@ export default function App() {
           <View style={kieu.dangMo}>
             <ActivityIndicator size="large" color={Mau.chinh} />
           </View>
+        ) : hoiNoiNhom ? (
+          <ManHinhMoDau
+            duLieu={duLieu}
+            capNhat={capNhat}
+            caiDat={caiDat}
+            datCaiDat={doiVai}
+            nhom={nhom}
+            onDeSau={() => datDeSau(true)}
+          />
         ) : caiDat.vai === 'tho' ? (
           /*
             Máy thợ là một màn hình riêng, không có thanh tab: cả máy chỉ có một việc.

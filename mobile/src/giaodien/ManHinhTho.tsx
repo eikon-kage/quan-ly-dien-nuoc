@@ -57,23 +57,21 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
         ? `${soDangLam} đang làm`
         : `${soDangLam} đang làm · ${soDaNghi} đã nghỉ`;
 
-  const { hoTro, taiKhoan, dangChay, lucCuoi, loi } = saoLuu.trangThai;
+  const { hoTro, dangChay, lucCuoi, loi } = saoLuu.trangThai;
 
   /**
-   * Một dòng cho biết dữ liệu đang an toàn tới đâu. Xếp theo mức khẩn: máy không nối được
-   * → chưa nối → đang lỗi → đang chạy → xong lúc mấy giờ.
+   * Một dòng cho biết dữ liệu đang an toàn tới đâu. Xếp theo mức khẩn: máy không ghi được
+   * → đang lỗi → đang chạy → xong lúc mấy giờ → chưa lần nào.
    */
-  const chuDrive = !hoTro
+  const chuSaoLuu = !hoTro
     ? 'Cần bản app cài thẳng vào máy'
-    : taiKhoan === null
-      ? 'Chưa nối — dữ liệu chỉ nằm trong máy này'
-      : loi !== null
-        ? loi
-        : dangChay
-          ? 'Đang đẩy lên…'
-          : lucCuoi !== null
-            ? `Đã sao lưu lúc ${Ngay.gioPhut(lucCuoi)}`
-            : 'Đã nối, chưa sao lưu lần nào';
+    : loi !== null
+      ? loi
+      : dangChay
+        ? 'Đang ghi…'
+        : lucCuoi !== null
+          ? `Đã sao lưu lúc ${Ngay.gioPhut(lucCuoi)}`
+          : 'Chưa sao lưu lần nào';
 
   /**
    * Đếm thợ đang lệch. Chỉ một con số: chi tiết nằm trong màn hình đối chiếu, còn ở đây chỉ
@@ -83,7 +81,7 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
     () =>
       [...dieuKhien.soBenKia.values()].filter(
         (daNhan) =>
-          doiChieu(soCuaMay(duLieu, caiDat, daNhan.so.thoId, homNay), daNhan.so).lechs.length > 0,
+          doiChieu(soCuaMay(duLieu, caiDat, daNhan.so.thoId, homNay), daNhan.so, homNay).lechs.length > 0,
       ).length,
     [duLieu, caiDat, dieuKhien.soBenKia, homNay],
   );
@@ -96,9 +94,9 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
         ? `${soLech} thợ ghi khác sổ mình`
         : `${soDaGui} sổ thợ, khớp cả`;
 
-  const daAn = hoTro && taiKhoan !== null && loi === null;
-  const iconDrive = daAn ? 'cloud' : 'cloud-off';
-  const mauDrive = daAn ? Mau.xanhLa : loi !== null ? Mau.do : Mau.xam;
+  const daAn = hoTro && loi === null && lucCuoi !== null;
+  const iconSaoLuu = hoTro && loi === null ? 'save' : 'alert-circle';
+  const mauSaoLuu = daAn ? Mau.xanhLa : loi !== null || !hoTro ? Mau.do : Mau.xam;
 
   async function xuatExcel() {
     if (dangXuat === 'dangLam') {
@@ -122,6 +120,7 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
         capNhat={capNhat}
         caiDat={caiDat}
         dieuKhien={dieuKhien}
+        nhom={nhom}
         onDong={() => datMoDoiChieu(false)}
       />
     );
@@ -179,43 +178,42 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
       />
 
       {/*
-        Xuất Excel và Sao lưu Drive để ở đây chứ không ở Bảng lương: đây là việc thỉnh
-        thoảng mới làm, để cạnh bảng lương thì lấn chỗ con số cần nhìn hằng ngày.
+        Xuất Excel và Sao lưu để ở đây chứ không ở Bảng lương: đây là việc thỉnh thoảng mới
+        làm, để cạnh bảng lương thì lấn chỗ con số cần nhìn hằng ngày.
       */}
       {coDuLieu && (
         <View style={kieu.chanTrang}>
           {/*
             Sao lưu là một dòng chữ nhỏ có mũi tên chứ không phải nút to như Xuất Excel:
-            bình thường nó tự chạy, người dùng chỉ ghé vào lúc muốn xem "đã lên Drive
-            chưa". Để thành nút to thì hai nút cạnh nhau, nhìn như hai việc ngang nhau
-            trong khi một cái phải bấm còn một cái thì không.
-          */}
-          {/*
+            bình thường nó tự chạy, người dùng chỉ ghé vào lúc muốn xem "đã ghi tới hôm nào".
+            Để thành nút to thì hai nút cạnh nhau, nhìn như hai việc ngang nhau trong khi một
+            cái phải bấm còn một cái thì không.
+
             Đối chiếu đứng trên sao lưu vì nó là việc *phải nhìn* — có thợ nào ghi khác sổ
-            mình không — còn sao lưu thì tự chạy, chỉ ghé vào lúc muốn xem đã lên Drive chưa.
+            mình không — còn sao lưu thì tự chạy.
           */}
           <Pressable
-            style={kieu.dongDrive}
+            style={kieu.dongMuc}
             onPress={() => datMoDoiChieu(true)}
             accessibilityRole="button"
           >
             <Feather name="columns" size={16} color={soLech > 0 ? Mau.do : Mau.xam} />
-            <View style={kieu.giuaDongDrive}>
-              <Text style={kieu.chuDrive}>Đối chiếu với sổ thợ</Text>
-              <Text style={kieu.chuTrangThaiDrive}>{chuDoiChieu}</Text>
+            <View style={kieu.giuaDongMuc}>
+              <Text style={kieu.chuNhanMuc}>Đối chiếu với sổ thợ</Text>
+              <Text style={kieu.chuTrangThaiMuc}>{chuDoiChieu}</Text>
             </View>
             <Feather name="chevron-right" size={16} color={Mau.xam} />
           </Pressable>
 
           <Pressable
-            style={kieu.dongDrive}
+            style={kieu.dongMuc}
             onPress={() => datMoSaoLuu(true)}
             accessibilityRole="button"
           >
-            <Feather name={iconDrive} size={16} color={mauDrive} />
-            <View style={kieu.giuaDongDrive}>
-              <Text style={kieu.chuDrive}>Sao lưu Google Drive</Text>
-              <Text style={kieu.chuTrangThaiDrive}>{chuDrive}</Text>
+            <Feather name={iconSaoLuu} size={16} color={mauSaoLuu} />
+            <View style={kieu.giuaDongMuc}>
+              <Text style={kieu.chuNhanMuc}>Sao lưu</Text>
+              <Text style={kieu.chuTrangThaiMuc}>{chuSaoLuu}</Text>
             </View>
             <Feather name="chevron-right" size={16} color={Mau.xam} />
           </Pressable>
@@ -308,12 +306,18 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
           capNhat={capNhat}
           caiDat={caiDat}
           datCaiDat={datCaiDat}
+          nhom={nhom}
           onDong={() => datMoVaiMay(false)}
         />
       )}
 
       {moSaoLuu && (
-        <HopSaoLuu saoLuu={saoLuu} capNhat={capNhat} onDong={() => datMoSaoLuu(false)} />
+        <HopSaoLuu
+          duLieu={duLieu}
+          saoLuu={saoLuu}
+          capNhat={capNhat}
+          onDong={() => datMoSaoLuu(false)}
+        />
       )}
 
       {moNhap && (
@@ -366,8 +370,8 @@ const kieu = StyleSheet.create({
   chuTien: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
 
   chanTrang: { paddingHorizontal: 16, paddingBottom: 12, gap: 10 },
-  // Dòng Drive là một thẻ trắng nổi bóng, giống hàng việc trong danh sách của bản thiết kế.
-  dongDrive: {
+  // Mỗi dòng là một thẻ trắng nổi bóng, giống hàng việc trong danh sách của bản thiết kế.
+  dongMuc: {
     ...theTrang,
     flexDirection: 'row',
     alignItems: 'center',
@@ -375,9 +379,9 @@ const kieu = StyleSheet.create({
     minHeight: Co.caoNut,
     paddingVertical: 10,
   },
-  giuaDongDrive: { flex: 1, gap: 2 },
-  chuDrive: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, color: Mau.chu },
-  chuTrangThaiDrive: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+  giuaDongMuc: { flex: 1, gap: 2 },
+  chuNhanMuc: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, color: Mau.chu },
+  chuTrangThaiMuc: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
   hangNut: { flexDirection: 'row', gap: 10 },
   nutNua: { flex: 1 },
   nutXuat: {

@@ -1,6 +1,6 @@
 /**
- * Đóng gói toàn bộ dữ liệu chấm công thành một file JSON để gửi lên Drive, và mở gói
- * ấy ra lúc khôi phục.
+ * Đóng gói toàn bộ dữ liệu chấm công thành một file JSON để ghi xuống máy hay gửi đi, và mở
+ * gói ấy ra lúc khôi phục.
  *
  * Khác hẳn file Excel: file Excel là để *người* đọc, cắt sẵn theo kỳ, làm tròn, bỏ id —
  * nạp ngược lại không ra được dữ liệu cũ. File ở đây là bản chụp nguyên xi, xấu mã nhưng
@@ -13,7 +13,7 @@
 
 import { chuanHoa, DuLieuChamCong } from './kieu';
 
-/** Nhãn nhận dạng file của app này. Đừng đổi — file cũ trên Drive vẫn mang nhãn cũ. */
+/** Nhãn nhận dạng file của app này. Đừng đổi — các bản sao lưu cũ vẫn mang nhãn cũ. */
 const NHAN_APP = 'cham-cong';
 
 /** Phiên bản cấu trúc gói hiện tại. */
@@ -52,7 +52,7 @@ export function tomTat(duLieu: DuLieuChamCong): TomTat {
 }
 
 /**
- * Tên file trên Drive: mỗi ngày một file, ví dụ "Cham-cong-2026-08-05.json".
+ * Tên file sao lưu: mỗi ngày một file, ví dụ "Cham-cong-2026-08-05.json".
  *
  * Ngày để dạng yyyy-MM-dd chứ không dd-MM-yyyy như file Excel: ở đây tên file còn để
  * *sắp xếp*, mà chỉ kiểu yyyy trước mới sắp đúng thứ tự thời gian.
@@ -67,9 +67,28 @@ export function ngayTuTenFile(ten: string): string | null {
   return khop ? khop[1] : null;
 }
 
+/**
+ * Tên các bản cần xoá để chỉ còn `soGiu` bản mới nhất.
+ *
+ * Tách ra làm hàm thuần, không chạm vào thư mục, để kiểm thử được: đây là chỗ *chọn cái gì
+ * để xoá*, mà chọn sai thì mất bản sao lưu — không phải chỗ để đoán rồi tin.
+ *
+ * File nào không đúng khuôn tên thì không xoá. Thư mục ấy là của app, nhưng lỡ có file lạ
+ * nằm đó thì cũng không phải việc của mình đi dọn.
+ */
+export function banCanXoa(tens: string[], soGiu: number): string[] {
+  return (
+    tens
+      .filter((ten) => ngayTuTenFile(ten) !== null)
+      // Tên mang ngày kiểu yyyy-MM-dd nên so chuỗi là đúng thứ tự thời gian, mới nhất trước.
+      .sort((a, b) => b.localeCompare(a))
+      .slice(soGiu)
+  );
+}
+
 export function dongGoi(duLieu: DuLieuChamCong, taoLuc: string): string {
   const goi: GoiSaoLuu = { app: NHAN_APP, phienBan: PHIEN_BAN, taoLuc, duLieu };
-  // Xuống dòng cho dễ đọc khi mở bằng mắt trên Drive; file vài trăm KB là cùng.
+  // Xuống dòng cho dễ đọc khi mở file ra bằng mắt; file vài trăm KB là cùng.
   return JSON.stringify(goi, null, 2);
 }
 

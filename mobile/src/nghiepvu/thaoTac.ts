@@ -147,6 +147,40 @@ export function themTho(
   return { duLieu: { ...duLieu, thos: [...duLieu.thos, tho] }, tho };
 }
 
+/**
+ * Đổi id của một thợ, kéo theo mọi bản ghi móc vào id ấy.
+ *
+ * Dùng cho đúng một việc: máy thợ **tự chấm trước khi có mã mời**. Lúc ấy id là do máy tự
+ * đặt, chưa có trong sổ chủ; tới khi dán được mã, database mới trả về id thật. Không đổi thì
+ * mấy buổi chấm hồi chưa nối treo lại ở id cũ — thợ mở app lên thấy sổ trống trơn, mà đối
+ * chiếu thì báo chủ chấm khống.
+ *
+ * Chỉ đúng khi **một bên không có gì trùng bên kia** — trên máy thợ thì đúng, vì cả máy chỉ
+ * có một người chấm. Gộp hai người thật vào một id là chuyện khác, đừng dùng hàm này.
+ */
+export function doiThoId(duLieu: DuLieuChamCong, cu: string, moi: string): DuLieuChamCong {
+  if (cu === moi) {
+    return duLieu;
+  }
+
+  // Id mới đã có bản ghi thợ rồi (chủ gửi sổ xuống trước) thì bỏ bản ghi tạm, giữ bản thật.
+  const daCoMoi = duLieu.thos.some((tho) => tho.id === moi);
+
+  return {
+    ...duLieu,
+    thos: daCoMoi
+      ? duLieu.thos.filter((tho) => tho.id !== cu)
+      : duLieu.thos.map((tho) => (tho.id === cu ? { ...tho, id: moi, suaLuc: bayGio() } : tho)),
+    buoiCongs: duLieu.buoiCongs.map((b) => (b.thoId === cu ? { ...b, thoId: moi } : b)),
+    ungTiens: duLieu.ungTiens.map((u) => (u.thoId === cu ? { ...u, thoId: moi } : u)),
+    // Kỳ đã chốt là bản chụp của quá khứ, nhưng id trong đó cũng phải trỏ đúng người.
+    kyLuongs: duLieu.kyLuongs.map((ky) => ({
+      ...ky,
+      dongs: ky.dongs.map((dong) => (dong.thoId === cu ? { ...dong, thoId: moi } : dong)),
+    })),
+  };
+}
+
 /** Ghi lại thợ sau khi sửa tên, tiền công hay đánh dấu đã nghỉ. */
 export function luuTho(duLieu: DuLieuChamCong, tho: Tho): DuLieuChamCong {
   const daSua: Tho = { ...tho, ten: tho.ten.trim(), suaLuc: bayGio() };

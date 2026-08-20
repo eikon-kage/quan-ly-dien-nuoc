@@ -48,7 +48,15 @@ export interface KetQuaDoiChieu {
   lechs: DongLech[];
   tongCongMinh: number;
   tongCongBenKia: number;
+  /**
+   * Số buổi **của hôm nay** tạm gác lại: một bên đã chấm, bên kia chưa. Không tính là lệch,
+   * cũng không cộng vào hai tổng — xem ghi chú ở `doiChieu`.
+   */
+  soTamGac: number;
 }
+
+/** Sáng đứng trước Chiều, đúng thứ tự người ta đọc một ngày. */
+const THU_TU_BUOI: Record<BuoiLam, number> = { Sang: 0, Chieu: 1 };
 
 function khoa(ngay: string, buoi: BuoiLam): string {
   return `${ngay}|${buoi}`;
@@ -69,8 +77,21 @@ function trongKhoang(dongs: DongCong[], tuNgay: string, denNgay: string): Map<st
  *
  * Chỉ so trong **phần giao** của hai khoảng ngày. Ngoài phần giao thì có bên không khai là
  * đầy đủ, thiếu một buổi ở đó không có nghĩa là ai sai — xem ghi chú ở `SoCong.tuNgay`.
+ *
+ * `homNay` để **tạm gác những buổi của hôm nay mà chỉ một bên có**. Ngày đang chạy thì bên
+ * chưa chấm không có nghĩa là bên ấy nói "nghỉ": chủ chấm cả nhóm lúc nghỉ trưa, thợ mở app
+ * lúc về nhà, mà cùng một buổi ấy hai người ghi cách nhau mấy tiếng. Đếm luôn thì máy thợ vừa
+ * cài xong, chưa chấm ô nào, mở đối chiếu ra đã thấy hai dòng đỏ của đúng hôm nay — người
+ * dùng không nhập gì mà app báo lệch, đó là chỗ mất lòng tin đầu tiên. Cùng một lẽ với
+ * `ngayNghiTrongSo`: ngày chưa qua thì chưa kết luận.
+ *
+ * Vẫn báo lệch nếu **cả hai bên đều đã chấm** buổi hôm nay mà số công khác nhau — chỗ ấy hai
+ * người thật sự nói khác nhau, gác lại là che mất.
+ *
+ * Buổi tạm gác cũng **không cộng vào hai tổng**: tổng phải nói đúng những dòng đang hiện bên
+ * dưới, chứ không thì đầu trang bảo lệch 2 công mà không có dòng nào giải thích.
  */
-export function doiChieu(soMinh: SoCong, soBenKia: SoCong): KetQuaDoiChieu {
+export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQuaDoiChieu {
   const tuNgay = soMinh.tuNgay > soBenKia.tuNgay ? soMinh.tuNgay : soBenKia.tuNgay;
   const denNgay = soMinh.denNgay < soBenKia.denNgay ? soMinh.denNgay : soBenKia.denNgay;
 
@@ -83,6 +104,7 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong): KetQuaDoiChieu {
       lechs: [],
       tongCongMinh: 0,
       tongCongBenKia: 0,
+      soTamGac: 0,
     };
   }
 
@@ -91,18 +113,30 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong): KetQuaDoiChieu {
 
   const lechs: DongLech[] = [];
   let soKhop = 0;
+  let soTamGac = 0;
+  let tongCongMinh = 0;
+  let tongCongBenKia = 0;
 
   for (const k of new Set([...minh.keys(), ...benKia.keys()])) {
     const a = minh.get(k);
     const b = benKia.get(k);
 
-    if (a && b && a.soCong === b.soCong) {
-      soKhop += 1;
+    const goc = a ?? b;
+    if (!goc) {
       continue;
     }
 
-    const goc = a ?? b;
-    if (!goc) {
+    // Hôm nay mà chỉ một bên có: gác lại cả khỏi tổng, xem ghi chú ở đầu hàm.
+    if (goc.ngay >= homNay && (!a || !b)) {
+      soTamGac += 1;
+      continue;
+    }
+
+    tongCongMinh += a ? a.soCong : 0;
+    tongCongBenKia += b ? b.soCong : 0;
+
+    if (a && b && a.soCong === b.soCong) {
+      soKhop += 1;
       continue;
     }
 
@@ -118,10 +152,11 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong): KetQuaDoiChieu {
     });
   }
 
-  lechs.sort((x, y) => (x.ngay === y.ngay ? x.buoi.localeCompare(y.buoi) : x.ngay.localeCompare(y.ngay)));
-
-  const tong = (theoKhoa: Map<string, DongCong>) =>
-    [...theoKhoa.values()].reduce((tong, dong) => tong + dong.soCong, 0);
+  lechs.sort((x, y) =>
+    x.ngay === y.ngay
+      ? THU_TU_BUOI[x.buoi] - THU_TU_BUOI[y.buoi]
+      : x.ngay.localeCompare(y.ngay),
+  );
 
   return {
     tuNgay,
@@ -129,8 +164,9 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong): KetQuaDoiChieu {
     khongTrungKhoang: false,
     soKhop,
     lechs,
-    tongCongMinh: tong(minh),
-    tongCongBenKia: tong(benKia),
+    tongCongMinh,
+    tongCongBenKia,
+    soTamGac,
   };
 }
 

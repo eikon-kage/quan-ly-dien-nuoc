@@ -384,10 +384,10 @@ tắt *Đang làm* chứ không xoá — xoá là mất luôn bảng lương cá
 │ ╰────────────────────────────────╯ │
 │  ...                               │
 │ ╭────────────────────────────────╮ │
-│ │ ☁ Sao lưu Google Drive      ›  │ │   dán đáy màn hình
+│ │ ▣ Sao lưu                   ›  │ │   dán đáy màn hình
 │ │   Đã sao lưu lúc 16:12         │ │
 │ ╰────────────────────────────────╯ │
-│  [   Xuất toàn bộ ra Excel   ]     │
+│  [ Nhập Excel ] [ Xuất ra Excel ]  │
 └────────────────────────────────────┘
 ```
 

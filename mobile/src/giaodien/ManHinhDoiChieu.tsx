@@ -7,8 +7,9 @@ import { BuoiLam, DuLieuChamCong } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { soCuaMay } from '../nghiepvu/soCong';
 import { thoDangLam, timTho } from '../nghiepvu/thaoTac';
-import { CaiDatVai, maMoi } from '../nghiepvu/vaiMay';
+import { CaiDatVai } from '../nghiepvu/vaiMay';
 import { DieuKhienDoiChieu } from './dungDoiChieu';
+import { DieuKhienNhom } from './dungSupabase';
 import { DauTrang, NutChip, theTrang } from './ThanhPhan';
 import { Bong, Co, Mau, PhongChu, Tuoi } from './thietKe';
 
@@ -29,12 +30,23 @@ interface Props {
   capNhat: (moi: DuLieuChamCong) => void;
   caiDat: CaiDatVai;
   dieuKhien: DieuKhienDoiChieu;
+  /** Để máy chủ phát mã mời ngay tại chỗ nhìn ra "thợ này chưa gửi sổ". */
+  nhom: DieuKhienNhom;
   onDong?: () => void;
+}
+
+/** Việc phát mã mời, gói lại một chỗ để khỏi rải bốn tham số xuống `ChiTiet`. */
+interface ViecPhatMa {
+  chay: () => void;
+  /** Mã vừa phát cho đúng thợ đang xem, null là chưa phát. */
+  ma: string | null;
+  dangChay: boolean;
+  loi: string | null;
 }
 
 const TEN_BUOI: Record<BuoiLam, string> = { Sang: 'Sáng', Chieu: 'Chiều' };
 
-export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, onDong }: Props) {
+export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, nhom, onDong }: Props) {
   const { trangThai, soBenKia, dongBo } = dieuKhien;
   const { ketNoi } = trangThai;
 
@@ -43,15 +55,28 @@ export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, onDong }: 
     caiDat.vai === 'tho' ? caiDat.thoId : null,
   );
   const [loiLay, datLoiLay] = useState<string | null>(null);
+  /** Mã vừa phát, giữ kèm thợ nào — đổi sang thợ khác thì mã cũ không còn nghĩa gì. */
+  const [maVuaPhat, datMaVuaPhat] = useState<{ thoId: string; ma: string } | null>(null);
 
   const homNay = Ngay.homNay();
   const benKia = caiDat.vai === 'chu' ? 'thợ' : 'chủ';
+
+  /**
+   * Phát mã mời cho một thợ. Đặt ở màn hình này chứ không ở danh sách thợ: đây là chỗ chủ
+   * nhìn ra "thợ này chưa gửi sổ", tức là đúng lúc cần cái mã.
+   */
+  async function phatMaCho(thoId: string) {
+    const ma = await nhom.phatMa(thoId);
+    if (ma !== null) {
+      datMaVuaPhat({ thoId, ma });
+    }
+  }
 
   /** Kết quả đối chiếu của từng thợ. Thợ chưa gửi sổ thì không có trong bảng này. */
   const ketTheoTho = useMemo(() => {
     const bang = new Map<string, KetQuaDoiChieu>();
     for (const [thoId, daNhan] of soBenKia) {
-      bang.set(thoId, doiChieu(soCuaMay(duLieu, caiDat, thoId, homNay), daNhan.so));
+      bang.set(thoId, doiChieu(soCuaMay(duLieu, caiDat, thoId, homNay), daNhan.so, homNay));
     }
     return bang;
   }, [duLieu, caiDat, soBenKia, homNay]);
@@ -140,7 +165,16 @@ export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, onDong }: 
             benKia={benKia}
             ket={ketTheoTho.get(dangXem) ?? null}
             nhanLuc={soBenKia.get(dangXem)?.suaLuc ?? null}
-            maMoiCuaTho={caiDat.vai === 'chu' ? maMoi(dangXem) : null}
+            phatMa={
+              caiDat.vai === 'chu'
+                ? {
+                    chay: () => void phatMaCho(dangXem),
+                    ma: maVuaPhat?.thoId === dangXem ? maVuaPhat.ma : null,
+                    dangChay: nhom.trangThai.dangChay,
+                    loi: nhom.trangThai.loi,
+                  }
+                : undefined
+            }
             onLay={(lech) => layMotDong(dangXem, lech)}
             // Máy thợ không có danh sách để quay về, nên không hiện nút Chọn thợ khác.
             onDoiTho={caiDat.vai === 'chu' ? () => datDangXem(null) : undefined}
@@ -178,16 +212,22 @@ function DanhSachTho({
         const ket = ketTheoTho.get(tho.id);
         const soLech = ket?.lechs.length ?? 0;
 
+        // Chưa lệch mà cũng chưa khớp buổi nào thì chưa so được gì, đừng tô xanh — xem ghi
+        // chú cùng chuyện ấy ở `ChiTiet`.
+        const chuaSoDuoc = !ket || ket.khongTrungKhoang || (soLech === 0 && ket.soKhop === 0);
+
         const chu = !ket
           ? 'Chưa gửi sổ lên'
           : ket.khongTrungKhoang
             ? 'Sổ hai bên chưa có ngày nào chung'
-            : soLech === 0
-              ? `Khớp cả ${ket.soKhop} buổi`
-              : `Lệch ${soLech} buổi · khớp ${ket.soKhop}`;
+            : soLech === 0 && ket.soKhop === 0
+              ? 'Chưa có buổi nào so được'
+              : soLech === 0
+                ? `Khớp cả ${ket.soKhop} buổi`
+                : `Lệch ${soLech} buổi · khớp ${ket.soKhop}`;
 
-        const mau = !ket || ket.khongTrungKhoang ? Mau.xam : soLech === 0 ? Mau.xanhLa : Mau.do;
-        const icon = !ket ? 'clock' : soLech === 0 && !ket.khongTrungKhoang ? 'check-circle' : 'alert-circle';
+        const mau = chuaSoDuoc ? Mau.xam : soLech === 0 ? Mau.xanhLa : Mau.do;
+        const icon = chuaSoDuoc ? 'clock' : soLech === 0 ? 'check-circle' : 'alert-circle';
 
         return (
           <Pressable key={tho.id} style={kieu.theTho} onPress={() => onChon(tho.id)}>
@@ -211,7 +251,7 @@ function ChiTiet({
   benKia,
   ket,
   nhanLuc,
-  maMoiCuaTho,
+  phatMa,
   onLay,
   onDoiTho,
 }: {
@@ -219,7 +259,8 @@ function ChiTiet({
   benKia: string;
   ket: KetQuaDoiChieu | null;
   nhanLuc: string | null;
-  maMoiCuaTho: string | null;
+  /** Chỉ máy chủ có; máy thợ không phát mã cho ai. */
+  phatMa?: ViecPhatMa;
   onLay: (lech: DongLech) => void;
   onDoiTho?: () => void;
 }) {
@@ -249,6 +290,15 @@ function ChiTiet({
                 Sổ {benKia} <Text style={kieu.chuTongSo}>{Ngay.soCong(ket.tongCongBenKia)}</Text> công
               </Text>
             </View>
+            {/*
+              Nói ra chỗ đang tạm gác, đừng gác lặng lẽ: hai tổng ở trên không có mấy buổi ấy,
+              mà màn hình chấm công thì có — không giải thích thì thành hai chỗ nói hai số.
+            */}
+            {ket.soTamGac > 0 && (
+              <Text style={kieu.chuPhu}>
+                Hôm nay còn dở: {ket.soTamGac} buổi mới một bên chấm, chưa tính là lệch.
+              </Text>
+            )}
           </>
         )}
       </View>
@@ -257,11 +307,49 @@ function ChiTiet({
         <View style={kieu.trong}>
           <Feather name="inbox" size={34} color={Mau.xam} />
           <Text style={kieu.chuTrongTo}>Chưa có sổ của {benKia}</Text>
-          <Text style={kieu.chuTrong}>
-            {maMoiCuaTho !== null
-              ? `Máy của thợ chưa gửi sổ lên. Nếu thợ chưa cài app, đọc cho họ mã mời: ${maMoiCuaTho}`
-              : 'Chủ chưa gửi sổ xuống. Bấm mũi tên đồng bộ ở trên, hoặc nhắc chủ mở app.'}
-          </Text>
+
+          {phatMa === undefined ? (
+            <Text style={kieu.chuTrong}>
+              Chủ chưa gửi sổ xuống. Bấm mũi tên đồng bộ ở trên, hoặc nhắc chủ mở app.
+            </Text>
+          ) : phatMa.ma !== null ? (
+            <>
+              {/*
+                Mã hiện to, giãn chữ: chủ phải đọc nó qua điện thoại cho một người đang ở
+                công trường. Mã database sinh ra đã bỏ O, I, L, số 0 và 1 vì đọc lên nghe
+                giống nhau — phần còn lại là việc của cỡ chữ.
+              */}
+              <Text style={kieu.chuMa}>{phatMa.ma}</Text>
+              <Text style={kieu.chuTrong}>
+                Đọc mã này cho thợ, hoặc gửi qua Zalo. Thợ mở app → mục Thợ → Máy của thợ →
+                dán mã. Mã dùng một lần và sống ba ngày.
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={kieu.chuTrong}>
+                Máy của thợ chưa gửi sổ lên. Thợ chưa cài app thì phát mã mời cho họ.
+              </Text>
+              <Pressable
+                style={[kieu.nutPhatMa, phatMa.dangChay && kieu.nutMo]}
+                onPress={phatMa.chay}
+                disabled={phatMa.dangChay}
+                accessibilityRole="button"
+              >
+                {phatMa.dangChay ? (
+                  <ActivityIndicator color={Mau.trang} />
+                ) : (
+                  <Feather name="user-plus" size={16} color={Mau.trang} />
+                )}
+                <Text style={kieu.chuNutPhatMa}>
+                  {phatMa.dangChay ? 'Đang phát mã…' : 'Phát mã mời'}
+                </Text>
+              </Pressable>
+              {phatMa.loi !== null && (
+                <Text style={[kieu.chuTrong, kieu.chuLoi]}>{phatMa.loi}</Text>
+              )}
+            </>
+          )}
         </View>
       ) : ket.khongTrungKhoang ? (
         <View style={kieu.trong}>
@@ -269,6 +357,21 @@ function ChiTiet({
           <Text style={kieu.chuTrongTo}>Chưa so được</Text>
           <Text style={kieu.chuTrong}>
             Hai sổ không có ngày nào chung. Đợi thêm vài ngày chấm công rồi đối chiếu lại.
+          </Text>
+        </View>
+      ) : ket.lechs.length === 0 && ket.soKhop === 0 ? (
+        /*
+          Không lệch mà cũng chưa khớp buổi nào thì **đừng nói "hai sổ khớp nhau"**: câu ấy là
+          một lời bảo đảm, mà ở đây chưa so được gì cả. Hay gặp nhất là máy thợ vừa cài xong,
+          khoảng chung chỉ có đúng hôm nay.
+        */
+        <View style={kieu.trong}>
+          <Feather name="clock" size={34} color={Mau.xam} />
+          <Text style={kieu.chuTrongTo}>Chưa có gì để so</Text>
+          <Text style={kieu.chuTrong}>
+            {ket.soTamGac > 0
+              ? `Hôm nay còn đang trong ngày: sổ ${benKia} đã chấm, sổ tôi chưa (hoặc ngược lại). Chấm xong rồi mở lại đây.`
+              : 'Trong khoảng hai sổ cùng khai, chưa buổi nào được chấm.'}
           </Text>
         </View>
       ) : ket.lechs.length === 0 ? (
@@ -349,6 +452,28 @@ const kieu = StyleSheet.create({
   theNhac: { ...theTrang, gap: 12, alignItems: 'flex-start' },
   chuNhac: { fontSize: Co.chuThuong, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuLoi: { color: Mau.do },
+
+  /* Mã mời: to, giãn chữ, đậm — chủ phải đọc nó qua điện thoại cho thợ. */
+  chuMa: {
+    fontSize: 34,
+    fontFamily: PhongChu.dam,
+    color: Mau.chinh,
+    letterSpacing: 4,
+    paddingVertical: 2,
+  },
+  nutPhatMa: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: Co.caoNut,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: Co.bo,
+    backgroundColor: Mau.chinh,
+  },
+  nutMo: { opacity: 0.6 },
+  chuNutPhatMa: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, color: Mau.trang },
 
   theTho: { ...theTrang, flexDirection: 'row', alignItems: 'center', gap: 12 },
   giuaTheTho: { flex: 1, gap: 3 },
