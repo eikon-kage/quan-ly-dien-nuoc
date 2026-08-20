@@ -245,7 +245,7 @@ public sealed class BoHangForm : Form
             hang.Controls.Add(btnDung);
         }
 
-        var btnDong = Theme.NutPhu("Đóng (Esc)", 160, 52);
+        var btnDong = Theme.NutPhu("Đóng", 120, 52);
         btnDong.Click += (_, _) => Close();
         hang.Controls.Add(btnDong);
 

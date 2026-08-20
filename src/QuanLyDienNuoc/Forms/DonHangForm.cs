@@ -187,7 +187,7 @@ public sealed class DonHangForm : Form
         var btnIn = Theme.Nut("IN / XEM TRƯỚC", Theme.Cam, 186, 44);
         btnIn.Click += (_, _) => XemTruocVaIn();
 
-        var btnDong = Theme.NutPhu("Đóng (Esc)", 132, 44);
+        var btnDong = Theme.NutPhu("Đóng", 110, 44);
         btnDong.Click += (_, _) => Close();
 
         // Một menu duy nhất cho mọi việc còn lại của khách và của hoá đơn — chia nhóm bằng vạch
@@ -276,7 +276,7 @@ public sealed class DonHangForm : Form
             RowCount = 3,
             BackColor = Theme.Nen,
         };
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
+        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 98));
         cot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
 
@@ -293,6 +293,7 @@ public sealed class DonHangForm : Form
             Dock = DockStyle.Fill,
             BackColor = Theme.ChinhNhat,
             Padding = new Padding(14, 8, 14, 8),
+            Margin = new Padding(0),
         };
 
         _dtNgay.Format = DateTimePickerFormat.Custom;
@@ -344,10 +345,10 @@ public sealed class DonHangForm : Form
         _lblTamTinh.TextAlign = ContentAlignment.MiddleRight;
         _lblTamTinh.AutoSize = false;
 
-        var btnThem = Theme.Nut("+  THÊM DÒNG", Theme.Xanh, 170, 40);
+        var btnThem = Theme.Nut("+  THÊM DÒNG", Theme.Xanh, 180, 40);
         btnThem.Click += (_, _) => ThemDong();
 
-        var btnTraLai = Theme.Nut("−  TRẢ LẠI", Theme.Do, 140, 40);
+        var btnTraLai = Theme.Nut("−  TRẢ LẠI", Theme.Do, 150, 40);
         btnTraLai.Click += (_, _) => ThemDong(traLai: true);
 
         var hang = new FlowLayoutPanel
@@ -365,15 +366,18 @@ public sealed class DonHangForm : Form
         mach.SetToolTip(_txtDonGia, "Gõ được cả phép tính, ví dụ: 3+2*4");
         mach.SetToolTip(_txtSoLuong, "Số âm là trả lại hàng, ví dụ: -2");
 
+        // Cả hàng phải vừa màn hình hẹp nhất (laptop 1366 mở toàn màn) — không vừa là hàng nút
+        // bị đẩy ra ngoài, mọc thanh cuộn ngang rồi cắt mất nút.
         const int CaoO = 40;
-        hang.Controls.Add(Theme.Truong("NGÀY LẤY", _dtNgay, 200, CaoO));
-        hang.Controls.Add(Theme.Truong("TÊN HÀNG", _cboHang, 300, CaoO));
-        hang.Controls.Add(Theme.Truong("ĐƠN VỊ", _txtDonVi, 100, CaoO));
-        hang.Controls.Add(Theme.Truong("ĐƠN GIÁ", _txtDonGia, 140, CaoO));
-        hang.Controls.Add(Theme.Truong("SỐ LƯỢNG", _txtSoLuong, 120, CaoO));
-        hang.Controls.Add(Theme.Truong("THÀNH TIỀN", _lblTamTinh, 150, CaoO));
-        hang.Controls.Add(Theme.Truong(" ", btnThem, 170, CaoO));
-        hang.Controls.Add(Theme.Truong(" ", btnTraLai, 140, CaoO));
+        const int Le = 12;
+        hang.Controls.Add(Theme.Truong("NGÀY LẤY", _dtNgay, 190, CaoO, Le));
+        hang.Controls.Add(Theme.Truong("TÊN HÀNG", _cboHang, 250, CaoO, Le));
+        hang.Controls.Add(Theme.Truong("ĐƠN VỊ", _txtDonVi, 90, CaoO, Le));
+        hang.Controls.Add(Theme.Truong("ĐƠN GIÁ", _txtDonGia, 120, CaoO, Le));
+        hang.Controls.Add(Theme.Truong("SỐ LƯỢNG", _txtSoLuong, 100, CaoO, Le));
+        hang.Controls.Add(Theme.Truong("THÀNH TIỀN", _lblTamTinh, 110, CaoO, Le));
+        hang.Controls.Add(Theme.Truong(" ", btnThem, 180, CaoO, Le));
+        hang.Controls.Add(Theme.Truong(" ", btnTraLai, 150, CaoO, Le));
 
         // Gõ xong tên hàng, Enter là sang thẳng ô số lượng — đơn vị với đơn giá phần mềm tự
         // điền theo danh mục, gõ tay chỉ khi cần sửa. Enter ở số lượng là ghi dòng.

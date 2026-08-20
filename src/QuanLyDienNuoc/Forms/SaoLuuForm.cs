@@ -150,7 +150,7 @@ public sealed class SaoLuuForm : Form
             .Ngan()
             .Viec("Khôi phục bản đã chọn", KhoiPhuc, Theme.Do);
 
-        var btnDong = Theme.NutPhu("Đóng (Esc)", 150, 52);
+        var btnDong = Theme.NutPhu("Đóng", 120, 52);
         btnDong.Click += (_, _) => Close();
 
         var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = false, WrapContents = false };

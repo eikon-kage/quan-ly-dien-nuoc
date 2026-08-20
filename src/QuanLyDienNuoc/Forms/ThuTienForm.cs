@@ -202,7 +202,7 @@ public sealed class ThuTienForm : Form
         btnXoa.ForeColor = Theme.Do;
         btnXoa.Click += (_, _) => XoaLanThu();
 
-        var btnDong = Theme.NutPhu("Đóng (Esc)", 150, 46);
+        var btnDong = Theme.NutPhu("Đóng", 120, 46);
         btnDong.Click += (_, _) => Close();
 
         var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };

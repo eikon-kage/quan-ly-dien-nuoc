@@ -125,7 +125,7 @@ public sealed class NhapNhieuDongForm : Form
         var btnThem = Theme.Nut("THÊM VÀO HOÁ ĐƠN", Theme.Xanh, 280, 52);
         btnThem.Click += (_, _) => Xong();
 
-        var btnHuy = Theme.NutPhu("Huỷ (Esc)", 160, 52);
+        var btnHuy = Theme.NutPhu("Huỷ", 120, 52);
         btnHuy.Click += (_, _) => Close();
 
         var nut = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(20, 4, 20, 10) };

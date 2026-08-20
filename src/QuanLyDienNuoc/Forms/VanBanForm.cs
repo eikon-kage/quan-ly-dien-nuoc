@@ -45,7 +45,7 @@ public sealed class VanBanForm : Form
         var btnChep = Theme.Nut("CHÉP VÀO BỘ NHỚ", Theme.Chinh, 260, 48);
         btnChep.Click += (_, _) => Chep();
 
-        var btnDong = Theme.NutPhu("Đóng (Esc)", 160, 48);
+        var btnDong = Theme.NutPhu("Đóng", 120, 48);
         btnDong.Click += (_, _) => Close();
 
         var hang = new FlowLayoutPanel

@@ -597,7 +597,8 @@ public static class Theme
     /// Chiều cao ô nhập. Để 0 là lấy mặc định (36 cho ô chữ, 34 cho nút và ô chọn ngày).
     /// Truyền số lớn hơn thì panel cao theo, dùng cho ô cần bấm nhiều như ô chọn ngày.
     /// </param>
-    public static Panel Truong(string nhan, Control dieuKhien, int rong, int cao = 0)
+    /// <param name="le">Khoảng cách sang ô kế tiếp. Hàng nhiều ô quá thì hạ xuống cho vừa màn hình.</param>
+    public static Panel Truong(string nhan, Control dieuKhien, int rong, int cao = 0, int le = 18)
     {
         var caoO = cao > 0 ? cao : dieuKhien is TextBox { Multiline: false } ? 36 : 34;
 
@@ -609,7 +610,7 @@ public static class Theme
         {
             Width = rong,
             Height = Math.Max(66, DinhO + caoO + 4),
-            Margin = new Padding(0, 0, 18, 0),
+            Margin = new Padding(0, 0, le, 0),
         };
 
         var lbl = new Label

@@ -187,7 +187,7 @@ public sealed class CongNoForm : Form
             .Ngan()
             .Viec("Xuất sổ công nợ ra Excel", XuatExcel);
 
-        var btnDong = Theme.NutPhu("Đóng (Esc)", 150, 52);
+        var btnDong = Theme.NutPhu("Đóng", 120, 52);
         btnDong.Click += (_, _) => Close();
 
         var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };

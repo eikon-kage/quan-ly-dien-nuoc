@@ -100,7 +100,7 @@ tiêu đề duy nhất**:
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ Ông Long (thợ xây)      [2026] [HD2026-02 · 02/06 · đã chốt] [+ Hoá đơn mới] │
-│ ĐT: 0912 345 678 · Xóm 5, Hải Minh        [IN / XEM TRƯỚC] [⋯] [Đóng (Esc)]  │
+│ ĐT: 0912 345 678 · Xóm 5, Hải Minh        [IN / XEM TRƯỚC] [⋯] [Đóng]      │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │ NGÀY LẤY      TÊN HÀNG        ĐƠN VỊ  ĐƠN GIÁ  SỐ LƯỢNG  [+ THÊM DÒNG] [−]   │
 ├──────────────────────────────────────────────────────────────────────────────┤
@@ -127,8 +127,12 @@ mục, gõ tay chỉ khi cần sửa) → `Enter` là ghi dòng. Thiếu ô nào
 giữa**: thanh dưới nhắc một câu, con trỏ nhảy về đúng ô còn thiếu. Nhập cả chục dòng liền tay
 mới không bị mất nhịp.
 
-Ô NGÀY LẤY to hẳn ra (200 × 40px, chữ 14pt, lịch bung ra cũng đặt cỡ chữ riêng) — trong hàng
-nhập thì đây là ô phải bấm chuột nhiều nhất.
+Ô NGÀY LẤY to hẳn ra (190 × 40px, chữ 14pt, lịch bung ra cũng cỡ đó) — trong hàng nhập thì đây
+là ô phải bấm chuột nhiều nhất. Cả hàng cộng lại đúng **1286px**, vừa màn laptop 1366 mở toàn
+màn hình: rộng hơn nữa là hàng nút bị đẩy ra ngoài rồi cắt mất.
+
+Nhãn trên ô nhập chỉ để một hai chữ. Cách gõ tắt tên hàng, gõ phép tính ở ô đơn giá, gõ số âm
+ở ô số lượng — chuyển hết vào chú thích hiện ra khi trỏ chuột vào đúng ô đó.
 
 ## Chọn nhiều dòng rồi làm một lượt
 

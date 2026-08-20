@@ -76,7 +76,7 @@ public sealed class NhatKyForm : Form
         var btnLamMoi = Theme.NutPhu("Nạp lại", 140, 48);
         btnLamMoi.Click += (_, _) => Nap();
 
-        var btnDong = Theme.NutPhu("Đóng (Esc)", 150, 48);
+        var btnDong = Theme.NutPhu("Đóng", 120, 48);
         btnDong.Click += (_, _) => Close();
 
         var nut = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(20, 6, 20, 6) };
