@@ -223,7 +223,11 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
                 color={nhom.trangThai.taiKhoan !== null ? Mau.xanhLa : Mau.xam}
               />
               <Text style={kieu.chuPhu}>
-                {nhom.trangThai.taiKhoan !== null ? 'Đã nối nhóm' : 'Chưa nối nhóm'}
+                {nhom.trangThai.thanhVien !== null
+                ? 'Đã nối nhóm'
+                : nhom.trangThai.taiKhoan !== null
+                  ? 'Chưa vào nhóm'
+                  : 'Chưa nối nhóm'}
               </Text>
             </Pressable>
           )}

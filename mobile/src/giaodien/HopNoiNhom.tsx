@@ -26,8 +26,8 @@ interface Props {
 }
 
 export function HopNoiNhom({ vai, dieuKhien, onDong }: Props) {
-  const { trangThai, noiAnDanh, noiEmail, taoTaiKhoan, ngat } = dieuKhien;
-  const { hoTro, taiKhoan, dangChay, loi, nhac } = trangThai;
+  const { trangThai, noiAnDanh, noiEmail, taoTaiKhoan, lapNhom, ngat } = dieuKhien;
+  const { hoTro, taiKhoan, thanhVien, dangChay, loi, nhac } = trangThai;
 
   const [email, datEmail] = useState('');
   const [matKhau, datMatKhau] = useState('');
@@ -44,14 +44,38 @@ export function HopNoiNhom({ vai, dieuKhien, onDong }: Props) {
       ) : taiKhoan !== null ? (
         <>
           <View style={kieu.dongTrangThai}>
-            <Feather name="check-circle" size={19} color={Mau.xanhLa} />
+            <Feather
+              name={thanhVien !== null ? 'check-circle' : 'alert-circle'}
+              size={19}
+              color={thanhVien !== null ? Mau.xanhLa : Mau.do}
+            />
             <View style={kieu.giuaDong}>
-              <Text style={kieu.chuNhan}>Đã nối</Text>
+              <Text style={kieu.chuNhan}>
+                {thanhVien !== null ? 'Đã nối' : 'Đã đăng nhập, chưa vào nhóm'}
+              </Text>
               <Text style={kieu.chuPhu}>
                 {taiKhoan.email ?? 'Tài khoản ẩn danh của máy này'}
               </Text>
             </View>
           </View>
+
+          {/*
+            Đăng nhập xong mà chưa vào nhóm là có thật: database chưa dựng bảng, hoặc mất mạng
+            đúng lúc lập nhóm. Không có nút thử lại thì người dùng mắc cạn — đăng nhập rồi nên
+            nút Nối biến mất, mà nhóm thì vẫn chưa có.
+          */}
+          {thanhVien === null && (
+            <Pressable style={kieu.nutChinh} onPress={vai === 'chu' ? lapNhom : undefined} disabled={dangChay}>
+              {dangChay ? (
+                <ActivityIndicator color={Mau.trang} />
+              ) : (
+                <Feather name="refresh-cw" size={17} color={Mau.trang} />
+              )}
+              <Text style={kieu.chuNutChinh}>
+                {vai === 'chu' ? 'Lập nhóm, thử lại' : 'Đợi mã mời của chủ'}
+              </Text>
+            </Pressable>
+          )}
 
           <Pressable style={kieu.nutPhu} onPress={ngat} disabled={dangChay}>
             <Feather name="log-out" size={16} color={Mau.do} />

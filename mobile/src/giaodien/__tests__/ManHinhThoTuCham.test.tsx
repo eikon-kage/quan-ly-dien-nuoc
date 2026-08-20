@@ -60,6 +60,7 @@ function nhomGia(sua: Partial<DieuKhienNhom['trangThai']> = {}): DieuKhienNhom {
     noiAnDanh: jest.fn(() => Promise.resolve()),
     noiEmail: jest.fn(() => Promise.resolve()),
     taoTaiKhoan: jest.fn(() => Promise.resolve()),
+    lapNhom: jest.fn(() => Promise.resolve()),
     ngat: jest.fn(() => Promise.resolve()),
   };
 }

@@ -283,12 +283,16 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
             accessibilityRole="button"
           >
             <Feather
-              name={nhom.trangThai.taiKhoan !== null ? 'users' : 'link'}
+              name={nhom.trangThai.thanhVien !== null ? 'users' : 'link'}
               size={15}
-              color={nhom.trangThai.taiKhoan !== null ? Mau.xanhLa : Mau.xam}
+              color={nhom.trangThai.thanhVien !== null ? Mau.xanhLa : Mau.xam}
             />
             <Text style={kieu.chuVaiMay}>
-              {nhom.trangThai.taiKhoan !== null ? 'Đã nối nhóm' : 'Chưa nối nhóm'}
+              {nhom.trangThai.thanhVien !== null
+                ? 'Đã nối nhóm'
+                : nhom.trangThai.taiKhoan !== null
+                  ? 'Chưa vào nhóm'
+                  : 'Chưa nối nhóm'}
             </Text>
           </Pressable>
         )}

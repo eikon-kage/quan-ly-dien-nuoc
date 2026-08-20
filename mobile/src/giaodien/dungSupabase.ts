@@ -34,6 +34,8 @@ export interface DieuKhienNhom {
   noiAnDanh: () => Promise<void>;
   noiEmail: (email: string, matKhau: string) => Promise<void>;
   taoTaiKhoan: (email: string, matKhau: string) => Promise<void>;
+  /** Đã đăng nhập nhưng chưa vào nhóm thì thử lại riêng bước lập nhóm. */
+  lapNhom: () => Promise<void>;
   ngat: () => Promise<void>;
 }
 
@@ -54,16 +56,45 @@ export function dungSupabase(vai: Vai): DieuKhienNhom {
     if (!hoTro) {
       return;
     }
-    DangNhap.taiKhoanDaLuu()
-      .then(async (co) => {
+    /**
+     * Hai việc, **hai lần bắt lỗi riêng**: đọc phiên đăng nhập, rồi tra xem đã ở nhóm nào.
+     *
+     * Gộp vào một `catch` là một lỗi thật đã bắt được lúc chạy trên máy: database chưa dựng
+     * bảng nên việc tra nhóm hỏng, và nó xoá luôn trạng thái đăng nhập — app đòi đăng nhập
+     * lại trong khi phiên vẫn còn nguyên trong máy. Người dùng bấm nối mãi không xong mà
+     * chẳng hiểu vì sao.
+     */
+    (async () => {
+      let co: TaiKhoanNhom | null = null;
+      try {
+        co = await DangNhap.taiKhoanDaLuu();
         datTaiKhoan(co);
-        if (co) {
-          datThanhVien(await Nhom.thanhVienCuaToi());
+      } catch (loiDoc) {
+        // Đọc phiên hụt (thường là hỏng kho) thì coi như chưa đăng nhập, đừng doạ người dùng
+        // ngay lúc mở app — họ bấm nối lại là xong. Bản dev thì phải in ra: lỗi bị nuốt ở
+        // đây thì triệu chứng duy nhất là "app tự nhiên đòi đăng nhập lại".
+        if (__DEV__) {
+          console.warn('Đọc phiên hụt:', loiDoc);
         }
-      })
-      // Đọc phiên hụt (thường là hỏng kho) thì coi như chưa đăng nhập, đừng doạ người dùng
-      // ngay lúc mở app — họ bấm nối lại là xong.
-      .catch(() => datTaiKhoan(null));
+        datTaiKhoan(null);
+        return;
+      }
+
+      if (!co) {
+        return;
+      }
+
+      try {
+        datThanhVien(await Nhom.thanhVienCuaToi());
+      } catch (loiNhom) {
+        // Chưa tra được nhóm thì vẫn giữ nguyên trạng thái đăng nhập, và giao diện hiện
+        // "Đã đăng nhập, chưa vào nhóm" kèm nút thử lại.
+        if (__DEV__) {
+          console.warn('Tra nhóm hụt:', loiNhom);
+        }
+        datThanhVien(null);
+      }
+    })();
   }, [hoTro]);
 
   /**
@@ -165,6 +196,8 @@ export function dungSupabase(vai: Vai): DieuKhienNhom {
     [chay, vaoNhom],
   );
 
+  const lapNhom = useCallback(() => chay(vaoNhom), [chay, vaoNhom]);
+
   const ngat = useCallback(
     () =>
       chay(async () => {
@@ -180,6 +213,7 @@ export function dungSupabase(vai: Vai): DieuKhienNhom {
     noiAnDanh,
     noiEmail,
     taoTaiKhoan,
+    lapNhom,
     ngat,
   };
 }
