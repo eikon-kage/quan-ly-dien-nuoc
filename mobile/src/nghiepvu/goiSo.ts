@@ -48,6 +48,38 @@ function docDong(daDoc: unknown): DongCong {
 }
 
 /**
+ * Kiểm một sổ đọc từ ngoài vào — dù đọc từ file trên Drive hay từ một hàng trong database.
+ *
+ * Một bộ kiểm dùng chung cho mọi đường vào, không phải mỗi đường một bộ: hai bộ thì sớm muộn
+ * lệch nhau, và đường nào lỏng hơn sẽ thành đường dữ liệu rác đi vào sổ. Dữ liệu từ Postgres
+ * cũng là dữ liệu từ ngoài vào, không được tin sẵn.
+ */
+export function docSo(daDoc: unknown): SoCong {
+  const so = (daDoc ?? {}) as Partial<SoCong>;
+  const nguon: Vai | undefined = so.nguon === 'chu' || so.nguon === 'tho' ? so.nguon : undefined;
+
+  if (typeof so.thoId !== 'string' || so.thoId === '' || nguon === undefined) {
+    throw new SoHong('Sổ không ghi rõ của thợ nào, hay do bên nào gửi.');
+  }
+  if (!laNgay(so.tuNgay) || !laNgay(so.denNgay) || so.tuNgay > so.denNgay) {
+    throw new SoHong('Sổ không ghi rõ khoảng ngày.');
+  }
+  if (!Array.isArray(so.dongs)) {
+    throw new SoHong('Sổ thiếu phần các buổi công.');
+  }
+
+  return {
+    thoId: so.thoId,
+    tenTho: typeof so.tenTho === 'string' ? so.tenTho : '',
+    nguon,
+    tuNgay: so.tuNgay,
+    denNgay: so.denNgay,
+    dongs: so.dongs.map(docDong),
+    taoLuc: typeof so.taoLuc === 'string' ? so.taoLuc : '',
+  };
+}
+
+/**
  * Mở gói và kiểm kỹ từng dòng rồi mới trả về.
  *
  * Sổ này đi vào một màn hình có nút *ghi vào sổ mình*, nên thà từ chối oan còn hơn nhận
@@ -69,27 +101,5 @@ export function moGoiSo(noiDung: string): SoCong {
     throw new SoHong('Sổ này của bản app mới hơn. Hãy cập nhật app rồi thử lại.');
   }
 
-  const so = (goi.so ?? {}) as Partial<SoCong>;
-  const nguon: Vai | undefined =
-    so.nguon === 'chu' || so.nguon === 'tho' ? so.nguon : undefined;
-
-  if (typeof so.thoId !== 'string' || so.thoId === '' || nguon === undefined) {
-    throw new SoHong('Sổ không ghi rõ của thợ nào, hay do bên nào gửi.');
-  }
-  if (!laNgay(so.tuNgay) || !laNgay(so.denNgay) || so.tuNgay > so.denNgay) {
-    throw new SoHong('Sổ không ghi rõ khoảng ngày.');
-  }
-  if (!Array.isArray(so.dongs)) {
-    throw new SoHong('Sổ thiếu phần các buổi công.');
-  }
-
-  return {
-    thoId: so.thoId,
-    tenTho: typeof so.tenTho === 'string' ? so.tenTho : '',
-    nguon,
-    tuNgay: so.tuNgay,
-    denNgay: so.denNgay,
-    dongs: so.dongs.map(docDong),
-    taoLuc: typeof so.taoLuc === 'string' ? so.taoLuc : '',
-  };
+  return docSo(goi.so);
 }

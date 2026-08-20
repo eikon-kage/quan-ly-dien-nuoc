@@ -9,14 +9,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
-import * as Nhom from '../nghiepvu/dangNhapSupabase';
+import * as DangNhap from '../nghiepvu/dangNhapSupabase';
 import { LoiDangNhap, TaiKhoanNhom } from '../nghiepvu/dangNhapSupabase';
+import * as Nhom from '../nghiepvu/nhomSupabase';
+import { LoiNhom, ThanhVien } from '../nghiepvu/nhomSupabase';
+import { Vai } from '../nghiepvu/soCong';
 
 export interface TrangThaiNhom {
   /** Máy này đã được điền địa chỉ project và khoá công khai chưa. */
   hoTro: boolean;
   /** null = chưa đăng nhập. */
   taiKhoan: TaiKhoanNhom | null;
+  /** Máy này đã ở trong nhóm nào chưa. Chưa vào nhóm thì đăng nhập rồi cũng chưa gửi sổ được. */
+  thanhVien: ThanhVien | null;
   dangChay: boolean;
   loi: string | null;
   /** Câu nhắc sau khi tạo tài khoản mà project bắt xác nhận email. */
@@ -32,20 +37,30 @@ export interface DieuKhienNhom {
   ngat: () => Promise<void>;
 }
 
-export function dungSupabase(): DieuKhienNhom {
+/**
+ * `vai` để biết sau khi đăng nhập thì làm gì tiếp: máy chủ lập nhóm luôn, còn máy thợ phải
+ * đợi mã mời của chủ nên không tự vào nhóm nào được.
+ */
+export function dungSupabase(vai: Vai): DieuKhienNhom {
   const [taiKhoan, datTaiKhoan] = useState<TaiKhoanNhom | null>(null);
+  const [thanhVien, datThanhVien] = useState<ThanhVien | null>(null);
   const [dangChay, datDangChay] = useState(false);
   const [loi, datLoi] = useState<string | null>(null);
   const [nhac, datNhac] = useState<string | null>(null);
 
-  const hoTro = Nhom.hoTroNoi();
+  const hoTro = DangNhap.hoTroNoi();
 
   useEffect(() => {
     if (!hoTro) {
       return;
     }
-    Nhom.taiKhoanDaLuu()
-      .then(datTaiKhoan)
+    DangNhap.taiKhoanDaLuu()
+      .then(async (co) => {
+        datTaiKhoan(co);
+        if (co) {
+          datThanhVien(await Nhom.thanhVienCuaToi());
+        }
+      })
       // Đọc phiên hụt (thường là hỏng kho) thì coi như chưa đăng nhập, đừng doạ người dùng
       // ngay lúc mở app — họ bấm nối lại là xong.
       .catch(() => datTaiKhoan(null));
@@ -62,18 +77,18 @@ export function dungSupabase(): DieuKhienNhom {
       return;
     }
 
-    Nhom.batTuLamMoiToken();
+    DangNhap.batTuLamMoiToken();
     const nghe = AppState.addEventListener('change', (trangThai) => {
       if (trangThai === 'active') {
-        Nhom.batTuLamMoiToken();
+        DangNhap.batTuLamMoiToken();
       } else {
-        Nhom.tatTuLamMoiToken();
+        DangNhap.tatTuLamMoiToken();
       }
     });
 
     return () => {
       nghe.remove();
-      Nhom.tatTuLamMoiToken();
+      DangNhap.tatTuLamMoiToken();
     };
   }, [hoTro, taiKhoan]);
 
@@ -86,28 +101,53 @@ export function dungSupabase(): DieuKhienNhom {
       await viec();
     } catch (loiChay) {
       datLoi(
-        loiChay instanceof LoiDangNhap ? loiChay.message : 'Chưa nối được nhóm. Thử lại sau.',
+        loiChay instanceof LoiDangNhap || loiChay instanceof LoiNhom
+          ? loiChay.message
+          : 'Chưa nối được nhóm. Thử lại sau.',
       );
     } finally {
       datDangChay(false);
     }
   }, []);
 
+  /**
+   * Đăng nhập xong thì máy chủ lập nhóm ngay trong cùng một lần bấm.
+   *
+   * Không tách thành hai nút: với người dùng, "nối vào nhóm" là một việc. Đăng nhập xong mà
+   * chưa có nhóm thì bấm đồng bộ sẽ báo "máy này chưa ở trong nhóm nào" — đúng nhưng vô lý,
+   * vì họ vừa bấm nối xong.
+   */
+  const vaoNhom = useCallback(async () => {
+    if (vai === 'chu') {
+      datThanhVien(await Nhom.taoNhom());
+    } else {
+      // Máy thợ vào nhóm bằng mã mời của chủ, không tự vào được.
+      datThanhVien(await Nhom.thanhVienCuaToi());
+    }
+  }, [vai]);
+
   const noiAnDanh = useCallback(
-    () => chay(async () => datTaiKhoan(await Nhom.dangNhapAnDanh())),
-    [chay],
+    () =>
+      chay(async () => {
+        datTaiKhoan(await DangNhap.dangNhapAnDanh());
+        await vaoNhom();
+      }),
+    [chay, vaoNhom],
   );
 
   const noiEmail = useCallback(
     (email: string, matKhau: string) =>
-      chay(async () => datTaiKhoan(await Nhom.dangNhapEmail(email, matKhau))),
-    [chay],
+      chay(async () => {
+        datTaiKhoan(await DangNhap.dangNhapEmail(email, matKhau));
+        await vaoNhom();
+      }),
+    [chay, vaoNhom],
   );
 
   const taoTaiKhoan = useCallback(
     (email: string, matKhau: string) =>
       chay(async () => {
-        const moi = await Nhom.dangKyEmail(email, matKhau);
+        const moi = await DangNhap.dangKyEmail(email, matKhau);
         if (moi === null) {
           // Project bắt xác nhận email: nói tiếp cho người dùng biết phải làm gì, chứ đừng
           // để màn hình đứng im như vừa bấm hụt.
@@ -115,21 +155,23 @@ export function dungSupabase(): DieuKhienNhom {
           return;
         }
         datTaiKhoan(moi);
+        await vaoNhom();
       }),
-    [chay],
+    [chay, vaoNhom],
   );
 
   const ngat = useCallback(
     () =>
       chay(async () => {
-        await Nhom.dangXuat();
+        await DangNhap.dangXuat();
         datTaiKhoan(null);
+        datThanhVien(null);
       }),
     [chay],
   );
 
   return {
-    trangThai: { hoTro, taiKhoan, dangChay, loi, nhac },
+    trangThai: { hoTro, taiKhoan, thanhVien, dangChay, loi, nhac },
     noiAnDanh,
     noiEmail,
     taoTaiKhoan,

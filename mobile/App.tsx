@@ -6,7 +6,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/lexend';
 import { Feather } from '@expo/vector-icons';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,6 +19,8 @@ import { dungDoiChieu } from './src/giaodien/dungDoiChieu';
 import { dungSaoLuu } from './src/giaodien/dungSaoLuu';
 import { dungSupabase } from './src/giaodien/dungSupabase';
 import { Bong, Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './src/giaodien/thietKe';
+import { hopThuDrive } from './src/nghiepvu/hopThu';
+import { hopThuSupabase } from './src/nghiepvu/hopThuSupabase';
 import { DuLieuChamCong } from './src/nghiepvu/kieu';
 import * as LuuTru from './src/nghiepvu/luuTru';
 import { CaiDatVai } from './src/nghiepvu/vaiMay';
@@ -62,10 +64,21 @@ export default function App() {
    * Hộp thư đối chiếu cũng đặt ở đây và vì đúng một lý do như sao lưu: nó gửi *dữ liệu*
    * đi, mà dữ liệu nằm ở đây. Cả hai vai đều dùng, nên đừng đẩy xuống một màn hình.
    */
-  const doiChieu = dungDoiChieu(duLieu, caiDat ?? VaiMay.MAC_DINH);
-
   /** Kết nối vào nhóm trên Supabase — cả hai vai đều dùng, nên cũng giữ ở đây. */
-  const nhom = dungSupabase();
+  const nhom = dungSupabase(caiDat?.vai ?? 'chu');
+
+  /**
+   * Hộp thư: đã nối nhóm Supabase thì đi qua Supabase, chưa nối thì vẫn là Drive.
+   *
+   * Chỗ duy nhất trong cả app biết mình đang chạy trên đường nào. Màn hình đối chiếu và phần
+   * tính toán không biết, và không cần biết — đó là mục đích của việc bọc hộp thư lại.
+   */
+  const hopThu = useMemo(
+    () => (nhom.trangThai.thanhVien !== null ? hopThuSupabase() : hopThuDrive()),
+    [nhom.trangThai.thanhVien],
+  );
+
+  const doiChieu = dungDoiChieu(duLieu, caiDat ?? VaiMay.MAC_DINH, hopThu);
 
   useEffect(() => {
     LuuTru.doc().then(datDuLieu);

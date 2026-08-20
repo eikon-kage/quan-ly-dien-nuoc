@@ -46,7 +46,15 @@ function doiChieuGia(sua: Partial<DieuKhienDoiChieu> = {}): DieuKhienDoiChieu {
 /** Nhóm Supabase giả: máy đã điền cấu hình nhưng chưa nối. */
 function nhomGia(sua: Partial<DieuKhienNhom['trangThai']> = {}): DieuKhienNhom {
   return {
-    trangThai: { hoTro: true, taiKhoan: null, dangChay: false, loi: null, nhac: null, ...sua },
+    trangThai: {
+      hoTro: true,
+      taiKhoan: null,
+      thanhVien: null,
+      dangChay: false,
+      loi: null,
+      nhac: null,
+      ...sua,
+    },
     noiAnDanh: jest.fn(() => Promise.resolve()),
     noiEmail: jest.fn(() => Promise.resolve()),
     taoTaiKhoan: jest.fn(() => Promise.resolve()),
