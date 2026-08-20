@@ -142,24 +142,20 @@ public sealed class SaoLuuForm : Form
         var btnSaoLuu = Theme.Nut("SAO LƯU NGAY", Theme.Xanh, 230, 52);
         btnSaoLuu.Click += (_, _) => SaoLuuNgay();
 
-        var btnExcel = Theme.Nut("XUẤT TOÀN BỘ RA EXCEL", Theme.Cam, 300, 52);
-        btnExcel.Click += (_, _) => XuatExcel();
-
-        var btnKhoiPhuc = Theme.NutPhu("Khôi phục bản đã chọn", 260, 52);
-        btnKhoiPhuc.ForeColor = Theme.Do;
-        btnKhoiPhuc.Click += (_, _) => KhoiPhuc();
-
-        var btnMo = Theme.NutPhu("Mở thư mục", 170, 52);
-        btnMo.Click += (_, _) => MoThuMuc();
+        // Chỉ để ngoài việc bấm hằng tuần là sao lưu. Khôi phục thì mấy năm mới dùng một
+        // lần mà lại là việc nguy hiểm nhất — nằm trong menu, đỏ, khó bấm nhầm hơn.
+        var viecKhac = Theme.NutBaCham("Việc khác với bản sao lưu", 52)
+            .Viec("Xuất toàn bộ ra Excel", XuatExcel)
+            .Viec("Mở thư mục sao lưu", MoThuMuc)
+            .Ngan()
+            .Viec("Khôi phục bản đã chọn", KhoiPhuc, Theme.Do);
 
         var btnDong = Theme.NutPhu("Đóng (Esc)", 150, 52);
         btnDong.Click += (_, _) => Close();
 
         var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = false, WrapContents = false };
         hang.Controls.Add(btnSaoLuu);
-        hang.Controls.Add(btnExcel);
-        hang.Controls.Add(btnKhoiPhuc);
-        hang.Controls.Add(btnMo);
+        hang.Controls.Add(viecKhac.Nut);
         hang.Controls.Add(btnDong);
 
         nen.Controls.Add(hang);

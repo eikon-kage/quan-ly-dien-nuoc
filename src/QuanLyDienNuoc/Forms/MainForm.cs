@@ -21,14 +21,6 @@ public sealed class MainForm : Form
     private readonly Label _lblPhimTat = new();
     private readonly Label _lblNhacNo = new();
     private readonly Panel _nenNhacNo = new();
-    private readonly Label _lblTenThe = new();
-
-    // Bốn ô số liệu của thẻ tổng quan. Màu nhãn lấy đúng bốn màu bản thiết kế dùng cho
-    // bốn nhóm số liệu, để nhìn một cái là phân biệt được nhóm nào.
-    private readonly OThongKe _oKhach = new("Khách hàng", Theme.Chinh);
-    private readonly OThongKe _oTongMua = new("Tổng mua", Theme.Cam);
-    private readonly OThongKe _oDaThu = new("Đã thu", Theme.Xanh);
-    private readonly OThongKe _oConNo = new("Còn nợ", Theme.Do);
 
     private ThanhBen _thanhBen = null!;
     private ThanhBen.MucBen _mucTrangChu = null!;
@@ -78,7 +70,7 @@ public sealed class MainForm : Form
 
     /// <summary>
     /// Vỏ cửa sổ dựng theo bản thiết kế trên Figma: thanh bên trắng bên trái để đi lại giữa
-    /// các phần, thanh tìm kiếm ở trên, rồi tới thẻ số liệu và thẻ bảng khách hàng.
+    /// các phần, thanh tìm kiếm ở trên, rồi tới dải nhắc nợ và thẻ bảng khách hàng.
     /// Tên phần mềm không nhắc lại trong khung: thanh cửa sổ của Windows đã có.
     /// </summary>
     private void TaoGiaoDien()
@@ -126,20 +118,18 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 5,
+            RowCount = 4,
             BackColor = Theme.Nen,
         };
         khu.RowStyles.Add(new RowStyle(SizeType.Absolute, 78));
-        khu.RowStyles.Add(new RowStyle(SizeType.Absolute, 160));
         khu.RowStyles.Add(new RowStyle(SizeType.Absolute, 74));
         khu.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         khu.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
 
         khu.Controls.Add(TaoThanhTren(), 0, 0);
-        khu.Controls.Add(TaoTheTongQuan(), 0, 1);
-        khu.Controls.Add(TaoThanhNhacNo(), 0, 2);
-        khu.Controls.Add(TaoTheKhachHang(), 0, 3);
-        khu.Controls.Add(TaoThanhTrangThai(), 0, 4);
+        khu.Controls.Add(TaoThanhNhacNo(), 0, 1);
+        khu.Controls.Add(TaoTheKhachHang(), 0, 2);
+        khu.Controls.Add(TaoThanhTrangThai(), 0, 3);
         return khu;
     }
 
@@ -213,54 +203,6 @@ public sealed class MainForm : Form
         _cboNam.Margin = new Padding(0, 2, 16, 0);
         btnThemKhach.Margin = new Padding(0);
         return nen;
-    }
-
-    /// <summary>
-    /// Thẻ số liệu đầu trang, xếp bốn ô cạnh nhau như khối "Overall Inventory" của bản thiết kế:
-    /// bao nhiêu khách, mua bao nhiêu, đã thu bao nhiêu, còn nợ bao nhiêu.
-    /// </summary>
-    private Control TaoTheTongQuan()
-    {
-        var the = new Theme.The
-        {
-            Dock = DockStyle.Fill,
-            Margin = new Padding(24, 18, 24, 0),
-            Padding = new Padding(20, 12, 20, 12),
-        };
-
-        _lblTenThe.Text = "Tổng quan";
-        _lblTenThe.Font = Theme.FontTenThe;
-        _lblTenThe.ForeColor = Theme.ChuDam;
-        _lblTenThe.Dock = DockStyle.Top;
-        _lblTenThe.Height = 30;
-        _lblTenThe.TextAlign = ContentAlignment.MiddleLeft;
-
-        var hang = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 4,
-            RowCount = 1,
-            BackColor = Theme.Trang,
-        };
-        for (var i = 0; i < 4; i++)
-        {
-            hang.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-        }
-
-        _oConNo.CoVachPhai = false;
-        hang.Controls.Add(_oKhach, 0, 0);
-        hang.Controls.Add(_oTongMua, 1, 0);
-        hang.Controls.Add(_oDaThu, 2, 0);
-        hang.Controls.Add(_oConNo, 3, 0);
-        foreach (var o in new[] { _oKhach, _oTongMua, _oDaThu, _oConNo })
-        {
-            o.Dock = DockStyle.Fill;
-            o.Margin = new Padding(0);
-        }
-
-        the.Controls.Add(hang);
-        the.Controls.Add(_lblTenThe);
-        return the;
     }
 
     /// <summary>Dải nhắc nợ: mở phần mềm lên là thấy ai đang nợ lâu, kèm nút mở sổ công nợ.</summary>
@@ -395,12 +337,12 @@ public sealed class MainForm : Form
         btnThuTien.ForeColor = Theme.Xanh;
         btnThuTien.Click += (_, _) => ThuTienCuaKhach();
 
-        var btnSua = Theme.NutPhu("Sửa khách", 140, 42);
-        btnSua.Click += (_, _) => SuaKhach();
-
-        var btnXoa = Theme.NutPhu("Xoá khách", 140, 42);
-        btnXoa.ForeColor = Theme.Do;
-        btnXoa.Click += (_, _) => XoaKhach();
+        // Sửa và xoá khách: cả tháng mới đụng tới, để ngoài thành hàng bốn nút chữ san sát
+        // nhau, chủ cửa hàng phải đọc hết mới biết bấm cái nào. Gom vào nút ba chấm.
+        var viecKhach = Theme.NutBaCham("Việc khác với khách đang chọn", 42)
+            .Viec("Sửa khách hàng", SuaKhach)
+            .Ngan()
+            .Viec("Xoá khách hàng", XoaKhach, Theme.Do);
 
         var trai = new FlowLayoutPanel
         {
@@ -411,8 +353,7 @@ public sealed class MainForm : Form
         };
         trai.Controls.Add(btnMo);
         trai.Controls.Add(btnThuTien);
-        trai.Controls.Add(btnSua);
-        trai.Controls.Add(btnXoa);
+        trai.Controls.Add(viecKhach.Nut);
 
         _lblTongKet.Dock = DockStyle.Right;
         _lblTongKet.TextAlign = ContentAlignment.MiddleRight;
@@ -534,40 +475,13 @@ public sealed class MainForm : Form
             ChonLaiKhach(id);
         }
 
-        CapNhatTongQuan(nam);
+        CapNhatTongKet(nam);
         CapNhatNhacNo();
     }
 
-    /// <summary>
-    /// Viết lại bốn ô số liệu của thẻ tổng quan theo đúng danh sách đang hiện — lọc theo
-    /// năm hay theo từ khoá tìm thì số liệu cũng chạy theo, để số trên thẻ và bảng dưới
-    /// luôn khớp nhau.
-    /// </summary>
-    private void CapNhatTongQuan(int nam)
+    /// <summary>Viết lại dòng tổng kết ở chân bảng theo đúng danh sách đang hiện.</summary>
+    private void CapNhatTongKet(int nam)
     {
-        var tongMua = _nguon.Sum(d => d.TongTien);
-        var tongTra = _nguon.Sum(d => d.DaTra);
-        var conNo = tongMua - tongTra;
-        var soKhachNo = _nguon.Count(d => d.ConLai > 0);
-        var soDon = _nguon.Sum(d => d.SoHoaDon);
-
-        _lblTenThe.Text = $"Tổng quan năm {nam}";
-
-        _oKhach.GiaTri = _nguon.Count.ToString("#,##0");
-        _oKhach.ChuThich = _chkCoDon.Checked ? "Đang lọc: chỉ khách có đơn" : "Trong danh sách";
-
-        _oTongMua.GiaTri = So.Tien(tongMua);
-        _oTongMua.ChuThich = $"{soDon:#,##0} hoá đơn";
-
-        _oDaThu.GiaTri = So.Tien(tongTra);
-        _oDaThu.ChuThich = tongMua > 0
-            ? $"{tongTra / tongMua:P0} số tiền đã mua"
-            : "Chưa có hoá đơn nào";
-
-        _oConNo.GiaTri = So.Tien(conNo);
-        _oConNo.MauGiaTri = conNo > 0 ? Theme.Do : Theme.ChuDam;
-        _oConNo.ChuThich = soKhachNo > 0 ? $"{soKhachNo} khách còn nợ" : "Không ai còn nợ";
-
         _lblTongKet.Text = $"{_nguon.Count} khách hàng trong năm {nam}";
     }
 

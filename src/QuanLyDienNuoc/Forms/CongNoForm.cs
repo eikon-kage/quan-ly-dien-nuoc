@@ -180,11 +180,12 @@ public sealed class CongNoForm : Form
         var btnThuTien = Theme.Nut("THU TIỀN", Theme.Xanh, 180, 52);
         btnThuTien.Click += (_, _) => ThuTienCuaKhach();
 
-        var btnNhac = Theme.Nut("SOẠN TIN NHẮC NỢ", Theme.Cam, 260, 52);
-        btnNhac.Click += (_, _) => SoanTinNhac();
-
-        var btnXuat = Theme.NutPhu("Xuất Excel", 170, 52);
-        btnXuat.Click += (_, _) => XuatExcel();
+        // Soạn tin và xuất Excel không phải việc hằng ngày: gom vào nút ba chấm cho hàng nút
+        // dưới bảng còn lại đúng hai việc hay làm là mở đơn và thu tiền.
+        var viecKhac = Theme.NutBaCham("Việc khác với khách đang chọn", 52)
+            .Viec("Soạn tin nhắc nợ", SoanTinNhac)
+            .Ngan()
+            .Viec("Xuất sổ công nợ ra Excel", XuatExcel);
 
         var btnDong = Theme.NutPhu("Đóng (Esc)", 150, 52);
         btnDong.Click += (_, _) => Close();
@@ -192,8 +193,7 @@ public sealed class CongNoForm : Form
         var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
         trai.Controls.Add(btnMo);
         trai.Controls.Add(btnThuTien);
-        trai.Controls.Add(btnNhac);
-        trai.Controls.Add(btnXuat);
+        trai.Controls.Add(viecKhac.Nut);
         trai.Controls.Add(btnDong);
 
         _lblTongKet.Dock = DockStyle.Right;

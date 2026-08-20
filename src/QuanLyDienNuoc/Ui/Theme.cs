@@ -77,7 +77,7 @@ public static class Theme
     public static readonly Font FontSo = new("Segoe UI", 15F, FontStyle.Bold);
     public static readonly Font FontTieuDe = new("Segoe UI", 19F, FontStyle.Bold);
 
-    /// <summary>Tên thẻ ("Khách hàng", "Tổng quan") — nhỏ hơn tiêu đề cửa sổ.</summary>
+    /// <summary>Tên thẻ ("Khách hàng", "Sổ công nợ") — nhỏ hơn tiêu đề cửa sổ.</summary>
     public static readonly Font FontTenThe = new("Segoe UI", 14.5F, FontStyle.Bold);
 
     // ---------- Vẽ ----------
@@ -109,8 +109,18 @@ public static class Theme
     /// </summary>
     private sealed class NutBo : Button
     {
+        /// <summary>Cỡ chữ thấp nhất được phép hạ xuống — dưới nữa thì chủ cửa hàng không đọc được.</summary>
+        private const float CoChuNhoNhat = 9.5F;
+
+        private const int LeNgang = 10;
+        private const int LeDoc = 3;
+
         private bool _troChuot;
         private bool _dangBam;
+
+        /// <summary>Phông đã hạ cỡ cho vừa nút. Chỉ phông này được dispose, phông của Theme là phông dùng chung.</summary>
+        private Font? _fontHa;
+        private string _khoaFontHa = "";
 
         public NutBo()
         {
@@ -126,6 +136,87 @@ public static class Theme
 
         /// <summary>Màu viền; để trống là nút tô đặc, không viền.</summary>
         public Color MauVien { get; set; } = Color.Empty;
+
+        /// <summary>
+        /// Vẽ ba chấm thay cho chữ. Vẽ tay chứ không dùng ký tự "⋯": phông Segoe UI thiếu
+        /// nhiều ký tự ký hiệu, thiếu là Windows in ra ô vuông rỗng.
+        /// </summary>
+        public bool VeBaCham { get; set; }
+
+        /// <summary>
+        /// Phông để vẽ chữ lần này. Nút dựng bằng cỡ đặt tay, mà chữ thì dài ngắn khác nhau
+        /// và máy khách có thể đặt cỡ chữ Windows to hơn — chữ không vừa là bị cắt mất một
+        /// nửa, nhìn rất xấu. Nên đo trước: không vừa thì hạ cỡ chữ từng nửa điểm cho tới khi
+        /// vừa. Đo một lần rồi nhớ lại, chỉ đo lại khi chữ hoặc cỡ nút đổi.
+        /// </summary>
+        private Font PhongVua(Graphics g)
+        {
+            var khoa = $"{Text}|{Font.Name}|{Font.Size}|{Font.Style}|{Width}x{Height}";
+            if (_khoaFontHa == khoa)
+            {
+                return _fontHa ?? Font;
+            }
+
+            _khoaFontHa = khoa;
+            _fontHa?.Dispose();
+            _fontHa = null;
+
+            var rong = Math.Max(1, Width - (LeNgang * 2));
+            var cao = Math.Max(1, Height - (LeDoc * 2));
+            if (Vua(g, Text, Font, rong, cao))
+            {
+                return Font;
+            }
+
+            for (var co = Font.Size - 0.5F; co >= CoChuNhoNhat; co -= 0.5F)
+            {
+                var thu = new Font(Font.FontFamily, co, Font.Style);
+                if (Vua(g, Text, thu, rong, cao))
+                {
+                    _fontHa = thu;
+                    return thu;
+                }
+
+                thu.Dispose();
+            }
+
+            _fontHa = new Font(Font.FontFamily, CoChuNhoNhat, Font.Style);
+            return _fontHa;
+        }
+
+        private static bool Vua(Graphics g, string chu, Font phong, int rong, int cao)
+        {
+            var co = TextRenderer.MeasureText(
+                g, chu, phong, new Size(rong, cao), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
+            return co.Width <= rong && co.Height <= cao;
+        }
+
+        /// <summary>Ba chấm tròn giữa nút, to nhỏ theo cỡ chữ của nút.</summary>
+        private void VeChamTron(Graphics g)
+        {
+            var duongKinh = Math.Max(4, (int)Math.Round(Font.Size * 0.42F));
+            var khe = duongKinh + Math.Max(3, duongKinh / 2);
+            var tong = (duongKinh * 3) + (khe - duongKinh) * 2;
+            var x = (Width - tong) / 2;
+            var y = (Height - duongKinh) / 2;
+
+            using var to = new SolidBrush(Enabled ? ForeColor : XamNhat);
+            for (var i = 0; i < 3; i++)
+            {
+                g.FillEllipse(to, x + (i * khe), y, duongKinh, duongKinh);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _fontHa?.Dispose();
+                _fontHa = null;
+            }
+
+            base.Dispose(disposing);
+        }
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -163,15 +254,22 @@ public static class Theme
                 g.DrawPath(but, duong);
             }
 
+            if (VeBaCham)
+            {
+                VeChamTron(g);
+                return;
+            }
+
             g.SmoothingMode = SmoothingMode.Default;
 
             // Chừa lề hai bên và cho phép xuống dòng: máy để cỡ chữ hệ thống to thì chữ
-            // dài ra, thà xuống dòng chứ đừng cắt cụt.
-            var oChu = new Rectangle(8, 2, Math.Max(1, Width - 16), Math.Max(1, Height - 4));
+            // dài ra, thà xuống dòng chứ đừng cắt cụt. Phông lấy cỡ đã đo cho vừa nút.
+            var oChu = new Rectangle(
+                LeNgang, LeDoc, Math.Max(1, Width - (LeNgang * 2)), Math.Max(1, Height - (LeDoc * 2)));
             TextRenderer.DrawText(
                 g,
                 Text,
-                Font,
+                PhongVua(g),
                 oChu,
                 Enabled ? ForeColor : XamNhat,
                 TextFormatFlags.HorizontalCenter
@@ -259,6 +357,119 @@ public static class Theme
             Cursor = Cursors.Hand,
             Margin = new Padding(0, 0, 10, 0),
         };
+    }
+
+    // ---------- Nút ba chấm gom việc ----------
+
+    /// <summary>
+    /// Nhóm việc nằm sau một nút ba chấm. Trước đây dưới mỗi bảng là một hàng nút dài dằng
+    /// dặc, mỗi nút một câu chữ — nhìn vào rối, mà cũng chẳng ai bấm quá hai cái đầu. Giữ
+    /// ngoài một hai việc làm hằng ngày, còn lại gom vào đây, bấm mới mở ra.
+    /// </summary>
+    public sealed class NhomViec
+    {
+        private readonly ContextMenuStrip _menu;
+        private readonly List<Action> _capNhatTruocKhiMo = new();
+
+        // Giữ luôn tham chiếu: ToolTip không được control nào giữ hộ, bị dọn rác là mất chú
+        // thích. Nhóm việc này thì nút giữ (qua chỗ bắt sự kiện Click), nên để đây là an toàn.
+        private readonly ToolTip _mach = new() { InitialDelay = 250, AutoPopDelay = 8000 };
+
+        internal NhomViec(string moTa, int rong, int cao)
+        {
+            _menu = new ContextMenuStrip { Font = FontNhap, ShowImageMargin = false };
+
+            // Chữ và trạng thái bật/tắt của từng việc tính lại đúng lúc mở menu, chứ không
+            // phải nhớ đi cập nhật mỗi khi dữ liệu đổi — đằng nào menu cũng đang đóng.
+            _menu.Opening += (_, _) =>
+            {
+                foreach (var capNhat in _capNhatTruocKhiMo)
+                {
+                    capNhat();
+                }
+            };
+
+            Nut = new NutBo
+            {
+                VeBaCham = true,
+                Width = rong,
+                Height = cao,
+                BackColor = Trang,
+                ForeColor = Chu,
+                MauVien = Vien,
+                Font = FontDam,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 10, 0),
+                AccessibleName = moTa,
+                TabStop = true,
+            };
+            _mach.SetToolTip(Nut, moTa);
+            Nut.Click += (_, _) => Mo();
+        }
+
+        /// <summary>Nút để xếp vào hàng nút.</summary>
+        public Button Nut { get; }
+
+        /// <summary>Thêm một việc vào menu.</summary>
+        /// <param name="chu">Chữ hiện trong menu.</param>
+        /// <param name="chay">Việc chạy khi bấm.</param>
+        /// <param name="mauChu">Màu chữ — để đỏ cho việc xoá.</param>
+        /// <param name="bat">Tính lúc mở menu: trả về false thì việc đó mờ đi, không bấm được.</param>
+        public NhomViec Viec(string chu, Action chay, Color mauChu = default, Func<bool>? bat = null)
+        {
+            return Viec(() => chu, chay, mauChu, bat);
+        }
+
+        /// <summary>
+        /// Như trên nhưng chữ tính lại lúc mở menu — dùng cho việc đổi chiều theo trạng thái
+        /// ("Chốt hoá đơn" / "Mở lại hoá đơn").
+        /// </summary>
+        public NhomViec Viec(Func<string> chu, Action chay, Color mauChu = default, Func<bool>? bat = null)
+        {
+            var muc = new ToolStripMenuItem(chu(), null, (_, _) => chay());
+            if (mauChu != default)
+            {
+                muc.ForeColor = mauChu;
+            }
+
+            _menu.Items.Add(muc);
+            _capNhatTruocKhiMo.Add(() =>
+            {
+                muc.Text = chu();
+                if (bat is not null)
+                {
+                    muc.Enabled = bat();
+                }
+            });
+            return this;
+        }
+
+        /// <summary>Vạch ngăn giữa hai nhóm việc.</summary>
+        public NhomViec Ngan()
+        {
+            _menu.Items.Add(new ToolStripSeparator());
+            return this;
+        }
+
+        /// <summary>Mở menu ra. Nút nằm sát đáy màn hình thì menu bung lên trên cho khỏi bị cắt.</summary>
+        private void Mo()
+        {
+            var caoMenu = _menu.GetPreferredSize(Size.Empty).Height;
+            var duoiNut = Nut.PointToScreen(new Point(0, Nut.Height)).Y;
+            var vung = Screen.FromControl(Nut).WorkingArea;
+            _menu.Show(Nut, duoiNut + caoMenu > vung.Bottom
+                ? new Point(0, -caoMenu)
+                : new Point(0, Nut.Height));
+        }
+    }
+
+    /// <summary>
+    /// Nút ba chấm để gom việc. <paramref name="moTa"/> hiện ra khi trỏ chuột vào, để người
+    /// dùng biết trong đó có gì mà không phải bấm thử.
+    /// </summary>
+    public static NhomViec NutBaCham(string moTa, int cao = 46, int rong = 54)
+    {
+        return new NhomViec(moTa, rong, cao);
     }
 
     // ---------- Ô nhập ----------

@@ -63,18 +63,17 @@ public sealed class XemTruocForm : Form
         var btnSau = Theme.NutPhu("Trang sau ▶", 170, 52);
         btnSau.Click += (_, _) => DoiTrang(1);
 
-        var btnPhongTo = Theme.NutPhu("Phóng to", 130, 52);
-        btnPhongTo.Click += (_, _) => DoiPhong(1.25);
-
-        var btnThuNho = Theme.NutPhu("Thu nhỏ", 130, 52);
-        btnThuNho.Click += (_, _) => DoiPhong(0.8);
-
-        var btnVua = Theme.NutPhu("Vừa màn hình", 180, 52);
-        btnVua.Click += (_, _) =>
-        {
-            _xem.AutoZoom = true;
-            _xem.Invalidate();
-        };
+        // Ba nút phóng to / thu nhỏ / vừa màn hình gom vào nút ba chấm: chỉ dùng khi muốn
+        // ngó kỹ một chỗ, còn bình thường bản xem trước đã vừa khung sẵn.
+        var viecPhong = Theme.NutBaCham("Phóng to, thu nhỏ bản xem trước", 52)
+            .Viec("Phóng to", () => DoiPhong(1.25))
+            .Viec("Thu nhỏ", () => DoiPhong(0.8))
+            .Ngan()
+            .Viec("Vừa màn hình", () =>
+            {
+                _xem.AutoZoom = true;
+                _xem.Invalidate();
+            });
 
         var btnDong = Theme.NutPhu("Đóng", 130, 52);
         btnDong.Click += (_, _) => Close();
@@ -83,9 +82,7 @@ public sealed class XemTruocForm : Form
         trai.Controls.Add(btnIn);
         trai.Controls.Add(btnTruoc);
         trai.Controls.Add(btnSau);
-        trai.Controls.Add(btnPhongTo);
-        trai.Controls.Add(btnThuNho);
-        trai.Controls.Add(btnVua);
+        trai.Controls.Add(viecPhong.Nut);
         trai.Controls.Add(btnDong);
 
         _lblTrang.Dock = DockStyle.Right;

@@ -171,7 +171,6 @@ src/
     MauHoaDon/                  hai file mẫu hoá đơn giấy
     Ui/Theme.cs                 màu, phông chữ, thẻ, nút, ô nhập, lưới dùng chung
     Ui/ThanhBen.cs              thanh bên trái của màn hình chính, hình vẽ bằng nét
-    Ui/OThongKe.cs              một ô số liệu trong thẻ tổng quan
     Ui/InHoaDon.cs              vẽ hoá đơn ra giấy để xem trước và in
     Forms/MainForm.cs           màn hình chính (khách hàng theo năm, dải nhắc nợ)
     Forms/DonHangForm.cs        hoá đơn và chi tiết hàng của một khách

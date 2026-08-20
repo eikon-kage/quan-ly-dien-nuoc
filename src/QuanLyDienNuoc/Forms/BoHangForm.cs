@@ -145,17 +145,14 @@ public sealed class BoHangForm : Form
         var btnThem = Theme.Nut("+  Bộ mới", Theme.Chinh, 150, 44);
         btnThem.Click += (_, _) => ThemBo();
 
-        var btnDoiTen = Theme.NutPhu("Đổi tên", 110, 44);
-        btnDoiTen.Click += (_, _) => DoiTenBo();
-
-        var btnXoa = Theme.NutPhu("Xoá", 90, 44);
-        btnXoa.ForeColor = Theme.Do;
-        btnXoa.Click += (_, _) => XoaBo();
+        var viecBo = Theme.NutBaCham("Việc khác với bộ đang chọn", 44)
+            .Viec("Đổi tên bộ", DoiTenBo)
+            .Ngan()
+            .Viec("Xoá bộ này", XoaBo, Theme.Do);
 
         var nut = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
         nut.Controls.Add(btnThem);
-        nut.Controls.Add(btnDoiTen);
-        nut.Controls.Add(btnXoa);
+        nut.Controls.Add(viecBo.Nut);
 
         cot.Controls.Add(lbl, 0, 0);
         cot.Controls.Add(Theme.Khung(_luoiBo), 0, 1);
