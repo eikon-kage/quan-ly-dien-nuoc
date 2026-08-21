@@ -91,6 +91,14 @@ jobs:
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY || secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
 
+      # `enablement: true` để **tự bật Pages** nếu repo chưa bật, khỏi phải vào Settings bấm
+      # tay. Nó bật bằng thẻ định danh của chính workflow (nhờ `permissions: pages: write` ở
+      # trên), nên không cần token cá nhân có quyền Pages — thứ mà token thường không có.
+      - name: Bật Pages nếu chưa bật
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - name: Đóng gói cho Pages
         uses: actions/upload-pages-artifact@v3
         with:
