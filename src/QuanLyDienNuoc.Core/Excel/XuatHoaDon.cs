@@ -120,11 +120,16 @@ public static class XuatHoaDon
         DateTime ngayIn,
         HoaDon? hoaDonGoc)
     {
-        // Tờ hoàn hàng dùng chung mẫu giấy với hoá đơn bán, chỉ đổi tên tờ ở góc trên phải —
+        // Tờ hoàn hàng dùng chung mẫu giấy với hoá đơn bán, chỉ thêm tên tờ phía trên bảng —
         // có vậy chủ cửa hàng sửa mẫu bằng Excel một lần là cả hai loại đổi theo.
         if (hoaDon.LaHoanHang && viTri.DongTieuDe >= 0)
         {
-            LayO(sheet, viTri.DongTieuDe, MauHoaDon.CotTieuDe).SetCellValue("HÓA ĐƠN HOÀN HÀNG");
+            // Mẫu giấy mới chỉ chừa được một dòng trống cho tên tờ, không có dòng phụ đề riêng
+            // như mẫu cũ. Lúc đó viết luôn "hoàn cho hoá đơn nào" vào cùng dòng chứ không bỏ mất.
+            const string tenTo = "HÓA ĐƠN HOÀN HÀNG";
+            LayO(sheet, viTri.DongTieuDe, MauHoaDon.CotTieuDe).SetCellValue(
+                viTri.DongPhuDe >= 0 ? tenTo : $"{tenTo} {PhuDeHoanHang(hoaDon, hoaDonGoc)}");
+            NoiDongChoDuChu(sheet, viTri.DongTieuDe);
         }
 
         if (hoaDon.LaHoanHang && viTri.DongPhuDe >= 0)
@@ -220,6 +225,22 @@ public static class XuatHoaDon
         }
     }
 
+    /// <summary>
+    /// Chiều cao tối thiểu (đơn vị 1/20 điểm) của dòng có chữ. Mẫu giấy chừa dòng ngăn cách rất
+    /// mảnh, ghi chữ vào đó mà không nới ra thì in giấy bị cắt mất gần hết chữ.
+    /// </summary>
+    private const short CaoDongCoChu = 330;
+
+    /// <summary>Nới dòng cho đủ cao để đọc được chữ, dòng nào đã cao hơn thì để nguyên.</summary>
+    private static void NoiDongChoDuChu(ISheet sheet, int dong)
+    {
+        var hang = sheet.GetRow(dong) ?? sheet.CreateRow(dong);
+        if (hang.Height < CaoDongCoChu)
+        {
+            hang.Height = CaoDongCoChu;
+        }
+    }
+
     /// <summary>Lấy ô để ghi, tạo mới nếu thiếu và mượn định dạng cùng dòng để không mất khung kẻ.</summary>
     private static ICell LayO(ISheet sheet, int dong, int cot)
     {
@@ -227,6 +248,14 @@ public static class XuatHoaDon
         var o = hang.GetCell(cot);
         if (o is not null)
         {
+            // Mẫu có sẵn công thức ở ô này (dòng tổng của mẫu mới là =SUM(...)) thì phải bỏ đi:
+            // giữ lại là Excel tự tính lại theo đúng một trang, còn trang cuối của hoá đơn nhiều
+            // trang phải là tổng cộng cả hoá đơn.
+            if (o.CellType == CellType.Formula)
+            {
+                o.SetCellType(CellType.Blank);
+            }
+
             return o;
         }
 
@@ -236,6 +265,17 @@ public static class XuatHoaDon
             if (c != cot && hang.GetCell(c) is { } oMau)
             {
                 o.CellStyle = oMau.CellStyle;
+                return o;
+            }
+        }
+
+        // Cả dòng trống trơn (dòng chừa cho tên tờ hoàn hàng chẳng hạn) thì mượn định dạng của ô
+        // cùng cột phía trên, không thì chữ ra font mặc định của Excel, lạc hẳn khỏi tờ giấy.
+        for (var d = dong - 1; d >= 0; d--)
+        {
+            if (sheet.GetRow(d)?.GetCell(cot) is { } oTren)
+            {
+                o.CellStyle = oTren.CellStyle;
                 break;
             }
         }

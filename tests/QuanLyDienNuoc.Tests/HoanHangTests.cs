@@ -1,3 +1,4 @@
+using NPOI.SS.UserModel;
 using QuanLyDienNuoc.BaoCao;
 using QuanLyDienNuoc.Data;
 using QuanLyDienNuoc.Excel;
@@ -393,6 +394,46 @@ public class HoanHangTests
             Assert.Equal(45_000m, trang.Dong[0].DonGia);
             Assert.Equal(-90_000m, trang.TongTien);
             Assert.Equal(toHoan.TongTien, doc.Trang.Sum(t => t.TongTien));
+        }
+        finally
+        {
+            if (Directory.Exists(thuMucTam))
+            {
+                Directory.Delete(thuMucTam, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void XuatExcel_TenToHoanNamTrenBangVaKemHoaDonGoc()
+    {
+        var thuMucMau = Path.Combine(AppContext.BaseDirectory, "MauHoaDon");
+        var thuMucTam = Path.Combine(Path.GetTempPath(), "qldn-hoan-" + Guid.NewGuid().ToString("N")[..8]);
+
+        try
+        {
+            var (duLieu, khach, goc) = TaoSo();
+            var toHoan = Hoan(duLieu, goc, 2m, lyDo: "Hàng lỗi");
+
+            var fileRa = Path.Combine(thuMucTam, "hoan-hang.xls");
+            XuatHoaDon.Xuat(toHoan, khach, fileRa, thuMucMau, new DateTime(2026, 8, 3), goc);
+
+            using var doc = File.OpenRead(fileRa);
+            using var wb = WorkbookFactory.Create(doc);
+            var o = wb.GetSheetAt(0)
+                .GetRow(MauHoaDon.Trang1.DongTieuDe)
+                .GetCell(MauHoaDon.CotTieuDe)
+                .StringCellValue;
+
+            // Tên tờ phải nằm trên bảng hàng: DocHoaDon chỉ tìm chữ "hoàn hàng" ở phần trước
+            // dòng tiêu đề bảng, ghi thấp hơn là nhập lại file thành hoá đơn bán.
+            Assert.True(MauHoaDon.Trang1.DongTieuDe < MauHoaDon.Trang1.DongDauDuLieu - 1);
+            Assert.Contains("HÓA ĐƠN HOÀN HÀNG", o);
+
+            // Mẫu giấy mới không có dòng phụ đề riêng nên lý do hoàn và hoá đơn gốc phải được
+            // gộp vào cùng dòng tên tờ, không thì tờ giấy không biết hoàn cho hoá đơn nào.
+            Assert.Contains(goc.MaHoaDon, o);
+            Assert.Contains("Hàng lỗi", o);
         }
         finally
         {

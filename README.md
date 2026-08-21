@@ -117,12 +117,17 @@ cửa hàng:
 
 | File | Dùng cho | Sức chứa |
 |---|---|---|
-| `trang-1.xls` | Trang đầu: tiêu đề cửa hàng, tên khách, địa chỉ | 32 dòng hàng |
+| `trang-1.xls` | Trang đầu: tiêu đề cửa hàng, tên khách, địa chỉ | 25 dòng hàng |
 | `trang-sau.xls` | Trang thứ hai trở đi: chỉ có bảng | 35 dòng hàng |
 
 Sửa được bằng Excel/WPS: đổi tên cửa hàng, địa chỉ, số điện thoại ở mấy dòng đầu là cả
 bản in trong phần mềm lẫn file xuất ra đều đổi theo. Nếu thêm/bớt số dòng của bảng thì
 phải sửa lại toạ độ trong [MauHoaDon.cs](src/QuanLyDienNuoc.Core/Excel/MauHoaDon.cs).
+
+Bốn dòng góc trên phải của `trang-1.xls` là **số tài khoản ngân hàng** của cửa hàng, không
+còn ô "HÓA ĐƠN BÁN HÀNG" như mẫu cũ. Phần mềm nhận ra điều đó (ô thứ ba không có chữ "hoá
+đơn") nên bản in để nguyên cỡ chữ thường cho dòng ấy; thả lại mẫu cũ vào thì tên tờ vẫn
+được in to như trước. Tên tờ của hoá đơn hoàn hàng ghi vào dòng trống ngay trên bảng.
 
 Các file hoá đơn gốc của cửa hàng để ở `docs/hoa-don-mau/` trên máy, **không đưa lên git**
 (có số điện thoại và số tài khoản ngân hàng). Bản đã ẩn danh dùng cho kiểm thử nằm ở

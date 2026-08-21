@@ -27,10 +27,10 @@ public class HoaDonExcelTests : IDisposable
     [Theory]
     [InlineData(0, new[] { 0 })]           // hoá đơn rỗng vẫn in ra một trang
     [InlineData(1, new[] { 1 })]
-    [InlineData(32, new[] { 32 })]         // vừa đủ trang 1
-    [InlineData(33, new[] { 32, 1 })]
-    [InlineData(67, new[] { 32, 35 })]     // vừa đủ hai trang
-    [InlineData(68, new[] { 32, 35, 1 })]
+    [InlineData(25, new[] { 25 })]         // vừa đủ trang 1
+    [InlineData(26, new[] { 25, 1 })]
+    [InlineData(60, new[] { 25, 35 })]     // vừa đủ hai trang
+    [InlineData(61, new[] { 25, 35, 1 })]
     public void ChiaTrang_ChiaDungSucChuaTungTrang(int soDong, int[] mongDoi)
     {
         var chiTiet = Enumerable.Range(1, soDong)
@@ -170,7 +170,7 @@ public class HoaDonExcelTests : IDisposable
 
         var doc = DocHoaDon.Doc(fileRa, DateTime.Today);
 
-        // Chỉ còn đúng hai trang, không dính tab "mau hoa don cũ" (chứa số tài khoản) hay "Chart1".
+        // Chỉ còn đúng hai trang, không dính tab mẫu cũ hay tab biểu đồ "Chart1".
         Assert.Equal(new[] { "Trang 1", "Trang 2" }, doc.Trang.Select(t => t.TenSheet).ToArray());
         Assert.Equal(35, doc.TongSoDong);
         Assert.Equal("Chú Hải", doc.TenKhach);
@@ -186,7 +186,48 @@ public class HoaDonExcelTests : IDisposable
         var cuaHang = ThongTinCuaHang.DocTuMau(ThuMucMau);
 
         Assert.Contains("ĐIỆN NƯỚC", cuaHang.Ten);
-        Assert.Contains("HÓA ĐƠN BÁN HÀNG", cuaHang.TieuDe);
+
+        // Mẫu giấy đang dùng in số tài khoản ngân hàng kín cả bốn dòng góc trên phải, không còn
+        // ô tên tờ "HÓA ĐƠN BÁN HÀNG" như mẫu cũ — bản in phải biết để không phóng to dòng đó.
+        Assert.Contains("Số tài khoản", cuaHang.NganhNghe1);
+        Assert.Contains("Agribank", cuaHang.NganhNghe2);
+        Assert.False(cuaHang.CoTenTo);
+    }
+
+    [Fact]
+    public void ThongTinCuaHang_FileGocNhieuTab_LayTabKhopVoiToaDoDangDung()
+    {
+        // to1.xls có cả hai kiểu mẫu: tab "mẫu hoá đơn mối" là mẫu cũ (có ô "HÓA ĐƠN BÁN HÀNG",
+        // bảng 32 dòng), tab "mau hoa don cũ" là tờ đang dùng (số tài khoản, bảng 25 dòng).
+        // Toạ độ trong MauHoaDon đo theo tờ đang dùng nên phải lấy đúng tab đó.
+        Directory.CreateDirectory(_thuMucTam);
+        var thuMucMau = Path.Combine(_thuMucTam, "MauGoc");
+        Directory.CreateDirectory(thuMucMau);
+        File.Copy(Path.Combine(ThuMucHoaDonCu, "to1.xls"), Path.Combine(thuMucMau, MauHoaDon.TenFileTrang1));
+
+        var cuaHang = ThongTinCuaHang.DocTuMau(thuMucMau);
+
+        Assert.Contains("Số tài khoản", cuaHang.NganhNghe1);
+        Assert.False(cuaHang.CoTenTo);
+    }
+
+    [Fact]
+    public void ThongTinCuaHang_MauCoOTenTo_ThiNhanRaLaTenTo()
+    {
+        // Mẫu cũ vẫn phải dùng được: ô góc phải có chữ "hoá đơn" thì đó là tên tờ, bản in
+        // phóng to như trước chứ không hạ xuống cỡ chữ thường.
+        var cuaHang = ThongTinCuaHang.MacDinh with { TieuDe = "HÓA ĐƠN BÁN HÀNG" };
+
+        Assert.True(cuaHang.CoTenTo);
+    }
+
+    [Fact]
+    public void ThongTinCuaHang_ThieuFileMau_VanCoTenTo()
+    {
+        var cuaHang = ThongTinCuaHang.DocTuMau(Path.Combine(_thuMucTam, "khong-co"));
+
+        Assert.Same(ThongTinCuaHang.MacDinh, cuaHang);
+        Assert.True(cuaHang.CoTenTo);
     }
 
     [Fact]

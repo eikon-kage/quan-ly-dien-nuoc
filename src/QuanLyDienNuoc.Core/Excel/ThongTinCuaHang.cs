@@ -1,5 +1,6 @@
 using NPOI.HSSF.UserModel;
 using NPOI.SS.UserModel;
+using QuanLyDienNuoc.Ui;
 
 namespace QuanLyDienNuoc.Excel;
 
@@ -16,6 +17,13 @@ public sealed record ThongTinCuaHang(
     string TieuDe,
     string PhuDe)
 {
+    /// <summary>
+    /// Mẫu giấy có in sẵn tên tờ ("HÓA ĐƠN BÁN HÀNG") ở góc trên phải hay không. Mẫu mới của
+    /// cửa hàng dùng cả bốn dòng góc phải cho số tài khoản ngân hàng, nên ô này là chữ thường
+    /// (tên chủ tài khoản) — bản in phải để nó cỡ chữ thường, không phóng to như tên tờ.
+    /// </summary>
+    public bool CoTenTo => ChuViet.BoDau(TieuDe).Contains("hoa don");
+
     public static ThongTinCuaHang MacDinh { get; } = new(
         "CỬA HÀNG - ĐIỆN NƯỚC",
         string.Empty,

@@ -46,8 +46,10 @@ giữ thừa tiền của khách, lần lấy hàng sau tự trừ vào.
 
 Tờ hoàn dùng chung mẫu giấy với hoá đơn bán (`MauHoaDon/trang-1.xls`), chỉ khác:
 
-- Tên tờ ở góc trên phải: **HÓA ĐƠN HOÀN HÀNG**, dưới đó là *(Hoàn cho hoá đơn HD2026-02
-  ngày 02/06/2026 — lý do)*.
+- Tên tờ ở dòng trống ngay trên bảng hàng: **HÓA ĐƠN HOÀN HÀNG (Hoàn cho hoá đơn HD2026-02
+  ngày 02/06/2026 — lý do)**. Mẫu giấy hiện tại dành cả góc trên phải cho số tài khoản ngân
+  hàng nên không còn ô tên tờ riêng; mẫu cũ có ô đó thì phần mềm vẫn ghi vào đúng chỗ, phần
+  "hoàn cho hoá đơn nào" xuống dòng phụ đề bên dưới.
 - Dòng tổng ghi **TỔNG TIỀN HOÀN LẠI**, chỗ ký là *KHÁCH TRẢ HÀNG* / *NGƯỜI NHẬN HÀNG*.
 - Số lượng và số tiền in ra **số dương**: cả tờ giấy đã nói là hoàn rồi, in kèm dấu trừ nữa
   thì khách đọc thành hoàn của hoàn. Trong sổ chúng vẫn là số âm.

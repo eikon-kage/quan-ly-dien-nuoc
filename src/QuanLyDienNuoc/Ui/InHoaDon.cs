@@ -193,8 +193,12 @@ public sealed class InHoaDon : PrintDocument
         var tieuDe = _hoaDon.LaHoanHang ? "HOÁ ĐƠN HOÀN HÀNG" : _cuaHang.TieuDe;
         var phuDe = _hoaDon.LaHoanHang ? "(Khách trả lại hàng)" : _cuaHang.PhuDe;
 
+        // Mẫu giấy mới không có ô tên tờ, dòng này chỉ là tên chủ tài khoản ngân hàng — in cỡ
+        // chữ thường như hai dòng trên. Chỉ tên tờ thật (mẫu cũ, hoặc tờ hoàn hàng) mới in to.
+        var fontDongTieuDe = _hoaDon.LaHoanHang || _cuaHang.CoTenTo ? _fontTieuDe : _fontNho;
+
         g.DrawString(_cuaHang.DienThoai, _fontNho, but, khung.Left, y);
-        g.DrawString(tieuDe, _fontTieuDe, but, new RectangleF(traiPhai, y - 2f, rongPhai, 30f), canhGiua);
+        g.DrawString(tieuDe, fontDongTieuDe, but, new RectangleF(traiPhai, y - 2f, rongPhai, 30f), canhGiua);
         y += 32f;
 
         g.DrawString(phuDe, _fontPhuDe, butMo, new RectangleF(traiPhai, y - 6f, rongPhai, 18f), canhGiua);
