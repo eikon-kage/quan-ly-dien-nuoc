@@ -285,6 +285,13 @@ Mỗi `(nhóm, thợ, bên gửi)` đúng một hàng trong bảng `so_cong`, gh
 lịch sử ở đó: sổ là bản chụp toàn khoảng, bản mới nói đủ những gì bản cũ nói — lịch sử đã có
 bên [sao lưu theo ngày](chamcong-sao-luu.md) lo.
 
+**Hộp thư không phải bảng duy nhất trên Supabase nữa,** và chỗ này đáng nói rõ kẻo đọc xong
+lại tưởng "trên Supabase không bao giờ có tiền". Bảng `sao_luu` giữ **cả sổ của chủ, kể cả
+tiền** — mỗi tài khoản mỗi ngày một bản, khoá theo `user_id` nên cả nhóm không ai đọc được, kể
+cả thợ cùng nhóm, và app không bao giờ tự nhập nó vào sổ đang có. Nó có mặt vì một chuyện hộp
+thư không đỡ được: chủ đăng nhập trên máy mới thì sổ phải theo tài khoản mà sang. Xem
+[chamcong-sao-luu.md](chamcong-sao-luu.md).
+
 **Chặn nằm ở database, không ở app.** Máy thợ gọi `select` cả bảng thì Postgres tự cắt còn
 đúng hai dòng của nó, theo RLS: sổ chủ gửi cho chính nó, và sổ chính nó gửi lên. Ghi thì chỉ
 ghi được hàng của mình mang nguồn `'tho'` — "thợ tự thêm công cho mình" bị chặn ở tầng

@@ -1,8 +1,11 @@
 import {
   banCanXoa,
+  docGoi,
   dongGoi,
+  goiTu,
   GoiHong,
   moGoi,
+  ngayCanXoa,
   ngayTuTenFile,
   PHIEN_BAN,
   tenFileSaoLuu,
@@ -10,6 +13,8 @@ import {
 } from '../goiSaoLuu';
 import { duLieuRong } from '../kieu';
 import { cham, themUng, themTho } from '../thaoTac';
+
+const KHO = themTho(duLieuRong(), 'Anh Tuấn', 300_000, '2026-08-01').duLieu;
 
 function khoDayDu() {
   const them = themTho(duLieuRong(), 'Anh Tuấn', 300_000, '2026-08-01');
@@ -150,5 +155,57 @@ describe('dọn bản cũ', () => {
     expect(xoa).toHaveLength(4);
     expect(xoa).not.toContain('ghi-chu.txt');
     expect(xoa).not.toContain('Cham-cong-thang-8.json');
+  });
+});
+
+/**
+ * Cùng phép chọn ấy, nhưng cho bản trên tài khoản — ở đó bản không có tên file, mỗi ngày một
+ * hàng trong database. Hai đường sao lưu dùng chung một hàm, nên chỗ này canh cả phần *dùng
+ * chung* có thật hay không.
+ */
+describe('dọn bản cũ trên tài khoản', () => {
+  const ngays = ['2026-08-01', '2026-08-02', '2026-08-03', '2026-08-04'];
+
+  test('giữ đúng số ngày mới nhất, xoá phần còn lại, mới nhất đứng đầu', () => {
+    expect(ngayCanXoa(ngays, 2)).toEqual(['2026-08-02', '2026-08-01']);
+  });
+
+  test('thứ tự database trả về lộn xộn cũng chọn đúng', () => {
+    expect(ngayCanXoa(['2026-08-03', '2026-08-01', '2026-08-04', '2026-08-02'], 1)).toEqual([
+      '2026-08-03',
+      '2026-08-02',
+      '2026-08-01',
+    ]);
+  });
+
+  test('ít bản hơn mức giữ thì không xoá gì', () => {
+    expect(ngayCanXoa(ngays, 30)).toEqual([]);
+    expect(ngayCanXoa([], 30)).toEqual([]);
+  });
+
+  test('sang tháng, sang năm vẫn đúng thứ tự thời gian', () => {
+    expect(ngayCanXoa(['2026-09-01', '2026-08-31', '2025-12-31'], 2)).toEqual(['2025-12-31']);
+  });
+});
+
+/**
+ * Bản trên tài khoản đọc lên là một object sẵn, không phải chuỗi. Nó phải đi qua **đúng** bộ
+ * kiểm của file: hàng trong database sửa tay được trong SQL Editor, và có thể do một bản app
+ * mới hơn ghi lên.
+ */
+describe('mở gói đã là object sẵn', () => {
+  test('gói đúng thì ra đúng dữ liệu', () => {
+    expect(docGoi(goiTu(KHO, '2026-08-20T09:00:00.000Z')).duLieu).toEqual(KHO);
+  });
+
+  test('object của thứ khác thì từ chối', () => {
+    expect(() => docGoi({ app: 'gi-do', phienBan: 1, duLieu: {} })).toThrow(GoiHong);
+    expect(() => docGoi(null)).toThrow(GoiHong);
+    expect(() => docGoi([1, 2, 3])).toThrow(GoiHong);
+  });
+
+  test('gói của bản app mới hơn thì từ chối, không nuốt bừa', () => {
+    const moiHon = { ...goiTu(KHO, ''), phienBan: PHIEN_BAN + 1 };
+    expect(() => docGoi(moiHon)).toThrow(/phiên bản app mới hơn/i);
   });
 });

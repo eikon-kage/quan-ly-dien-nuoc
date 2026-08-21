@@ -125,6 +125,24 @@ export function duLieuRong(): DuLieuChamCong {
   return { thos: [], buoiCongs: [], ungTiens: [], kyLuongs: [] };
 }
 
+/**
+ * Sổ chưa có gì cả — máy vừa cài, hoặc vừa xoá app cài lại.
+ *
+ * Dùng để phân biệt hai chuyện rất khác nhau: *máy này chưa có sổ* thì bản sao lưu trên tài
+ * khoản là thứ đáng lấy về, còn *máy này đã có sổ* thì bản trên tài khoản chỉ là bản cũ của
+ * chính nó. Đẩy một sổ trống lên tài khoản là xoá bản đang có ở đó, nên chỗ này phải đếm đủ
+ * bốn loại bản ghi, đừng chỉ đếm thợ: sổ có mỗi mấy buổi công mà không có thợ nào vẫn là sổ
+ * có dữ liệu.
+ */
+export function soTrong(duLieu: DuLieuChamCong): boolean {
+  return (
+    duLieu.thos.length === 0 &&
+    duLieu.buoiCongs.length === 0 &&
+    duLieu.ungTiens.length === 0 &&
+    duLieu.kyLuongs.length === 0
+  );
+}
+
 /** Dáng cũ của Tho: một mức tiền công duy nhất, chưa có lịch sử. */
 interface ThoBanCu extends Partial<Tho> {
   tienMotCong?: number;

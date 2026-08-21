@@ -7,8 +7,13 @@
 -- công khai nằm sẵn trong app, ai gỡ app ra cũng đọc được. Vì vậy **RLS là ổ khoá duy nhất**.
 -- Quên bật RLS trên một bảng là bảng đó công khai với cả internet.
 --
--- Mô hình: mỗi máy vẫn giữ sổ thật trong máy. Bảng dưới đây chỉ là **hộp thư** — chỗ hai bên
--- đặt sổ cho nhau đọc rồi tự đối chiếu. Không có gì tự trộn, xem docs/chamcong-doi-chieu.md.
+-- Mô hình: mỗi máy vẫn giữ sổ thật trong máy. `so_cong` chỉ là **hộp thư** — chỗ hai bên đặt
+-- sổ cho nhau đọc rồi tự đối chiếu. Không có gì tự trộn, xem docs/chamcong-doi-chieu.md.
+--
+-- Có đúng một bảng giữ cả sổ, kể cả tiền: `sao_luu`. Nó **không phải hộp thư** — không ai đọc
+-- được ngoài chính tài khoản đã ghi, và app không bao giờ tự nhập nó vào sổ đang có. Nó tồn
+-- tại vì một chuyện hộp thư không đỡ được: chủ đăng nhập trên máy mới thì sổ phải theo tài
+-- khoản mà sang, xem docs/chamcong-sao-luu.md.
 
 -- ---------------------------------------------------------------------------
 -- 1. Ai thuộc nhóm nào, vai gì
@@ -66,12 +71,44 @@ create table if not exists ma_moi (
 );
 
 -- ---------------------------------------------------------------------------
--- 4. Bật RLS. Đây là phần chặn thật — đừng bỏ dòng nào.
+-- 4. Sao lưu cả sổ của chủ: mỗi ngày một hàng, chỉ chính tài khoản ấy đọc được
+-- ---------------------------------------------------------------------------
+--
+-- Đây là bảng duy nhất trong file này **có tiền**, và là chỗ duy nhất một sổ chấm công đầy đủ
+-- nằm ngoài điện thoại. Hai điều bắt buộc phải hiểu trước khi sửa gì ở đây:
+--
+--   1. Khoá là `user_id`, không phải `nhom_id`. Sổ này là của riêng cái tài khoản đã ghi nó;
+--      cả nhóm không ai đọc được, kể cả thợ cùng nhóm. Đổi sang khoá theo nhóm là mở tiền
+--      công của cả cửa hàng cho mọi máy thợ.
+--   2. App **không tự nhập** hàng này vào sổ đang có. Nó chỉ được lấy về khi người dùng bấm
+--      và xác nhận kèm số liệu — cùng một luồng như khôi phục từ file. Tự trộn thì hai máy
+--      chủ mở cùng lúc là hai sổ đè lên nhau mà không ai biết.
+--
+-- **Mỗi ngày một hàng**, y như mỗi ngày một file bên sao lưu vào máy, và vì đúng một lý do:
+-- giữ một hàng duy nhất thì hôm nay lỡ tay xoá mấy chục buổi công, lượt đẩy tự động sẽ chép
+-- cái sai ấy đè lên bản đúng. Giữ theo ngày thì lúc nào cũng lùi về được hôm qua. App dọn cho
+-- chỉ còn 30 ngày gần nhất.
+
+create table if not exists sao_luu (
+  user_id uuid not null references auth.users on delete cascade,
+  ngay    date not null,
+  -- Đúng cái gói mà file sao lưu mang: {"app","phienBan","taoLuc","duLieu"}. App đọc lên vẫn
+  -- kiểm lại bằng cùng một hàm dùng cho file (`docGoi`) — hàng này sửa tay được trong SQL
+  -- Editor, nên không phải chỗ để tin sẵn.
+  goi     jsonb not null,
+  sua_luc timestamptz not null default now(),
+  primary key (user_id, ngay),
+  constraint goi_phai_la_object check (jsonb_typeof(goi) = 'object')
+);
+
+-- ---------------------------------------------------------------------------
+-- 5. Bật RLS. Đây là phần chặn thật — đừng bỏ dòng nào.
 -- ---------------------------------------------------------------------------
 
 alter table thanh_vien enable row level security;
 alter table so_cong    enable row level security;
 alter table ma_moi     enable row level security;
+alter table sao_luu    enable row level security;
 
 -- `stable` + `security definer` để policy gọi được mà không đệ quy vào chính RLS của
 -- thanh_vien. Không có nó thì policy đọc thanh_vien lại kích hoạt policy của thanh_vien.
@@ -135,8 +172,23 @@ drop policy if exists ma_moi_chu_phat on ma_moi;
 create policy ma_moi_chu_phat on ma_moi
   for insert with check (vai_cua_toi() = 'chu' and nhom_id = nhom_cua_toi());
 
+-- Bản sao lưu — **chỉ hàng của chính mình**, cả đọc lẫn ghi. Không có chữ `nhom_id` nào
+-- trong policy này, và đó là chủ ý: nhóm không liên quan gì tới việc ai được đọc sổ có tiền.
+--
+-- `is_anonymous` chặn máy thợ đẩy sổ lên: tài khoản ẩn danh chỉ sống trong một cái điện thoại,
+-- nên sao lưu vào đó là sao lưu vào chính cái máy sắp mất — vô nghĩa mà lại nhân thêm một chỗ
+-- có tiền. Claim thiếu (bản GoTrue cũ) thì `null is not true` vẫn cho qua, nên chỗ này không
+-- làm chủ mất đường sao lưu.
+drop policy if exists sao_luu_cua_minh on sao_luu;
+create policy sao_luu_cua_minh on sao_luu
+  for all using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and (auth.jwt() ->> 'is_anonymous')::boolean is not true
+  );
+
 -- ---------------------------------------------------------------------------
--- 5. Ba hàm app gọi
+-- 6. Ba hàm app gọi
 -- ---------------------------------------------------------------------------
 
 -- Máy chủ lần đầu: tạo nhóm mới, hoặc trả về nhóm đang có. Gọi lại nhiều lần không sinh

@@ -12,17 +12,20 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ManHinhBangLuong } from './src/giaodien/ManHinhBangLuong';
 import { ManHinhChamCong } from './src/giaodien/ManHinhChamCong';
+import { ManHinhLaySo } from './src/giaodien/ManHinhLaySo';
 import { ManHinhLichSuKy } from './src/giaodien/ManHinhLichSuKy';
 import { ManHinhMoDau } from './src/giaodien/ManHinhMoDau';
 import { ManHinhTho } from './src/giaodien/ManHinhTho';
 import { ManHinhThoTuCham } from './src/giaodien/ManHinhThoTuCham';
 import { KetNoiHopThu, dungDoiChieu } from './src/giaodien/dungDoiChieu';
 import { dungSaoLuu } from './src/giaodien/dungSaoLuu';
+import { dungSaoLuuTaiKhoan } from './src/giaodien/dungSaoLuuTaiKhoan';
 import { dungSupabase } from './src/giaodien/dungSupabase';
 import { Bong, Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './src/giaodien/thietKe';
 import { hopThuSupabase } from './src/nghiepvu/hopThuSupabase';
 import { DuLieuChamCong } from './src/nghiepvu/kieu';
 import * as LuuTru from './src/nghiepvu/luuTru';
+import { saoLuuTaiKhoanSupabase } from './src/nghiepvu/saoLuuTaiKhoanSupabase';
 import { CaiDatVai } from './src/nghiepvu/vaiMay';
 import * as VaiMay from './src/nghiepvu/vaiMay';
 
@@ -51,6 +54,13 @@ export default function App() {
    * máy là một cú bấm nhầm khiến người dùng không bao giờ thấy màn hình ấy nữa.
    */
   const [deSau, datDeSau] = useState(false);
+  /**
+   * Đã bấm *Để sau* ở màn hình mời lấy sổ trên tài khoản về. Cũng chỉ nhớ trong lượt mở app
+   * này, và cũng vì một lý do như trên: sổ còn trống thì lần mở sau câu hỏi ấy vẫn còn nguyên
+   * giá trị. Khác `daTraLoi` của hook — *để sau* không mở đường cho lượt đẩy ngầm, vì người
+   * dùng chưa nói gì về sổ nào là sổ thật.
+   */
+  const [deSauLaySo, datDeSauLaySo] = useState(false);
 
   const [fontDaNap] = useFonts({
     Lexend_300Light,
@@ -91,6 +101,31 @@ export default function App() {
    * thì chỉ sửa đúng dòng này.
    */
   const hopThu = useMemo(() => hopThuSupabase(), []);
+
+  /**
+   * Kho sao lưu trên tài khoản — dựng ở đây, một chỗ duy nhất, y như hộp thư.
+   */
+  const khoTaiKhoan = useMemo(() => saoLuuTaiKhoanSupabase(), []);
+
+  /**
+   * Sao lưu lên tài khoản: chỉ **máy chủ đã đăng nhập bằng email**.
+   *
+   * Ba điều kiện, mỗi điều kiện chặn một chuyện khác nhau:
+   *
+   *   `vai === 'chu'`  — sổ đầy đủ (có tiền) chỉ nằm ở máy chủ; máy thợ chỉ giữ số công của
+   *                      chính nó, mà cái đó chủ đã có trong sổ mình.
+   *   `taiKhoan`       — chưa đăng nhập thì chưa có chỗ nào để đẩy lên.
+   *   `!anDanh`        — tài khoản ẩn danh chỉ sống trong đúng cái điện thoại này, nên sao lưu
+   *                      vào đó là sao lưu vào cái máy sắp mất. Database cũng chặn (policy
+   *                      `sao_luu_cua_minh`), nhưng chặn ở đây thì giao diện nói được câu đúng
+   *                      thay vì hiện một lỗi quyền.
+   */
+  const duocSaoLuuTaiKhoan =
+    caiDat?.vai === 'chu' &&
+    nhom.trangThai.taiKhoan !== null &&
+    !nhom.trangThai.taiKhoan.anDanh;
+
+  const saoLuuTaiKhoan = dungSaoLuuTaiKhoan(duLieu, khoTaiKhoan, duocSaoLuuTaiKhoan);
 
   /**
    * Hộp thư đang dùng đã nối được chưa, và nếu chưa thì chỉ đường cho người dùng.
@@ -156,6 +191,19 @@ export default function App() {
     caiDat?.dungMotMinh !== true &&
     !deSau;
 
+  /**
+   * Mở app ra là mời lấy sổ trên tài khoản về, khi **máy này chưa có sổ mà tài khoản thì có**.
+   *
+   * Chắn ngang trước thanh tab, cùng một lẽ với `hoiNoiNhom`: chấm vài ô vào sổ trống là máy
+   * này thành máy có sổ riêng, và lượt đẩy ngầm sau đó ghi đè bản của hôm nay trên tài khoản.
+   * Câu hỏi này phải được trả lời trước khi người dùng gõ dòng đầu tiên — xem ManHinhLaySo.
+   *
+   * `banChoLay` đã gói sẵn mọi điều kiện *biết chắc* (đọc xong danh sách, sổ trong máy trống,
+   * trên tài khoản có bản) — xem dungSaoLuuTaiKhoan. Ở đây chỉ thêm hai điều của giao diện:
+   * đừng chồng lên màn hình nối nhóm, và người dùng đã bấm để sau thì thôi.
+   */
+  const hoiLaySo = !hoiNoiNhom && !deSauLaySo && saoLuuTaiKhoan.trangThai.banChoLay !== null;
+
   useEffect(() => {
     LuuTru.doc().then(datDuLieu);
     VaiMay.doc().then(datCaiDat);
@@ -194,6 +242,13 @@ export default function App() {
             nhom={nhom}
             onDeSau={() => datDeSau(true)}
           />
+        ) : hoiLaySo ? (
+          <ManHinhLaySo
+            taiKhoan={saoLuuTaiKhoan}
+            email={nhom.trangThai.taiKhoan?.email ?? null}
+            capNhat={capNhat}
+            onDeSau={() => datDeSauLaySo(true)}
+          />
         ) : caiDat.vai === 'tho' ? (
           /*
             Máy thợ là một màn hình riêng, không có thanh tab: cả máy chỉ có một việc.
@@ -218,6 +273,7 @@ export default function App() {
                   duLieu={duLieu}
                   capNhat={capNhat}
                   saoLuu={saoLuu}
+                  saoLuuTaiKhoan={saoLuuTaiKhoan}
                   caiDat={caiDat}
                   datCaiDat={doiVai}
                   dieuKhien={doiChieu}

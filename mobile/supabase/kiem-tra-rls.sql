@@ -32,6 +32,13 @@ create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
 
+-- `auth.jwt()` trả cả bộ claim. Policy của bảng sao_luu đọc `is_anonymous` từ đây để chặn máy
+-- thợ đẩy sổ lên. Không giả hàm này thì policy ấy quăng lỗi "function does not exist" — mà lúc
+-- ấy triệu chứng lại là *chủ không ghi được*, chứ không phải *thợ ghi được*.
+create or replace function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb)
+$$;
+
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then
     create role authenticated nologin;
@@ -41,7 +48,7 @@ end $$;
 grant usage on schema auth, public to authenticated;
 
 -- Dọn sạch bảng cũ để chạy lại được nhiều lần.
-drop table if exists so_cong, thanh_vien, ma_moi cascade;
+drop table if exists so_cong, thanh_vien, ma_moi, sao_luu cascade;
 
 \ir thiet-lap.sql
 
@@ -245,6 +252,116 @@ do $$ begin
     raise exception 'FAIL: chủ phải thấy cả sổ mình gửi và sổ thợ gửi lên';
   end if;
   raise notice 'OK  chủ thấy cả hai sổ — đối chiếu được';
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Bản sao lưu: sổ đầy đủ, **có tiền**, chỉ chính tài khoản ấy được thấy
+-- ---------------------------------------------------------------------------
+--
+-- Đây là bảng duy nhất trong file có tiền trong đó, nên phần dưới là phần đáng soát nhất:
+-- lọt một dòng ở đây là tiền công của cả cửa hàng mở cho mọi máy thợ đọc.
+
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set request.jwt.claims = '{"is_anonymous": false}';
+
+insert into sao_luu (user_id, ngay, goi)
+values (auth.uid(), '2026-08-19',
+        '{"app":"cham-cong","phienBan":1,"taoLuc":"2026-08-19T09:00:00Z",
+          "duLieu":{"thos":[{"id":"tho-tuan","mocLuong":[{"tuNgay":"2026-01-01","tienMotCong":300000}]}]}}'::jsonb);
+
+do $$ begin
+  if (select count(*) from sao_luu) <> 1 then
+    raise exception 'FAIL: chủ không ghi hoặc không đọc được bản sao lưu của mình';
+  end if;
+  raise notice 'OK  chủ ghi và đọc được bản sao lưu của mình';
+end $$;
+
+-- Ghi lần thứ hai trong ngày là **ghi đè**, không sinh hàng thứ hai.
+insert into sao_luu (user_id, ngay, goi)
+values (auth.uid(), '2026-08-19', '{"app":"cham-cong","phienBan":1,"duLieu":{}}'::jsonb)
+on conflict (user_id, ngay) do update set goi = excluded.goi, sua_luc = now();
+
+do $$ begin
+  if (select count(*) from sao_luu) <> 1 then
+    raise exception 'FAIL: sao lưu hai lần trong ngày lại thành hai hàng';
+  end if;
+  raise notice 'OK  mỗi ngày đúng một hàng, ghi đè lên nhau';
+end $$;
+
+-- Gói phải là một object. Ràng buộc này chặn ngay ở database chứ không chờ app kiểm hộ.
+do $$ begin
+  begin
+    insert into sao_luu (user_id, ngay, goi) values (auth.uid(), '2026-08-18', '[1,2,3]'::jsonb);
+    raise exception 'FAIL: database nhận gói sao lưu không phải object';
+  exception when check_violation then
+    raise notice 'OK  chặn gói sao lưu không đúng dạng';
+  end;
+end $$;
+
+-- **Chỗ quan trọng nhất của bảng này**: thợ cùng nhóm không thấy một chữ nào trong đó. Sổ này
+-- có mốc lương, ứng tiền, kỳ đã chốt — tức là có tiền của tất cả mọi người.
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+
+do $$ begin
+  if (select count(*) from sao_luu) <> 0 then
+    raise exception 'FAIL: thợ cùng nhóm đọc được bản sao lưu của chủ — tiền công bị lộ';
+  end if;
+  raise notice 'OK  thợ cùng nhóm không thấy bản sao lưu của chủ';
+end $$;
+
+-- Không thấy thì cũng không xoá được, và không ghi đè được.
+do $$
+declare so_dong int;
+begin
+  delete from sao_luu;
+  get diagnostics so_dong = row_count;
+  if so_dong <> 0 then
+    raise exception 'FAIL: thợ xoá được bản sao lưu của chủ';
+  end if;
+
+  update sao_luu set goi = '{}'::jsonb;
+  get diagnostics so_dong = row_count;
+  if so_dong <> 0 then
+    raise exception 'FAIL: thợ ghi đè được bản sao lưu của chủ';
+  end if;
+  raise notice 'OK  thợ không xoá, không ghi đè được bản sao lưu của chủ';
+end $$;
+
+-- Tài khoản ẩn danh không được ghi bản nào, kể cả hàng của chính nó: tài khoản ấy chỉ sống
+-- trong một cái điện thoại, nên sao lưu vào đó là nhân thêm một chỗ có tiền mà không cứu được
+-- ai. App cũng chặn, nhưng app thì sửa được mà database thì không.
+set request.jwt.claims = '{"is_anonymous": true}';
+
+do $$ begin
+  begin
+    insert into sao_luu (user_id, ngay, goi)
+    values (auth.uid(), '2026-08-17', '{"app":"cham-cong","phienBan":1,"duLieu":{}}'::jsonb);
+    raise exception 'FAIL: tài khoản ẩn danh ghi được bản sao lưu';
+  exception when insufficient_privilege then
+    raise notice 'OK  tài khoản ẩn danh không ghi được bản sao lưu';
+  end;
+end $$;
+
+-- Chưa đăng nhập: khoá công khai trong tay cũng không thấy gì.
+set request.jwt.claim.sub = '';
+set request.jwt.claims = '{}';
+
+do $$ begin
+  if (select count(*) from sao_luu) <> 0 then
+    raise exception 'FAIL: chưa đăng nhập vẫn đọc được bản sao lưu';
+  end if;
+  raise notice 'OK  chưa đăng nhập thì không thấy bản sao lưu nào';
+end $$;
+
+-- Còn chủ thì vẫn thấy đúng bản của mình — đó là cả mục đích của bảng này.
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set request.jwt.claims = '{"is_anonymous": false}';
+
+do $$ begin
+  if (select count(*) from sao_luu where ngay = '2026-08-19') <> 1 then
+    raise exception 'FAIL: chủ không lấy lại được bản sao lưu của mình';
+  end if;
+  raise notice 'OK  chủ lấy lại được bản của mình — đổi máy là lấy sổ về được';
 end $$;
 
 reset role;

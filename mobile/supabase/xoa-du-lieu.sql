@@ -21,6 +21,11 @@
 -- Sổ thật của mỗi máy **không nằm ở đây** — nó nằm trong máy. Xoá sạch cả bốn mức thì máy chủ
 -- và máy thợ vẫn còn nguyên sổ của mình, chỉ mất phần đã đặt lên hộp thư và mất chỗ trong
 -- nhóm. Muốn dọn cả trong máy thì xem phần cuối file.
+--
+-- **Một ngoại lệ, và phải nhớ:** bảng `sao_luu` giữ *cả sổ* của chủ, mỗi ngày một bản. Đó là
+-- bản cứu khi chủ mất máy, nên nó không nằm trong bốn mức trên — có khối riêng ở gần cuối
+-- file, và khối ấy để dạng chú thích. Riêng **mức 4c xoá cả tài khoản thì bản sao lưu mất
+-- theo** (khoá ngoài `on delete cascade`); đọc kỹ chỗ ấy.
 
 -- ===========================================================================
 -- XEM TRƯỚC: hiện đang có gì
@@ -30,7 +35,14 @@
 select 'thanh_vien' as bang, count(*) as so_hang from thanh_vien
 union all select 'so_cong',  count(*) from so_cong
 union all select 'ma_moi',   count(*) from ma_moi
+union all select 'sao_luu',  count(*) from sao_luu
 union all select 'auth.users', count(*) from auth.users;
+
+-- Bản sao lưu đang giữ tới hôm nào, của tài khoản nào, mỗi bản nặng bao nhiêu.
+select u.email, sl.ngay, sl.sua_luc, pg_size_pretty(length(sl.goi::text)::bigint) as co_goi
+  from sao_luu sl join auth.users u on u.id = sl.user_id
+ order by sl.ngay desc
+ limit 20;
 
 -- Chi tiết từng nhóm: nhóm nào có mấy người, mấy sổ.
 select tv.nhom_id,
@@ -163,25 +175,58 @@ delete from auth.users u
 --
 -- Kể cả tài khoản email của chủ. Chủ sẽ phải tạo lại tài khoản, và nhóm mới sẽ mang nhom_id
 -- mới. Chỉ chạy khi đang dựng thử, tuyệt đối không chạy trên project đang dùng thật.
+--
+-- **Và nó xoá luôn mọi bản sao lưu sổ của chủ**, vì `sao_luu.user_id` có `on delete cascade`.
+-- Đó là bản cứu khi mất máy. Máy của chủ còn trong tay thì không mất gì thật, nhưng nếu đang
+-- chạy khối này *vì* máy kia đã mất thì đây chính là chỗ mất sổ. Lấy một bản ra trước:
+--
+--   select goi from sao_luu order by ngay desc limit 1;
+--
+-- rồi bấm nút chép trong SQL Editor, dán vào một file `.json`. Đúng khuôn file sao lưu của
+-- app, nên *Khôi phục từ file* trong app đọc được.
 
 -- delete from so_cong;
 -- delete from ma_moi;
 -- delete from auth.users;   -- cascade xoá sạch thanh_vien
 
 -- ===========================================================================
+-- BẢN SAO LƯU SỔ CỦA CHỦ — cả khối để dạng chú thích, và không phải vì lịch sự
+-- ===========================================================================
+--
+-- Mỗi hàng ở đây là **cả một sổ chấm công**, có mốc lương, ứng tiền, kỳ đã chốt. Ba bảng trên
+-- kia xoá đi thì hai máy tự đặt sổ lên lại ở lần đồng bộ tới; hàng ở đây xoá đi thì không có
+-- gì đặt lại, trừ khi cái máy đã ghi nó vẫn còn trong tay chủ.
+--
+-- App tự dọn cho chỉ còn 30 ngày gần nhất nên bảng này không phình ra. Chỉ có hai lý do thật
+-- để chạy tay ở đây: dọn bản của một tài khoản dựng thử, hoặc chủ muốn xoá hẳn sổ khỏi
+-- Supabase. Bỏ dấu `--` khi thật sự cần.
+
+-- xem trước, và **nhìn cột email**: xoá của đúng tài khoản mình định xoá
+-- select u.email, sl.ngay, sl.sua_luc from sao_luu sl join auth.users u on u.id = sl.user_id
+--  order by u.email, sl.ngay desc;
+
+-- chỉ dọn bản cũ hơn 30 ngày (app vẫn tự làm việc này — đây là để dọn sau khi sửa tay)
+-- delete from sao_luu where ngay < current_date - 30;
+
+-- xoá mọi bản của một tài khoản — thay email vào
+-- delete from sao_luu
+--  where user_id in (select id from auth.users where email = 'chu@cuahang.vn');
+
+-- ===========================================================================
 -- KIỂM LẠI SAU KHI XOÁ
 -- ===========================================================================
 --
--- Ba bảng, ba policy và bốn hàm vẫn còn nguyên sau mọi mức trên — `delete` chỉ xoá dòng, không
--- xoá cấu trúc. Câu này để chắc chắn RLS vẫn bật: xoá dữ liệu xong mà lỡ tay tắt RLS thì bảng
--- rỗng ấy sẽ công khai với cả internet ngay khi có dòng đầu tiên.
+-- Bốn bảng, các policy và bốn hàm vẫn còn nguyên sau mọi mức trên — `delete` chỉ xoá dòng,
+-- không xoá cấu trúc. Câu này để chắc chắn RLS vẫn bật: xoá dữ liệu xong mà lỡ tay tắt RLS thì
+-- bảng rỗng ấy sẽ công khai với cả internet ngay khi có dòng đầu tiên.
 
 select relname as bang, relrowsecurity as rls_bat
   from pg_class
- where relname in ('thanh_vien', 'so_cong', 'ma_moi')
+ where relname in ('thanh_vien', 'so_cong', 'ma_moi', 'sao_luu')
  order by relname;
 
--- Cả ba phải là `true`. Nếu có `false` thì chạy lại thiet-lap.sql.
+-- Cả bốn phải là `true`. Nếu có `false` thì chạy lại thiet-lap.sql. Riêng `sao_luu` mà `false`
+-- thì nghĩa là sổ có tiền của chủ đang công khai với cả internet.
 
 -- ===========================================================================
 -- DỌN TRONG MÁY (không phải SQL)

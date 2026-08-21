@@ -1,7 +1,8 @@
 /**
  * Điều phối hộp thư: gửi sổ của máy này đi, nhận sổ bên kia về, giữ bản chụp trong máy.
  *
- * Chạy ngầm sau mỗi lần đổi dữ liệu, giống sao lưu — chỉ là chờ lâu hơn một chút.
+ * Chạy ngầm sau mỗi lần đổi dữ liệu, giống sao lưu — chờ ngắn hơn (3 giây so với 20), và
+ * gửi nốt khi app xuống nền.
  *
  * Trước đây **chỉ chạy khi người dùng bấm nút đồng bộ**, với lý do tiết kiệm 3G: đối chiếu
  * là việc cuối ngày, đẩy đi sau từng ô chấm là đẩy những con số chưa ai xem. Nghe đúng mà
@@ -16,12 +17,18 @@
  * sổ nào đổi so với lần gửi trước** (`guiNeuDoi`) — chấm cho một thợ thì chỉ một sổ đi lên,
  * không phải cả nhóm.
  *
+ * Còn một khoảng hụt mà chờ ngắn không bịt được: hẹn giờ sống trong tiến trình JS, nên gạt
+ * tắt app là hẹn chết theo. Vì vậy có thêm đường **gửi nốt khi app xuống nền** — bấm Home mà
+ * còn hẹn treo thì gửi ngay. Gạt tắt thẳng thì hệ điều hành không cho ai chạy gì nữa, phần ấy
+ * đành để lượt đồng bộ lúc mở app sau lo, và nó lo được vì dấu `daGui` chỉ sống trong RAM.
+ *
  * Sổ bên kia nhận về được lưu xuống máy ngay, nên mở app ra là xem đối chiếu được kể cả
  * lúc mất mạng — chỉ là số liệu tính đến lần đồng bộ gần nhất, và màn hình nói rõ điều đó.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { HopThu, SoDaNhan } from '../nghiepvu/hopThu';
 import { DuLieuChamCong } from '../nghiepvu/kieu';
@@ -34,13 +41,23 @@ import { CaiDatVai } from '../nghiepvu/vaiMay';
 const KHOA_LAN_CUOI = 'chamcong.hopthu.lancuoi.v1';
 
 /**
- * Đổi xong chờ 45 giây yên tĩnh mới đẩy lên.
+ * Đổi xong chờ 3 giây yên tĩnh mới đẩy lên.
  *
- * Lâu hơn sao lưu (20 giây) vì đây là gọi mạng, không phải ghi xuống máy: chấm cho mười thợ
- * là mười lần bấm cách nhau vài giây, chờ dài hơn thì cả lượt ấy gói vào một lượt gửi. Đừng
- * nới thêm nữa — thợ đứng cạnh chủ hỏi "sổ tôi lên chưa" thì phút rưỡi đã là lâu.
+ * Trước là 45 giây, để gói cả một lượt chấm mười thợ vào đúng một lượt gửi. Hạ xuống vì cái
+ * giá của con số ấy rơi đúng vào lối dùng thật: chủ chấm xong là tắt app, mà hẹn giờ sống
+ * trong tiến trình JS nên tắt app là hẹn chết theo — sổ nằm im tới lần mở app sau. Thợ mở
+ * app tối ấy vẫn thấy sổ cũ, rồi đối chiếu báo lệch những buổi chẳng ai ghi sai.
+ *
+ * Cái giá của 3 giây, nói thẳng ra để đừng ai tưởng là miễn phí: mỗi lần chấm thành **một
+ * lượt gửi cộng một lượt đọc cả bảng** `so_cong`, vì `dongBo` làm cả hai chiều trong một
+ * lượt. Chấm rải rác cho mười thợ là hai mươi lần gọi mạng. Muốn bỏ phần đọc thì phải tách
+ * một đường *chỉ gửi*, mà lúc ấy `lucCuoi` không còn nói được chữ "đồng bộ" nữa — xem ghi
+ * chú ở `dongBo`.
+ *
+ * Đừng hạ nữa xuống 0: bấm bốn ô trong ba giây thành bốn lượt gọi chồng nhau, mà mạng công
+ * trường thì chập chờn, mỗi lượt hụt là một câu lỗi hiện lên giữa lúc đang chấm.
  */
-const CHO_YEN = 45_000;
+const CHO_YEN = 3_000;
 
 /**
  * Hộp thư đang dùng đã nối được chưa, và nếu chưa thì nói gì với người dùng.
@@ -212,6 +229,22 @@ export function dungDoiChieu(
    */
   const daBoQuaLanDau = useRef(false);
 
+  /**
+   * Hẹn gửi đang treo, giữ trong ref chứ không chỉ trong phạm vi của effect.
+   *
+   * Đường "xuống nền" bên dưới cần biết *có đang treo hay không* để mà gửi nốt. Đóng kín hẹn
+   * trong effect thì nó không thấy, và đường ấy hoá ra gọi `dongBo` mỗi lần app ra vào — kể
+   * cả lúc chẳng ai chấm gì.
+   */
+  const hen = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const boHen = useCallback(() => {
+    if (hen.current !== null) {
+      clearTimeout(hen.current);
+      hen.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (!ketNoi.sanSang || duLieu === null) {
       return;
@@ -221,9 +254,34 @@ export function dungDoiChieu(
       return;
     }
 
-    const hen = setTimeout(dongBo, CHO_YEN);
-    return () => clearTimeout(hen);
-  }, [duLieu, ketNoi.sanSang, dongBo]);
+    hen.current = setTimeout(() => {
+      hen.current = null;
+      dongBo();
+    }, CHO_YEN);
+    return boHen;
+  }, [duLieu, ketNoi.sanSang, dongBo, boHen]);
+
+  /**
+   * App xuống nền mà còn hẹn treo thì gửi ngay, đừng để cái hẹn chết cùng tiến trình.
+   *
+   * Chỉ gửi khi **đang treo**: app ra vào mà không ai chấm gì thì đây phải im, kẻo mỗi lần
+   * mở ra tắt vào là một lượt gọi mạng không có nội dung mới nào.
+   *
+   * Nhận cả `inactive` chứ không chỉ `background`: iOS đi qua `inactive` trước, và trên máy
+   * Android thì trạng thái ấy không nổ nên không mất gì. `dongBo` không được `await` ở đây —
+   * hệ điều hành không chờ mình, gọi đi được đến đâu thì được, phần còn lại đã có lượt mở app
+   * sau lo.
+   */
+  useEffect(() => {
+    const nghe = AppState.addEventListener('change', (trangThai) => {
+      if (trangThai === 'active' || hen.current === null) {
+        return;
+      }
+      boHen();
+      dongBo();
+    });
+    return () => nghe.remove();
+  }, [dongBo, boHen]);
 
   return {
     trangThai: { ketNoi, dangChay, lucCuoi, loi },

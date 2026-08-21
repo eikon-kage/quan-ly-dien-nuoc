@@ -11,6 +11,7 @@ import { luongTaiNgay, tatCaTho } from '../nghiepvu/thaoTac';
 import { CaiDatVai } from '../nghiepvu/vaiMay';
 import { DieuKhienDoiChieu } from './dungDoiChieu';
 import { DieuKhienSaoLuu } from './dungSaoLuu';
+import { DieuKhienSaoLuuTaiKhoan } from './dungSaoLuuTaiKhoan';
 import { DieuKhienNhom } from './dungSupabase';
 import { HopSaoLuu } from './HopSaoLuu';
 import { HopSuaTho } from './HopSuaTho';
@@ -25,6 +26,8 @@ interface Props {
   duLieu: DuLieuChamCong;
   capNhat: (moi: DuLieuChamCong) => void;
   saoLuu: DieuKhienSaoLuu;
+  /** Bản sao lưu trên tài khoản của chủ — màn hình Sao lưu hiện cả trạng thái và danh sách. */
+  saoLuuTaiKhoan: DieuKhienSaoLuuTaiKhoan;
   caiDat: CaiDatVai;
   datCaiDat: (moi: CaiDatVai) => void;
   dieuKhien: DieuKhienDoiChieu;
@@ -34,7 +37,16 @@ interface Props {
 /** Trạng thái của nút xuất Excel. */
 type TrangThaiXuat = 'ranh' | 'dangLam' | 'loi';
 
-export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhien, nhom }: Props) {
+export function ManHinhTho({
+  duLieu,
+  capNhat,
+  saoLuu,
+  saoLuuTaiKhoan,
+  caiDat,
+  datCaiDat,
+  dieuKhien,
+  nhom,
+}: Props) {
   /** null = đang đóng, 'them' = thêm mới, còn lại là thợ đang sửa. */
   const [dangMo, datDangMo] = useState<Tho | 'them' | null>(null);
   const [dangXuat, datDangXuat] = useState<TrangThaiXuat>('ranh');
@@ -315,6 +327,7 @@ export function ManHinhTho({ duLieu, capNhat, saoLuu, caiDat, datCaiDat, dieuKhi
         <HopSaoLuu
           duLieu={duLieu}
           saoLuu={saoLuu}
+          taiKhoan={saoLuuTaiKhoan}
           capNhat={capNhat}
           onDong={() => datMoSaoLuu(false)}
         />

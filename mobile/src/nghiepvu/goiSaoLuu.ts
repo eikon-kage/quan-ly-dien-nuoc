@@ -77,19 +77,59 @@ export function ngayTuTenFile(ten: string): string | null {
  * nằm đó thì cũng không phải việc của mình đi dọn.
  */
 export function banCanXoa(tens: string[], soGiu: number): string[] {
+  const ngays = tens.map(ngayTuTenFile).filter((ngay): ngay is string => ngay !== null);
+  const canXoa = new Set(ngayCanXoa(ngays, soGiu));
+
   return (
     tens
-      .filter((ten) => ngayTuTenFile(ten) !== null)
-      // Tên mang ngày kiểu yyyy-MM-dd nên so chuỗi là đúng thứ tự thời gian, mới nhất trước.
+      .filter((ten) => {
+        const ngay = ngayTuTenFile(ten);
+        return ngay !== null && canXoa.has(ngay);
+      })
+      // Trả về mới nhất trước, không theo thứ tự hệ điều hành liệt kê thư mục: bên gọi xoá
+      // theo danh sách này, mà một danh sách có thứ tự thì đọc log ra còn hiểu được.
       .sort((a, b) => b.localeCompare(a))
-      .slice(soGiu)
   );
 }
 
+/**
+ * Ngày của các bản cần xoá để chỉ còn `soGiu` bản mới nhất — cùng một phép chọn như
+ * `banCanXoa`, nhưng tính trên **ngày** chứ trên tên file.
+ *
+ * Bản trên tài khoản không có tên file: mỗi ngày một hàng trong bảng `sao_luu`. Hai đường sao
+ * lưu dùng chung đúng một phép chọn ở đây, không phải hai đoạn `sort` rồi `slice` viết hai
+ * lần — chọn sai là xoá mất bản sao lưu, mà lỗi ấy chỉ hiện ra đúng lúc người dùng cần quay
+ * về.
+ */
+export function ngayCanXoa(ngays: string[], soGiu: number): string[] {
+  const giu = new Set(ngayCanGiu(ngays, soGiu));
+  return [...new Set(ngays)].filter((ngay) => !giu.has(ngay)).sort((a, b) => b.localeCompare(a));
+}
+
+/** Những ngày được giữ lại: `soGiu` ngày mới nhất, không trùng nhau. */
+function ngayCanGiu(ngays: string[], soGiu: number): string[] {
+  return (
+    [...new Set(ngays)]
+      // Ngày kiểu yyyy-MM-dd nên so chuỗi là đúng thứ tự thời gian, mới nhất trước.
+      .sort((a, b) => b.localeCompare(a))
+      .slice(0, soGiu)
+  );
+}
+
+/**
+ * Gói dữ liệu lại, **chưa đổi thành chuỗi**.
+ *
+ * Tách ra vì bản sao lưu lên tài khoản đi vào một cột `jsonb`, không đi vào file: nó cần đúng
+ * cái gói này dưới dạng object. Đóng gói ở hai chỗ theo hai kiểu thì sớm muộn hai bên mang
+ * hai cấu trúc khác nhau, mà bên đọc lại chỉ có một hàm kiểm.
+ */
+export function goiTu(duLieu: DuLieuChamCong, taoLuc: string): GoiSaoLuu {
+  return { app: NHAN_APP, phienBan: PHIEN_BAN, taoLuc, duLieu };
+}
+
 export function dongGoi(duLieu: DuLieuChamCong, taoLuc: string): string {
-  const goi: GoiSaoLuu = { app: NHAN_APP, phienBan: PHIEN_BAN, taoLuc, duLieu };
   // Xuống dòng cho dễ đọc khi mở file ra bằng mắt; file vài trăm KB là cùng.
-  return JSON.stringify(goi, null, 2);
+  return JSON.stringify(goiTu(duLieu, taoLuc), null, 2);
 }
 
 /**
@@ -106,6 +146,18 @@ export function moGoi(noiDung: string): GoiSaoLuu {
     throw new GoiHong('File này không phải JSON đọc được.');
   }
 
+  return docGoi(daDoc);
+}
+
+/**
+ * Mở gói đã là object sẵn — bản lấy từ cột `jsonb` trên tài khoản.
+ *
+ * **Dữ liệu từ database cũng là dữ liệu từ ngoài vào**, không được tin sẵn chỉ vì nó đến từ
+ * Postgres: cùng một tài khoản có thể vừa chạy bản app cũ vừa chạy bản mới, và hàng ấy sửa
+ * bằng tay trong SQL Editor được. Nên nó đi qua đúng bộ kiểm của file sao lưu, kể cả chỗ từ
+ * chối gói của bản app mới hơn.
+ */
+export function docGoi(daDoc: unknown): GoiSaoLuu {
   if (typeof daDoc !== 'object' || daDoc === null || Array.isArray(daDoc)) {
     throw new GoiHong('File này không phải bản sao lưu chấm công.');
   }

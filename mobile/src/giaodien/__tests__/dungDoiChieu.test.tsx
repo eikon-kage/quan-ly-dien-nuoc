@@ -8,6 +8,7 @@
  */
 
 import { act, renderHook } from '@testing-library/react-native';
+import { AppState, AppStateStatus } from 'react-native';
 
 import { HopThu, SoDaNhan } from '../../nghiepvu/hopThu';
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
@@ -45,6 +46,32 @@ function hopThuGia(): HopThu & { daGui: SoCong[] } {
   };
 }
 
+/**
+ * Chiếm chỗ `AppState.addEventListener` để bài kiểm thử tự bấm Home được.
+ *
+ * Không có máy thật thì không có ai phát trạng thái ấy, mà đây đúng là chỗ dễ hỏng lặng lẽ
+ * nhất trong cả hook: gửi nốt khi xuống nền mà hỏng thì trên máy vẫn *trông như* chạy được,
+ * chỉ là sổ lên muộn một lần mở app.
+ */
+function bamHome(): { xuongNen: () => void; quayLai: () => void } {
+  let nghe: ((t: AppStateStatus) => void) | null = null;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation(((
+    _loai: string,
+    ham: (t: AppStateStatus) => void,
+  ) => {
+    nghe = ham;
+    return { remove: jest.fn() };
+  }) as unknown as typeof AppState.addEventListener);
+
+  const phat = (trangThai: AppStateStatus) => {
+    if (nghe === null) {
+      throw new Error('Hook chưa nghe AppState.');
+    }
+    nghe(trangThai);
+  };
+  return { xuongNen: () => phat('background'), quayLai: () => phat('active') };
+}
+
 function soCuaChu(): { duLieu: DuLieuChamCong; thoId: string } {
   const { duLieu, tho } = themTho(duLieuRong(), 'Anh Tuấn', 300_000, '2026-08-01');
   return { duLieu, thoId: tho.id };
@@ -68,6 +95,7 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers();
+  jest.restoreAllMocks();
 });
 
 describe('tự đẩy sổ sau khi chủ nhập', () => {
@@ -90,9 +118,9 @@ describe('tự đẩy sổ sau khi chủ nhập', () => {
       rerender({ d: daCham });
     });
 
-    // Chưa hết giờ chờ thì chưa gửi: cả một lượt chấm phải gói vào một lượt gửi.
+    // Chưa hết giờ chờ thì chưa gửi: mấy ô bấm liền nhau phải gói vào một lượt gửi.
     await act(async () => {
-      jest.advanceTimersByTime(5_000);
+      jest.advanceTimersByTime(1_000);
     });
     expect(hopThu.daGui.length).toBe(sauKhiMo);
 
@@ -131,6 +159,59 @@ describe('tự đẩy sổ sau khi chủ nhập', () => {
     // Chỉ đúng một sổ đi lên, và là sổ của người vừa được chấm.
     expect(hopThu.daGui.length).toBe(4);
     expect(hopThu.daGui[3].thoId).toBe(thos[1]);
+  });
+
+  test('chấm xong bấm Home ngay là sổ đi liền, không chờ hết 3 giây', async () => {
+    const may = bamHome();
+    const hopThu = hopThuGia();
+    const { duLieu, thoId } = soCuaChu();
+
+    const { rerender } = renderHook(
+      ({ d }: { d: DuLieuChamCong }) => dungDoiChieu(d, MAY_CHU, hopThu, DA_NOI),
+      { initialProps: { d: duLieu } },
+    );
+
+    await choDayLen();
+    const sauKhiMo = hopThu.daGui.length;
+
+    const daCham = cham(duLieu, thoId, Ngay.homNay(), 'Sang', 1);
+    await act(async () => {
+      rerender({ d: daCham });
+    });
+
+    // Bấm Home trong lúc hẹn còn treo. Không chạy đồng hồ: nếu bài này đậu nhờ hẹn nổ thì nó
+    // chẳng kiểm được gì cả.
+    await act(async () => {
+      may.xuongNen();
+    });
+
+    const daGui = hopThu.daGui[hopThu.daGui.length - 1];
+    expect(hopThu.daGui.length).toBeGreaterThan(sauKhiMo);
+    expect(daGui.dongs).toEqual([{ ngay: Ngay.homNay(), buoi: 'Sang', soCong: 1 }]);
+
+    // Và cái hẹn đã bị bỏ, không gửi thêm một lượt nữa khi hết giờ.
+    const sauKhiXuongNen = hopThu.daGui.length;
+    await choDayLen();
+    expect(hopThu.daGui.length).toBe(sauKhiXuongNen);
+  });
+
+  test('app ra vào mà không ai chấm gì thì xuống nền không gọi mạng', async () => {
+    const may = bamHome();
+    const hopThu = hopThuGia();
+    const { duLieu } = soCuaChu();
+
+    renderHook(() => dungDoiChieu(duLieu, MAY_CHU, hopThu, DA_NOI));
+
+    await choDayLen();
+    const sauKhiMo = hopThu.daGui.length;
+
+    await act(async () => {
+      may.xuongNen();
+      may.quayLai();
+      may.xuongNen();
+    });
+
+    expect(hopThu.daGui.length).toBe(sauKhiMo);
   });
 
   test('chưa nối nhóm thì không hẹn giờ gửi gì cả', async () => {

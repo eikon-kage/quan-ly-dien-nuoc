@@ -9,6 +9,7 @@ import { DieuKhienDoiChieu } from '../dungDoiChieu';
 import { DieuKhienNhom } from '../dungSupabase';
 import { DieuKhienSaoLuu, TrangThaiSaoLuu } from '../dungSaoLuu';
 import { ManHinhTho } from '../ManHinhTho';
+import { taiKhoanGia } from './chuanBi';
 
 // Máy chạy kiểm thử không có bảng chia sẻ, bảng chọn file hay thư mục sao lưu của điện thoại.
 // Màn hình này mở được cả hộp Sao lưu nên phải thay cả ba, kể cả những cái chưa bấm tới:
@@ -89,6 +90,7 @@ function dung(duLieu: DuLieuChamCong, saoLuu: DieuKhienSaoLuu = saoLuuGia()) {
       duLieu={duLieu}
       capNhat={jest.fn()}
       saoLuu={saoLuu}
+      saoLuuTaiKhoan={taiKhoanGia()}
       caiDat={MAC_DINH}
       datCaiDat={jest.fn()}
       dieuKhien={doiChieuGia()}

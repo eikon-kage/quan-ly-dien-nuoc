@@ -7,6 +7,18 @@
  * Câu quan trọng nhất trên màn hình này là câu nhắc gửi một bản ra ngoài. Bản trong máy nằm
  * trong phần riêng của app: xoá app hay mất máy là mất theo. Không nói ra thì người dùng
  * thấy "đã sao lưu lúc 16:12" rồi tưởng mình đã an toàn trước cả chuyện mất máy.
+ *
+ * Ba đường sao lưu, và màn hình xếp đúng theo thứ tự *chống được chuyện gì*:
+ *
+ *   1. **Bản trong máy** — chạy ngầm trên mọi máy, không cần mạng. Chống hỏng dữ liệu và lỡ
+ *      tay xoá. Không chống mất máy.
+ *   2. **Bản trên tài khoản** — chỉ máy chủ đăng nhập bằng email. Chống mất máy: đổi điện
+ *      thoại, đăng nhập lại là lấy sổ về được.
+ *   3. **Gửi bản ra ngoài** — bấm tay, người dùng tự chọn cất vào đâu. Chống cả hai, và là
+ *      đường duy nhất còn dùng được khi không có tài khoản nào.
+ *
+ * Đường 2 không xoá được câu nhắc của đường 3: nó cần mạng, cần tài khoản chủ, và bản trên đó
+ * là bản của lần đẩy gần nhất chứ không phải của phút này.
  */
 
 import { Feather } from '@expo/vector-icons';
@@ -25,23 +37,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { chiaSeSaoLuu } from '../nghiepvu/chiaSeSaoLuu';
 import { chonFileSaoLuu } from '../nghiepvu/chonFileSaoLuu';
-import { moGoi, tomTat } from '../nghiepvu/goiSaoLuu';
+import { moGoi } from '../nghiepvu/goiSaoLuu';
 import { DuLieuChamCong } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { BanSaoLuu, danhSachBan, docBan } from '../nghiepvu/saoLuuMay';
+import { BanTaiKhoan } from '../nghiepvu/saoLuuTaiKhoan';
 import { DieuKhienSaoLuu } from './dungSaoLuu';
+import { DieuKhienSaoLuuTaiKhoan } from './dungSaoLuuTaiKhoan';
+import { hoiGhiDe } from './hoiGhiDe';
 import { NutChip, theTrang } from './ThanhPhan';
 import { Bong, Co, Mau, PhongChu, Tuoi } from './thietKe';
 
 interface Props {
   duLieu: DuLieuChamCong;
   saoLuu: DieuKhienSaoLuu;
+  /** Bản trên tài khoản của chủ. Máy thợ và máy chưa đăng nhập vẫn truyền vào, chỉ là `hoTro` tắt. */
+  taiKhoan: DieuKhienSaoLuuTaiKhoan;
   capNhat: (moi: DuLieuChamCong) => void;
   onDong: () => void;
 }
 
-export function HopSaoLuu({ duLieu, saoLuu, capNhat, onDong }: Props) {
+export function HopSaoLuu({ duLieu, saoLuu, taiKhoan, capNhat, onDong }: Props) {
   const { trangThai, saoLuuNgay } = saoLuu;
+  const tk = taiKhoan.trangThai;
 
   const [cacBan, datCacBan] = useState<BanSaoLuu[] | null>(null);
   const [dangTaiDanhSach, datDangTaiDanhSach] = useState(false);
@@ -93,34 +111,45 @@ export function HopSaoLuu({ duLieu, saoLuu, capNhat, onDong }: Props) {
   }
 
   /**
-   * Khôi phục là thao tác *ghi đè*, không lùi lại được. Nên đọc bản ấy ra, đếm xem trong đó
-   * có bao nhiêu thợ bao nhiêu buổi công, rồi mới hỏi — người dùng nhìn con số mới biết mình
-   * sắp nhận đúng bản hay nhầm bản.
+   * Khôi phục là thao tác *ghi đè*, không lùi lại được — nên đi qua [hoiGhiDe](./hoiGhiDe.ts),
+   * chỗ đếm sẵn trong bản có bao nhiêu thợ bao nhiêu buổi công rồi mới hỏi. Cả ba đường khôi
+   * phục trên màn hình này (bản trong máy, file tự chọn, bản trên tài khoản) dùng đúng một hàm
+   * ấy, không ai được viết riêng một câu hỏi khác.
    */
   function hoiTruoc(nhan: string, duLieuMoi: DuLieuChamCong) {
-    const dem = tomTat(duLieuMoi);
-
-    Alert.alert(
-      nhan,
-      `Bản này có ${dem.soTho} thợ, ${dem.soBuoiCong} buổi công, ${dem.soUngTien} lần ứng tiền, ${dem.soKy} kỳ đã chốt.\n\nToàn bộ dữ liệu đang có trên máy sẽ bị thay bằng bản này.`,
-      [
-        { text: 'Thôi', style: 'cancel' },
-        {
-          text: 'Khôi phục',
-          style: 'destructive',
-          onPress: () => {
-            capNhat(duLieuMoi);
-            onDong();
-          },
-        },
-      ],
-    );
+    hoiGhiDe(nhan, duLieuMoi, 'Khôi phục', (moi) => {
+      capNhat(moi);
+      onDong();
+    });
   }
 
   async function hoiKhoiPhuc(ban: BanSaoLuu) {
     datDangKhoiPhuc(ban.ten);
     try {
       hoiTruoc(`Khôi phục bản ${Ngay.ngayGon(ban.ngay)}?`, await docBan(ban.ten));
+    } catch (loi) {
+      Alert.alert('Chưa lấy được bản này', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
+        { text: 'Đóng' },
+      ]);
+    } finally {
+      datDangKhoiPhuc(null);
+    }
+  }
+
+  /**
+   * Lấy một bản trên tài khoản về. Cùng hộp xác nhận kèm số liệu như hai đường kia — bản này
+   * đến từ mạng nên càng phải cho nhìn con số trước khi ghi đè.
+   */
+  async function hoiLayTuTaiKhoan(ban: BanTaiKhoan) {
+    datDangKhoiPhuc(`tk:${ban.ngay}`);
+    try {
+      hoiTruoc(
+        `Lấy sổ ngày ${Ngay.ngayGon(ban.ngay)} về máy này?`,
+        await taiKhoan.docBan(ban.ngay),
+      );
+      // Người dùng đã tự chọn bản để lấy về: câu hỏi "lấy sổ trên tài khoản về?" coi như đã
+      // trả lời, khỏi chắn thêm một màn hình nữa ở lần mở app sau.
+      taiKhoan.daTraLoi();
     } catch (loi) {
       Alert.alert('Chưa lấy được bản này', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
         { text: 'Đóng' },
@@ -148,6 +177,27 @@ export function HopSaoLuu({ duLieu, saoLuu, capNhat, onDong }: Props) {
       datDangKhoiPhuc(null);
     }
   }
+
+  /**
+   * Câu trạng thái của bản trên tài khoản. Chưa đẩy lần nào trong lượt mở app này thì nói theo
+   * **bản mới nhất đang có trên đó** — người dùng cần biết "tài khoản đang giữ tới hôm nào",
+   * chứ không phải "máy này đã bấm nút chưa".
+   */
+  const chuTaiKhoan = !tk.hoTro
+    ? 'Cần máy chủ đăng nhập bằng email. Mở mục Nhóm chấm công để đăng nhập.'
+    : tk.loi !== null
+      ? tk.loi
+      : tk.dangChay
+        ? 'Đang đẩy sổ lên…'
+        : tk.lucCuoi !== null
+          ? `Đã đẩy lên lúc ${Ngay.gioPhut(tk.lucCuoi)}.`
+          : tk.dangDoc
+            ? 'Đang xem trên tài khoản có bản nào…'
+            : tk.cacBan === null
+              ? 'Chưa xem được các bản trên tài khoản.'
+              : tk.cacBan.length === 0
+                ? 'Trên tài khoản chưa có bản nào.'
+                : `Tài khoản đang giữ bản ${Ngay.ngayGon(tk.cacBan[0].ngay)}.`;
 
   const chuTrangThai =
     trangThai.loi !== null
@@ -251,6 +301,86 @@ export function HopSaoLuu({ duLieu, saoLuu, capNhat, onDong }: Props) {
                     <Text style={kieu.chuNutPhu}>Khôi phục từ file</Text>
                   </Pressable>
                 </View>
+
+                {/*
+                  Thẻ bản trên tài khoản. Hiện **cả khi chưa dùng được** — đó là lúc câu chữ ở
+                  đây đáng giá nhất: người vừa mất máy mở màn hình này ra tìm sổ cũ, mà không
+                  thấy dòng nào nói tới tài khoản thì họ không biết là có đường ấy.
+                */}
+                <View style={kieu.the}>
+                  <View style={kieu.hangThe}>
+                    <Feather
+                      name={!tk.hoTro ? 'cloud-off' : tk.loi !== null ? 'alert-circle' : 'cloud'}
+                      size={18}
+                      color={!tk.hoTro ? Mau.xam : tk.loi !== null ? Mau.do : Mau.xanhLa}
+                    />
+                    <View style={kieu.giuaThe}>
+                      <Text style={kieu.chuThe}>Bản trên tài khoản</Text>
+                      <Text style={[kieu.chuPhu, tk.loi !== null && kieu.chuLoi]}>
+                        {chuTaiKhoan}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {tk.hoTro && (
+                    <Pressable
+                      style={[kieu.nutPhu, tk.dangChay && kieu.nutMo]}
+                      onPress={() => taiKhoan.dayNgay()}
+                      disabled={tk.dangChay}
+                      accessibilityRole="button"
+                    >
+                      {tk.dangChay ? (
+                        <ActivityIndicator color={Mau.chinh} />
+                      ) : (
+                        <Feather name="upload-cloud" size={16} color={Mau.chinh} />
+                      )}
+                      <Text style={kieu.chuNutPhu}>
+                        {tk.dangChay ? 'Đang đẩy…' : 'Sao lưu lên tài khoản ngay'}
+                      </Text>
+                    </Pressable>
+                  )}
+
+                  {/*
+                    Nói ra cả hai nửa: đường này chống được mất máy — điều bản trong máy không
+                    làm được — nhưng nó cũng là chỗ duy nhất sổ có tiền nằm ngoài điện thoại,
+                    nên phải nói ai đọc được.
+                  */}
+                  <Text style={kieu.chuNhac}>
+                    Bản này theo tài khoản của chủ: đổi điện thoại, đăng nhập lại là lấy sổ về
+                    được. Chỉ tài khoản này đọc được, thợ trong nhóm không thấy gì.
+                  </Text>
+                </View>
+
+                {tk.hoTro && tk.cacBan !== null && tk.cacBan.length > 0 && (
+                  <>
+                    <View style={kieu.hangTieuDe}>
+                      <Text style={kieu.chuNhomTieuDe}>Các bản trên tài khoản</Text>
+                    </View>
+                    {tk.cacBan.map((ban) => (
+                      <View key={ban.ngay} style={kieu.dongBanTk}>
+                        <View style={kieu.giuaThe}>
+                          <Text style={kieu.chuNgay}>{Ngay.thuVaNgay(ban.ngay)}</Text>
+                          {ban.suaLuc !== '' && (
+                            <Text style={kieu.chuPhu}>Ghi lúc {Ngay.gioPhut(ban.suaLuc)}</Text>
+                          )}
+                        </View>
+
+                        {dangKhoiPhuc === `tk:${ban.ngay}` ? (
+                          <View style={kieu.dangTai}>
+                            <ActivityIndicator size="small" color={Mau.chinh} />
+                            <Text style={kieu.chuDangTai}>Đang lấy</Text>
+                          </View>
+                        ) : (
+                          <NutChip
+                            nhan="Lấy về"
+                            icon="download"
+                            onPress={() => hoiLayTuTaiKhoan(ban)}
+                          />
+                        )}
+                      </View>
+                    ))}
+                  </>
+                )}
 
                 <View style={kieu.hangTieuDe}>
                   <Text style={kieu.chuNhomTieuDe}>Các bản trong máy</Text>
@@ -379,6 +509,13 @@ const kieu = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginTop: 12,
+  },
+  /* Danh sách bản trên tài khoản nằm trong đầu FlatList, nơi `gap` của khối đã lo khoảng cách. */
+  dongBanTk: {
+    ...theTrang,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   chuNgay: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
   // Đang đọc thì thay nút bằng vòng xoay kèm đúng chữ ấy, khỏi bấm thêm lần nữa.

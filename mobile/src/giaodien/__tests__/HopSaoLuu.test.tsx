@@ -1,11 +1,14 @@
 /**
  * Màn hình Sao lưu.
  *
- * Hai điều phải giữ:
+ * Ba điều phải giữ:
  *   1. **Khôi phục luôn phải hỏi trước, kèm số liệu trong bản.** Đây là thao tác ghi đè
  *      không lùi lại được; nuốt lặng một file là mất sạch sổ sách.
  *   2. **Câu nhắc gửi bản ra ngoài luôn có mặt.** Bản trong máy mất theo app; không nói ra
  *      thì người dùng thấy "đã sao lưu lúc 16:12" rồi tưởng mình an toàn cả khi mất máy.
+ *   3. **Thẻ bản trên tài khoản hiện cả khi chưa dùng được,** kèm đường đi tới chỗ bật nó.
+ *      Người vừa mất máy mở đúng màn hình này ra tìm sổ cũ: không thấy dòng nào nói tới tài
+ *      khoản thì họ không biết là có đường ấy.
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
@@ -19,6 +22,8 @@ import * as Ngay from '../../nghiepvu/ngayViet';
 import { danhSachBan, docBan } from '../../nghiepvu/saoLuuMay';
 import { themTho } from '../../nghiepvu/thaoTac';
 import { DieuKhienSaoLuu, TrangThaiSaoLuu } from '../dungSaoLuu';
+import { DieuKhienSaoLuuTaiKhoan } from '../dungSaoLuuTaiKhoan';
+import { taiKhoanGia } from './chuanBi';
 import { HopSaoLuu } from '../HopSaoLuu';
 
 // Thư mục trong máy, bảng chia sẻ và bảng chọn file đều là của điện thoại.
@@ -47,10 +52,22 @@ function saoLuuGia(sua: Partial<TrangThaiSaoLuu> = {}): DieuKhienSaoLuu {
 
 const KHO = themTho(duLieuRong(), 'Anh Tuấn', 300_000, '2026-08-01').duLieu;
 
-function dung(saoLuu: DieuKhienSaoLuu, duLieu: DuLieuChamCong = KHO) {
+function dung(
+  saoLuu: DieuKhienSaoLuu,
+  duLieu: DuLieuChamCong = KHO,
+  taiKhoan: DieuKhienSaoLuuTaiKhoan = taiKhoanGia(),
+) {
   const capNhat = jest.fn();
   const onDong = jest.fn();
-  render(<HopSaoLuu duLieu={duLieu} saoLuu={saoLuu} capNhat={capNhat} onDong={onDong} />);
+  render(
+    <HopSaoLuu
+      duLieu={duLieu}
+      saoLuu={saoLuu}
+      taiKhoan={taiKhoan}
+      capNhat={capNhat}
+      onDong={onDong}
+    />,
+  );
   return { capNhat, onDong };
 }
 
@@ -267,5 +284,72 @@ describe('máy không sao lưu được', () => {
 
     expect(screen.getByText('Máy này chưa sao lưu được')).toBeTruthy();
     expect(screen.queryByText('Sao lưu ngay')).toBeNull();
+  });
+});
+
+describe('bản trên tài khoản', () => {
+  const BAN_TK = { ngay: '2026-08-19', suaLuc: new Date(2026, 7, 19, 9, 30).toISOString() };
+
+  test('máy thợ hay máy chưa đăng nhập: vẫn hiện thẻ, kèm đường đi tới chỗ bật', async () => {
+    dung(saoLuuGia(), KHO, taiKhoanGia());
+
+    expect(await screen.findByText('Bản trên tài khoản')).toBeTruthy();
+    expect(screen.getByText(/đăng nhập bằng email/i)).toBeTruthy();
+    // Chưa dùng được thì đừng bày nút đẩy ra cho bấm không ăn.
+    expect(screen.queryByText('Sao lưu lên tài khoản ngay')).toBeNull();
+  });
+
+  test('nói tài khoản đang giữ tới bản nào, và ai đọc được bản ấy', async () => {
+    dung(saoLuuGia(), KHO, taiKhoanGia({ hoTro: true, cacBan: [BAN_TK] }));
+
+    expect(await screen.findByText('Tài khoản đang giữ bản 19/08/2026.')).toBeTruthy();
+    expect(screen.getByText(/thợ trong nhóm không thấy gì/i)).toBeTruthy();
+  });
+
+  test('bấm đẩy ngay thì gọi đúng hàm đẩy', async () => {
+    const taiKhoan = taiKhoanGia({ hoTro: true, cacBan: [] });
+    dung(saoLuuGia(), KHO, taiKhoan);
+
+    fireEvent.press(await screen.findByText('Sao lưu lên tài khoản ngay'));
+
+    expect(taiKhoan.dayNgay).toHaveBeenCalled();
+  });
+
+  test('lấy một bản trên tài khoản về vẫn đi qua hộp hỏi kèm số liệu', async () => {
+    const taiKhoan = taiKhoanGia({ hoTro: true, cacBan: [BAN_TK] });
+    taiKhoan.docBan = jest.fn(() => Promise.resolve(KHO));
+    const { capNhat, onDong } = dung(saoLuuGia(), duLieuRong(), taiKhoan);
+
+    fireEvent.press(await screen.findByText('Lấy về'));
+
+    await waitFor(() => expect(hoi).toHaveBeenCalled());
+    expect(hoi.mock.calls[0][1]).toContain('1 thợ');
+    expect(capNhat).not.toHaveBeenCalled();
+
+    bamTrongHoiDap('Khôi phục');
+    expect(capNhat).toHaveBeenCalledWith(KHO);
+    expect(onDong).toHaveBeenCalled();
+  });
+
+  test('lấy hụt thì báo bằng câu của kho, không ghi gì', async () => {
+    const taiKhoan = taiKhoanGia({ hoTro: true, cacBan: [BAN_TK] });
+    taiKhoan.docBan = jest.fn(() => Promise.reject(new Error('Không nối được mạng.')));
+    const { capNhat } = dung(saoLuuGia(), duLieuRong(), taiKhoan);
+
+    fireEvent.press(await screen.findByText('Lấy về'));
+
+    await waitFor(() => expect(hoi).toHaveBeenCalled());
+    expect(hoi.mock.calls[0][0]).toBe('Chưa lấy được bản này');
+    expect(capNhat).not.toHaveBeenCalled();
+  });
+
+  test('lỗi đẩy hiện ngay trên thẻ, không nuốt lặng', async () => {
+    dung(
+      saoLuuGia(),
+      KHO,
+      taiKhoanGia({ hoTro: true, cacBan: [], loi: 'Không nối được mạng. Kiểm tra 3G hay wifi rồi thử lại.' }),
+    );
+
+    expect(await screen.findByText(/Không nối được mạng/)).toBeTruthy();
   });
 });
