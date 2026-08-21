@@ -6,13 +6,16 @@
  * đọc được; mà cầm refresh token của máy chủ thì đọc được sổ công của cả nhóm cho tới khi bị
  * thu hồi.
  *
+ * Chỗ chạm vào máy nằm ở [khoAnToan](./khoAnToan.ts) — tách ra vì SecureStore không có bản
+ * web, và bản web ấy đánh đổi bảo mật thế nào thì ghi ngay trong file đó.
+ *
  * Rắc rối duy nhất: **SecureStore chỉ nhận giá trị dưới 2048 byte**, mà phiên Supabase gồm
  * JWT, refresh token và cả thông tin người dùng nên thường vượt. Vì vậy phải cắt thành khúc.
  * Không cắt thì SecureStore lặng lẽ ghi hụt, app chạy êm cho tới khi mở lại và thấy mất phiên
  * đăng nhập mà không hiểu vì sao.
  */
 
-import * as SecureStore from 'expo-secure-store';
+import { khoMay } from './khoAnToan';
 
 /**
  * Cắt 1600 ký tự một khúc. Giới hạn là 2048 **byte**, mà chuỗi ở đây là JWT nên gần như
@@ -27,14 +30,6 @@ export interface KhoAnToan {
   xoa(khoa: string): Promise<void>;
 }
 
-export function khoSecureStore(): KhoAnToan {
-  return {
-    doc: (khoa) => SecureStore.getItemAsync(khoa),
-    ghi: (khoa, gia) => SecureStore.setItemAsync(khoa, gia),
-    xoa: (khoa) => SecureStore.deleteItemAsync(khoa),
-  };
-}
-
 /** Đúng ba hàm mà `createClient` cần cho `auth.storage`. */
 export interface KhoPhien {
   getItem(khoa: string): Promise<string | null>;
@@ -46,7 +41,7 @@ export interface KhoPhien {
 const khoaSoKhuc = (khoa: string) => `${khoa}.so`;
 const khoaKhuc = (khoa: string, i: number) => `${khoa}.${i}`;
 
-export function khoPhien(kho: KhoAnToan = khoSecureStore()): KhoPhien {
+export function khoPhien(kho: KhoAnToan = khoMay()): KhoPhien {
   async function xoaTuKhuc(khoa: string, tu: number): Promise<void> {
     // Xoá lần lượt cho tới khi gặp khúc trống. Phiên mới ngắn hơn phiên cũ thì phải dọn
     // mấy khúc dư — để lại thì lần đọc sau ghép cả rác vào giữa chuỗi JSON.

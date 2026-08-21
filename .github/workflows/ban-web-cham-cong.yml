@@ -1,0 +1,109 @@
+name: Bản web Chấm công
+
+# Dựng bản web của app Chấm công rồi đẩy lên GitHub Pages, để cài được lên iPhone mà không
+# cần tài khoản Apple Developer. Xem docs/chamcong-ban-web.md.
+#
+# Chỉ chạy khi có gì đổi trong mobile/ — sửa phần mềm máy tính thì không phải dựng lại bản web.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/ban-web-cham-cong.yml'
+
+# Ba quyền này là bộ tối thiểu để `deploy-pages` đẩy được: đọc mã nguồn, ghi lên Pages, và
+# xin thẻ định danh để Pages tin rằng bản này đúng là từ workflow của repo.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Hai lần đẩy chồng nhau thì Pages nhận bản nào là chuyện của may rủi. Chỉ cho một lượt chạy,
+# và lượt mới thì cắt lượt cũ đang chạy — bản mới nhất luôn là bản thắng.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  dung:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Cài thư viện
+        run: npm ci
+
+      # Soát kiểu và chạy kiểm thử **trước khi** dựng: đẩy một bản hỏng lên Pages thì máy nào
+      # đã cài cũng nhận bản hỏng ấy ngay lần mở sau, mà bản web thì không có cách nào lùi lại
+      # ngoài đẩy tiếp một bản khác.
+      - name: Soát kiểu
+        run: npx tsc --noEmit
+
+      - name: Chạy kiểm thử
+        run: npm test
+
+      # Thiếu khoá Supabase thì app vẫn dựng và vẫn chấm công được, chỉ là **tắt hẳn** phần
+      # nhóm, đăng nhập và sao lưu lên tài khoản (`daCauHinh()` trả false). Trên bản web thì
+      # sao lưu tài khoản lại là lưới an toàn duy nhất còn lại — bản web không có sao lưu vào
+      # máy. Nên nhắc to ở đây, chứ đừng để đẩy lên rồi mới phát hiện.
+      - name: Soát khoá Supabase
+        run: |
+          KHOA="${EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-$EXPO_PUBLIC_SUPABASE_ANON_KEY}"
+          if [ -z "$EXPO_PUBLIC_SUPABASE_URL" ] || [ -z "$KHOA" ]; then
+            echo "::warning::Chưa có khoá Supabase — bản web này sẽ không có nhóm, đăng nhập và sao lưu lên tài khoản. Điền EXPO_PUBLIC_SUPABASE_URL và EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ở Settings → Secrets and variables → Actions."
+          else
+            echo "Đã có khoá Supabase."
+          fi
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL || secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY || secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+
+      # Gốc lấy từ tên repo chứ không viết cứng: Pages phát bản này ở
+      # `<tài-khoản>.github.io/<tên-repo>/`, đổi tên repo mà quên sửa chỗ này là trắng bảng.
+      #
+      # Khoá Supabase nhận từ **cả** `vars` lẫn `secrets`, và nhận **cả hai tên khoá**
+      # (`PUBLISHABLE_KEY` của bảng điều khiển Supabase bản mới, `ANON_KEY` của bản cũ) để điền
+      # kiểu nào cũng chạy. Ở đây chỗ nào chưa điền thì thành chuỗi rỗng chứ không phải bỏ
+      # trống, nên `cauHinhSupabase.ts` phải chọn bằng `||` — xem lời tựa file ấy.
+      #
+      # Khoá này vốn không phải bí mật — nó nằm trong mọi bản app đã phát ra — nên để ở `vars`
+      # là đúng bản chất hơn; chặn người khác đọc sổ là việc của RLS.
+      - name: Dựng bản web
+        run: npm run build:web
+        env:
+          GOC_WEB: /${{ github.event.repository.name }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL || secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY || secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Đóng gói cho Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: mobile/dist
+
+  dua-len:
+    needs: dung
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.dua.outputs.page_url }}
+
+    steps:
+      - name: Đẩy lên GitHub Pages
+        id: dua
+        uses: actions/deploy-pages@v4

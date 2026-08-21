@@ -22,5 +22,5 @@ export async function chonFileSaoLuu(): Promise<string | null> {
     throw new KhongPhaiFileSaoLuu('Bản sao lưu là file đuôi .json. Anh chọn lại nhé.');
   }
 
-  return chon.file.text();
+  return chon.text();
 }

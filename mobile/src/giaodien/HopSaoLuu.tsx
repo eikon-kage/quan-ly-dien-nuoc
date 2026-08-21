@@ -25,7 +25,6 @@ import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -45,6 +44,7 @@ import { BanTaiKhoan } from '../nghiepvu/saoLuuTaiKhoan';
 import { DieuKhienSaoLuu } from './dungSaoLuu';
 import { DieuKhienSaoLuuTaiKhoan } from './dungSaoLuuTaiKhoan';
 import { hoiGhiDe } from './hoiGhiDe';
+import { hoi } from './hopThoai';
 import { NutChip, theTrang } from './ThanhPhan';
 import { Bong, Co, Mau, PhongChu, Tuoi } from './thietKe';
 
@@ -102,7 +102,7 @@ export function HopSaoLuu({ duLieu, saoLuu, taiKhoan, capNhat, onDong }: Props) 
     try {
       await chiaSeSaoLuu(duLieu, Ngay.homNay());
     } catch (loi) {
-      Alert.alert('Chưa gửi được bản sao lưu', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
+      hoi('Chưa gửi được bản sao lưu', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
         { text: 'Đóng' },
       ]);
     } finally {
@@ -128,7 +128,7 @@ export function HopSaoLuu({ duLieu, saoLuu, taiKhoan, capNhat, onDong }: Props) 
     try {
       hoiTruoc(`Khôi phục bản ${Ngay.ngayGon(ban.ngay)}?`, await docBan(ban.ten));
     } catch (loi) {
-      Alert.alert('Chưa lấy được bản này', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
+      hoi('Chưa lấy được bản này', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
         { text: 'Đóng' },
       ]);
     } finally {
@@ -151,7 +151,7 @@ export function HopSaoLuu({ duLieu, saoLuu, taiKhoan, capNhat, onDong }: Props) 
       // trả lời, khỏi chắn thêm một màn hình nữa ở lần mở app sau.
       taiKhoan.daTraLoi();
     } catch (loi) {
-      Alert.alert('Chưa lấy được bản này', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
+      hoi('Chưa lấy được bản này', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
         { text: 'Đóng' },
       ]);
     } finally {
@@ -170,7 +170,7 @@ export function HopSaoLuu({ duLieu, saoLuu, taiKhoan, capNhat, onDong }: Props) 
       }
       hoiTruoc('Khôi phục từ file này?', moGoi(noiDung).duLieu);
     } catch (loi) {
-      Alert.alert('Chưa đọc được file', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
+      hoi('Chưa đọc được file', loi instanceof Error ? loi.message : 'Thử lại sau nhé.', [
         { text: 'Đóng' },
       ]);
     } finally {

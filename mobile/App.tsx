@@ -21,6 +21,7 @@ import { KetNoiHopThu, dungDoiChieu } from './src/giaodien/dungDoiChieu';
 import { dungSaoLuu } from './src/giaodien/dungSaoLuu';
 import { dungSaoLuuTaiKhoan } from './src/giaodien/dungSaoLuuTaiKhoan';
 import { dungSupabase } from './src/giaodien/dungSupabase';
+import { ChoHopThoai } from './src/giaodien/hopThoai';
 import { Bong, Co, HeSoChuToiDaLuoi, Mau, PhongChu } from './src/giaodien/thietKe';
 import { hopThuSupabase } from './src/nghiepvu/hopThuSupabase';
 import { DuLieuChamCong } from './src/nghiepvu/kieu';
@@ -320,6 +321,12 @@ export default function App() {
           </>
         )}
       </SafeAreaView>
+
+      {/*
+        Chỗ treo hộp hỏi lại. Trên máy đây là hàng rỗng — hệ điều hành tự vẽ hộp; chỉ bản web
+        mới vẽ hộp ở đây, nên phải nằm trong `SafeAreaProvider` để hộp chừa đúng lề vạch home.
+      */}
+      <ChoHopThoai />
     </SafeAreaProvider>
   );
 }

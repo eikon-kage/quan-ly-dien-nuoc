@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!--
+  Trang gốc của bản web. Đây là bản thay cho trang mặc định của Expo (đặt ở `public/index.html`
+  là Expo dùng bản này), thêm vào đúng mấy thứ biến một trang web thành app cài được lên màn
+  hình chính:
+
+    · `manifest.webmanifest`  — tên, icon, màu, `display: standalone` (mở ra không có thanh địa chỉ)
+    · `apple-touch-icon`      — icon Safari lấy khi bấm "Thêm vào MH chính"; iOS không đọc icon
+                                trong manifest cho việc này
+    · `viewport-fit=cover`    — cho `SafeAreaView` biết chỗ tai thỏ và vạch home
+    · đăng ký `sw.js`         — chạy được khi mất mạng
+
+  Đường dẫn để **tương đối** hết (`manifest.webmanifest`, `./sw.js`) chứ không mở đầu bằng `/`:
+  bản này còn phải chạy ở địa chỉ con `…github.io/quan-ly-dien-nuoc/`, mà đường dẫn tuyệt đối
+  thì ở đó trỏ ra ngoài gốc tên miền và trượt hết.
+-->
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <!-- `viewport-fit=cover` để trang phủ tới sát mép, rồi `SafeAreaView` tự chừa lề. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
+    />
+    <title>Chấm công</title>
+
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#F6F8FB" />
+
+    <!-- iOS: mở từ màn hình chính thì chạy như app, không có thanh địa chỉ Safari. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- `default`: chữ đen trên thanh trạng thái, và trang bắt đầu **dưới** thanh ấy — khớp
+         với `barStyle="dark-content"` mà app đang đặt. Đổi sang `black-translucent` là chữ
+         của app leo lên nằm dưới đồng hồ. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Chấm công" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+
+    <style id="cham-cong-mo-dau">
+      /* Nền cùng màu nền app (`Mau.nen`) để lúc đang nạp không loé lên một khung trắng. */
+      body {
+        margin: 0;
+        background-color: #f6f8fb;
+        -webkit-tap-highlight-color: transparent;
+      }
+      /* Chữ chờ trong lúc tải mã. React dựng xong là xoá sạch, không cần tự dọn. */
+      #mo-dau {
+        margin: auto;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 15px;
+        color: #696f79;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>Máy cần bật JavaScript để mở sổ chấm công.</noscript>
+    <div id="root"><div id="mo-dau">Đang mở sổ chấm công…</div></div>
+
+    <script>
+      // Đăng ký sau `load` để việc tải mã của app không phải tranh băng thông với nó.
+      // Bọc trong `try` và không báo lỗi ra: mất service worker thì app chỉ mất phần chạy
+      // offline, chứ không được phép làm app không mở lên được.
+      window.addEventListener('load', function () {
+        if (!('serviceWorker' in navigator)) return;
+        navigator.serviceWorker.register('./sw.js').catch(function () {});
+      });
+    </script>
+  </body>
+</html>

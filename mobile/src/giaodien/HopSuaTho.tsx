@@ -1,7 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Pressable,
@@ -19,6 +18,7 @@ import { docTien } from '../nghiepvu/nhapSo';
 import { datLuong, lichSuLuong, luongTaiNgay, luuTho, themTho, xoaMocLuong } from '../nghiepvu/thaoTac';
 import { HopChon } from './HopChon';
 import { HopNhapSo } from './HopNhapSo';
+import { hoi } from './hopThoai';
 import { NutChip, ONhap, theTrang } from './ThanhPhan';
 import { Co, Mau, PhongChu } from './thietKe';
 
@@ -45,14 +45,14 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
   function luu() {
     const tenSach = ten.trim();
     if (tenSach.length === 0) {
-      Alert.alert('Thiếu tên', 'Anh nhập tên thợ đã.', [{ text: 'Đóng' }]);
+      hoi('Thiếu tên', 'Anh nhập tên thợ đã.', [{ text: 'Đóng' }]);
       return;
     }
 
     if (moiNhat === null) {
       const tienMotCong = docTien(tienMoi);
       if (tienMotCong === null || tienMotCong <= 0) {
-        Alert.alert('Thiếu tiền công', 'Anh nhập tiền một công của thợ đã.', [{ text: 'Đóng' }]);
+        hoi('Thiếu tiền công', 'Anh nhập tiền một công của thợ đã.', [{ text: 'Đóng' }]);
         return;
       }
 
@@ -86,7 +86,7 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
       return;
     }
 
-    Alert.alert('Xoá mốc lương này?', `Mốc từ ngày ${Ngay.ngayGon(tuNgay)}.`, [
+    hoi('Xoá mốc lương này?', `Mốc từ ngày ${Ngay.ngayGon(tuNgay)}.`, [
       { text: 'Thôi', style: 'cancel' },
       {
         text: 'Xoá',
@@ -95,7 +95,7 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
           try {
             capNhat(xoaMocLuong(duLieu, moiNhat.id, tuNgay));
           } catch {
-            Alert.alert('Không xoá được', 'Thợ phải còn ít nhất một mốc tiền công.', [
+            hoi('Không xoá được', 'Thợ phải còn ít nhất một mốc tiền công.', [
               { text: 'Đóng' },
             ]);
           }

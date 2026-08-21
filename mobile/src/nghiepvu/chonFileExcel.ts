@@ -32,5 +32,5 @@ export async function chonFileExcel(): Promise<FileDaChon | null> {
     throw new KhongPhaiFileExcel('Anh chọn file Excel đuôi .xlsx nhé.');
   }
 
-  return { ten: chon.ten, noiDung: await chon.file.bytes() };
+  return { ten: chon.ten, noiDung: await chon.bytes() };
 }

@@ -7,10 +7,9 @@
  * ở từng màn hình thì sớm muộn có một đường nuốt lặng, mà đường ấy chính là đường mất sổ.
  */
 
-import { Alert } from 'react-native';
-
 import { tomTat } from '../nghiepvu/goiSaoLuu';
 import { DuLieuChamCong } from '../nghiepvu/kieu';
+import { hoi } from './hopThoai';
 
 export function hoiGhiDe(
   /** Câu hỏi trên đầu hộp, ví dụ "Khôi phục bản 05/08?". */
@@ -22,7 +21,7 @@ export function hoiGhiDe(
 ): void {
   const dem = tomTat(duLieuMoi);
 
-  Alert.alert(
+  hoi(
     nhan,
     `Bản này có ${dem.soTho} thợ, ${dem.soBuoiCong} buổi công, ${dem.soUngTien} lần ứng tiền, ${dem.soKy} kỳ đã chốt.\n\nToàn bộ dữ liệu đang có trên máy sẽ bị thay bằng bản này.`,
     [

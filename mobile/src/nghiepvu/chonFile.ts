@@ -10,16 +10,18 @@
  * Không lọc theo kiểu file trong bảng chọn, để bên gọi tự soát đuôi tên: nhiều app gửi file
  * đi kèm kiểu "octet-stream" chung chung, lọc chặt thì đúng file cần lại bị làm mờ không
  * bấm được, mà người dùng thì không hiểu vì sao.
+ *
+ * Trả về `FileNguon` (hai hàm `bytes`/`text`) chứ không trả thẳng `File` của
+ * expo-file-system: expo-file-system không có bản web, nên nếu để lộ kiểu ấy ra ngoài thì
+ * bản web ([chonFile.web.ts](./chonFile.web.ts)) không cách nào khớp kiểu được.
  */
 
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 
-export interface FileNguon {
-  ten: string;
-  /** Chưa đọc gì cả — bên gọi tự chọn đọc ra byte (`bytes()`) hay ra chữ (`text()`). */
-  file: File;
-}
+import { FileNguon } from './kieuFile';
+
+export { FileNguon };
 
 /** Chọn một file. Người dùng bấm huỷ thì trả về `null` — huỷ không phải là lỗi. */
 export async function chonFile(): Promise<FileNguon | null> {
@@ -29,5 +31,10 @@ export async function chonFile(): Promise<FileNguon | null> {
   }
 
   const muc = chon.assets[0];
-  return { ten: muc.name ?? '', file: new File(muc.uri) };
+  const file = new File(muc.uri);
+  return {
+    ten: muc.name ?? '',
+    bytes: () => file.bytes(),
+    text: () => file.text(),
+  };
 }

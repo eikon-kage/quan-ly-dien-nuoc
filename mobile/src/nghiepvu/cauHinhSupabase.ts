@@ -15,10 +15,16 @@ const DIA_CHI = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 /**
  * Bảng điều khiển Supabase bản mới gọi khoá này là *publishable key*, bản cũ gọi là
  * *anon key* — cùng một chỗ điền. Nhận cả hai tên biến để ai theo tài liệu nào cũng chạy.
+ *
+ * Dùng `||` chứ **không** dùng `??`, và đó không phải chuyện thẩm mỹ: chỗ dựng trên máy chủ
+ * (GitHub Actions) đặt biến chưa điền thành **chuỗi rỗng** chứ không phải bỏ trống, mà
+ * `'' ?? x` thì cho ra `''` — tên biến kia có khoá thật cũng bị chặn lại ngay. Với `||` thì
+ * rỗng cũng đi tiếp. Cái giá phải trả bằng đúng một bản dựng lặng lẽ không có nhóm, không có
+ * đăng nhập, không có sao lưu tài khoản.
  */
 const KHOA =
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
-  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   '';
 
 export function diaChi(): string {

@@ -8,30 +8,17 @@
  *
  * File nằm ở thư mục tạm: gửi xong là xong, hệ điều hành tự dọn khi máy hết chỗ. Không cần
  * xin quyền gì cả — người dùng chọn gửi đi đâu ngay trên bảng chia sẻ.
+ *
+ * Kiểu file và lớp lỗi nằm ở [kieuFile](./kieuFile.ts) rồi xuất lại ở đây, để bên gọi vẫn
+ * `import ... from './chiaSeFile'` như cũ mà bản web dùng chung được đúng một lớp lỗi.
  */
 
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-/** Máy không chia sẻ file được (rất hiếm, chủ yếu là lúc chạy trên web). */
-export class KhongChiaSeDuoc extends Error {
-  constructor() {
-    super('Máy này không gửi file đi được.');
-  }
-}
+import { KIEU_EXCEL, KIEU_JSON, KhongChiaSeDuoc, KieuFile } from './kieuFile';
 
-/** Khai kiểu file cho hệ điều hành: Android xem `mime`, iOS xem `uti`. */
-export interface KieuFile {
-  mime: string;
-  uti: string;
-}
-
-export const KIEU_EXCEL: KieuFile = {
-  mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  uti: 'org.openxmlformats.spreadsheetml.sheet',
-};
-
-export const KIEU_JSON: KieuFile = { mime: 'application/json', uti: 'public.json' };
+export { KIEU_EXCEL, KIEU_JSON, KhongChiaSeDuoc, KieuFile };
 
 /**
  * Ghi khối nội dung ra thư mục tạm rồi mở bảng chia sẻ. Người dùng bấm huỷ thì hàm vẫn kết
