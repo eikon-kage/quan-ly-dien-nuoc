@@ -20,6 +20,7 @@ public sealed class NhapKhachForm : Form
     private readonly Label _lblTomTat = new();
     private readonly Label _lblCanhBao = new();
     private readonly Button _btnNhap = Theme.Nut("NHẬP VÀO SỔ", Theme.Xanh, 260, 52);
+    private readonly Button _btnChon = Theme.Nut("Chọn file...", Theme.Chinh, 170, 34);
 
     private bool _dangNap;
 
@@ -77,6 +78,10 @@ public sealed class NhapKhachForm : Form
         khung.Controls.Add(TaoThanhDuoi(), 0, 4);
 
         Controls.Add(khung);
+
+        // Không để con trỏ nằm ở ô chỉ đọc: mở màn ra là cả đường dẫn bị bôi xanh, nhìn như
+        // vừa gõ gì vào đó. Việc đầu tiên của người dùng là chọn file nên đứng luôn ở nút ấy.
+        ActiveControl = _btnChon;
     }
 
     private Control TaoThanhChon()
@@ -86,9 +91,9 @@ public sealed class NhapKhachForm : Form
         _txtFile.ReadOnly = true;
         _txtFile.BackColor = Color.White;
         _txtFile.Text = "(chưa chọn file)";
+        _txtFile.TabStop = false;
 
-        var btnChon = Theme.Nut("Chọn file...", Theme.Chinh, 170, 34);
-        btnChon.Click += (_, _) => ChonFile();
+        _btnChon.Click += (_, _) => ChonFile();
 
         // Nút tải mẫu đặt ngay cạnh nút chọn file: người chưa có danh sách thì tải mẫu về
         // điền, khỏi phải đoán phần mềm chờ file kiểu gì.
@@ -98,7 +103,7 @@ public sealed class NhapKhachForm : Form
 
         var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
         hang.Controls.Add(Theme.Truong("FILE ĐANG ĐỌC", _txtFile, 520));
-        hang.Controls.Add(Theme.Truong(" ", btnChon, 170));
+        hang.Controls.Add(Theme.Truong(" ", _btnChon, 170));
         hang.Controls.Add(Theme.Truong(" ", btnMau, 190));
 
         nen.Controls.Add(hang);
@@ -146,9 +151,11 @@ public sealed class NhapKhachForm : Form
             Theme.Cot(nameof(DongKhachNhap.SoDong), "DÒNG", 40, "0", canPhai: true),
             Theme.Cot(nameof(DongKhachNhap.Ten), "1 · TÊN KHÁCH HÀNG", 180, chiDoc: false),
             Theme.Cot(nameof(DongKhachNhap.DienThoai), "2 · ĐIỆN THOẠI", 100, chiDoc: false),
-            Theme.Cot(nameof(DongKhachNhap.DiaChi), "3 · ĐỊA CHỈ", 180, chiDoc: false),
-            Theme.Cot(nameof(DongKhachNhap.GhiChu), "4 · GHI CHÚ", 150, chiDoc: false),
-            Theme.Cot(nameof(DongKhachNhap.TinhTrangChu), "TÌNH TRẠNG", 170));
+            Theme.Cot(nameof(DongKhachNhap.DiaChi), "3 · ĐỊA CHỈ", 160, chiDoc: false),
+            Theme.Cot(nameof(DongKhachNhap.GhiChu), "4 · GHI CHÚ", 120, chiDoc: false),
+            // Cột tình trạng phải đủ chỗ cho cả câu kèm tên khách bị trùng: cắt mất nửa câu
+            // thì người dùng chỉ thấy "không nhập đ..." rồi phải tự đoán vì sao.
+            Theme.Cot(nameof(DongKhachNhap.TinhTrangChu), "TÌNH TRẠNG", 230));
 
         _luoi.DataSource = _nguon;
         _luoi.Dock = DockStyle.Fill;

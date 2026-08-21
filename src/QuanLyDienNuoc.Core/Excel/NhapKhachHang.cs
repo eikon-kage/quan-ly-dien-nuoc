@@ -65,7 +65,7 @@ public sealed class DongKhachNhap
         TinhTrangDongKhach.TrungKhachCu => $"Đã có khách \"{TenTrung}\" — bỏ qua",
         TinhTrangDongKhach.TrungTrongFile => "Trùng dòng phía trên — bỏ qua",
         TinhTrangDongKhach.KhongGiongTen => "Không giống tên khách — bỏ qua",
-        _ => "Thiếu tên khách — không nhập được",
+        _ => "Thiếu tên — không nhập được",
     };
 
     /// <summary>Dựng đối tượng khách hàng để ghi vào sổ.</summary>
