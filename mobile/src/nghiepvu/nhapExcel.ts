@@ -40,15 +40,24 @@ const TEN_TRANG_HUONG_DAN = 'Hướng dẫn';
 
 // ---------- Bộ cột, dùng chung cho cả lúc dựng file mẫu lẫn lúc đọc ----------
 
-/** Các cột của trang Chấm công, đúng thứ tự trong file mẫu. */
-const COT_NHAP: Cot[] = [
-  { nhan: 'Ngày', rong: 12, kieu: 'ngay' },
-  { nhan: 'Thứ', rong: 10, kieu: 'chu' },
-  { nhan: 'Sáng', rong: 9, kieu: 'so' },
-  { nhan: 'Chiều', rong: 9, kieu: 'so' },
-  { nhan: 'Ứng tiền', rong: 14, kieu: 'tien' },
-  { nhan: 'Ghi chú', rong: 30, kieu: 'chu' },
-];
+/**
+ * Các cột của trang Chấm công, đúng thứ tự trong file mẫu.
+ *
+ * `coUngTien` là **false trên máy thợ**, và đó không phải chuyện gọn gàng giao diện: cả app
+ * trên máy thợ không biết một đồng nào (xem `ketNap` ở vaiMay). Có cột Ứng tiền trong file
+ * mẫu của thợ là mời người ta điền vào một con số mà máy này không có đường nào gửi lên cho
+ * chủ — `SoCong` cắt tiền ra từ lúc đóng gói — nên tiền ấy nằm im rồi mất. Thà không có cột.
+ */
+function cotNhap(coUngTien: boolean): Cot[] {
+  return [
+    { nhan: 'Ngày', rong: 12, kieu: 'ngay' },
+    { nhan: 'Thứ', rong: 10, kieu: 'chu' },
+    { nhan: 'Sáng', rong: 9, kieu: 'so' },
+    { nhan: 'Chiều', rong: 9, kieu: 'so' },
+    ...(coUngTien ? ([{ nhan: 'Ứng tiền', rong: 14, kieu: 'tien' }] as Cot[]) : []),
+    { nhan: 'Ghi chú', rong: 30, kieu: 'chu' },
+  ];
+}
 
 /**
  * Tên khác của cùng một cột, để nhận ra cả những file người dùng tự gõ. Viết không dấu,
@@ -251,7 +260,7 @@ function timTieuDe(trang: TrangDaDoc): { viTri: ViTriCot; sauDong: number } {
   }
 
   throw new FileKhongDungMau(
-    'Không thấy dòng tiêu đề có các cột Ngày, Sáng, Chiều. Anh dùng file mẫu của app cho chắc.',
+    'Không thấy dòng tiêu đề có các cột Ngày, Sáng, Chiều. Dùng file mẫu của app cho chắc.',
   );
 }
 
@@ -435,23 +444,66 @@ export function apDungNhap(
 
 // ---------- File mẫu ----------
 
-/** Tên file mẫu, ví dụ "Mau-cham-cong-Anh-Tuan-08-2026.xlsx". Không dấu cho khỏi lỗi khi gửi. */
-export function tenFileMau(tenTho: string, trongThang: string): string {
-  const { nam, thang } = Ngay.tach(trongThang);
+/**
+ * Tên file mẫu, ví dụ "Mau-cham-cong-anh-tuan-08-2026.xlsx" cho một tháng và
+ * "Mau-cham-cong-anh-tuan-2026.xlsx" cho cả năm. Không dấu cho khỏi lỗi khi gửi.
+ *
+ * Khoảng nào ra tên nào là chuyện phải phân biệt: hai file mẫu tải về cùng một thư mục mà
+ * trùng tên thì cái sau đè cái trước, mà người ta lại vừa gõ nửa tháng vào cái trước.
+ */
+export function tenFileMau(tenTho: string, tuNgay: string, denNgay: string): string {
   const ten = khongDau(tenTho)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-  const hai = String(thang).padStart(2, '0');
-  return `Mau-cham-cong-${ten === '' ? 'tho' : ten}-${hai}-${nam}.xlsx`;
+  const cua = `Mau-cham-cong-${ten === '' ? 'tho' : ten}`;
+
+  const dau = Ngay.tach(tuNgay);
+  const cuoi = Ngay.tach(denNgay);
+  const hai = (so: number) => String(so).padStart(2, '0');
+  const cuoiThang = cuoi.ngay === Ngay.soNgayTrongThang(cuoi.nam, cuoi.thang);
+
+  if (dau.nam === cuoi.nam && dau.thang === 1 && dau.ngay === 1 && cuoi.thang === 12 && cuoiThang) {
+    return `${cua}-${dau.nam}.xlsx`;
+  }
+  if (dau.nam === cuoi.nam && dau.thang === cuoi.thang && dau.ngay === 1 && cuoiThang) {
+    return `${cua}-${hai(dau.thang)}-${dau.nam}.xlsx`;
+  }
+  return `${cua}-${tuNgay}-den-${denNgay}.xlsx`;
+}
+
+/** Dòng ngăn giữa hai tháng trong file cả năm, ví dụ "Tháng 09/2026". */
+function nhanThang(nam: number, thang: number): string {
+  return `Tháng ${String(thang).padStart(2, '0')}/${nam}`;
 }
 
 /** Các dòng hướng dẫn, viết như nói chuyện với người dùng chứ không phải tài liệu kỹ thuật. */
-function trangHuongDan(tenTho: string, tuNgay: string, denNgay: string): TrangTinh {
+function trangHuongDan(
+  tenTho: string,
+  tuNgay: string,
+  denNgay: string,
+  coUngTien: boolean,
+  nhieuThang: boolean,
+): TrangTinh {
   const dongs: O[][] = [
     [`File này để nhập công cho thợ: ${tenTho}`],
     [`Khoảng ngày: ${Ngay.ngayGon(tuNgay)} — ${Ngay.ngayGon(denNgay)}`],
     [''],
     ['Cách điền: mở trang "Chấm công" ở tab bên cạnh, mỗi ngày một dòng.'],
+  ];
+
+  // File cả năm dài ba trăm mấy dòng: phải nói ngay hai điều, kẻo người ta mở ra thấy dài
+  // quá rồi đóng lại — không cần điền hết, và mỗi tháng có một dòng để mà tìm.
+  if (nhieuThang) {
+    dongs.push(
+      [''],
+      ['File này có sẵn ngày của cả khoảng trên, không phải điền hết:'],
+      ['  • Điền tháng nào thì app nhận tháng ấy, mấy tháng còn lại cứ để trống.'],
+      ['  • Đầu mỗi tháng có một dòng ghi "Tháng 09/2026" cho dễ tìm.'],
+      ['    Dòng ấy không phải một ngày, đừng điền công vào đó.'],
+    );
+  }
+
+  dongs.push(
     [''],
     ['Cột Sáng và cột Chiều:'],
     ['  • Đi làm cả buổi thì điền 1, hoặc gõ chữ x.'],
@@ -459,18 +511,41 @@ function trangHuongDan(tenTho: string, tuNgay: string, denNgay: string): TrangTi
     ['  • Nghỉ thì điền 0, hoặc gõ chữ n.'],
     ['  • ĐỂ TRỐNG nghĩa là "không đụng tới" — buổi ấy trong máy vẫn giữ nguyên.'],
     [''],
-    ['Cột Ứng tiền: số tiền thợ ứng hôm đó, ví dụ 500000. Không ứng thì để trống.'],
+  );
+
+  if (coUngTien) {
+    dongs.push(['Cột Ứng tiền: số tiền thợ ứng hôm đó, ví dụ 500000. Không ứng thì để trống.']);
+  }
+
+  dongs.push(
     ['Cột Ghi chú: gõ gì cũng được, sẽ hiện lại trong app.'],
     [''],
-    ['Xong thì lưu file lại, mở app, vào mục Thợ rồi bấm "Nhập từ Excel".'],
+    coUngTien
+      ? ['Xong thì lưu file lại, mở app, vào mục Thợ rồi bấm "Nhập từ Excel".']
+      : ['Xong thì lưu file lại, mở app rồi bấm "Nhập từ Excel".'],
     [''],
     ['Nhập lại đúng file này lần nữa cũng không sao: công không bị cộng đôi,'],
-    ['tiền ứng trùng khít cũng chỉ tính một lần.'],
-    ['Riêng những ngày đã quyết toán thì app không sửa — tiền đã trả rồi.'],
+  );
+
+  if (coUngTien) {
+    dongs.push(
+      ['tiền ứng trùng khít cũng chỉ tính một lần.'],
+      ['Riêng những ngày đã quyết toán thì app không sửa — tiền đã trả rồi.'],
+    );
+  } else {
+    // Máy thợ không có tiền nên cũng không có kỳ quyết toán để mà chừa ra. Nói thay điều
+    // thợ cần biết: sổ này còn phải đi lên chủ, và chủ mới là bên chốt.
+    dongs.push(
+      ['buổi nào đã chấm rồi thì chỉ sửa lại số công.'],
+      ['Công nhập xong sẽ tự gửi lên cho chủ ở lần đồng bộ sau.'],
+    );
+  }
+
+  dongs.push(
     [''],
-    ['Được phép thêm cột của riêng anh, hoặc xoá bớt dòng. App dò theo tên cột'],
+    ['Được phép thêm cột của riêng mình, hoặc xoá bớt dòng. App dò theo tên cột'],
     ['ở dòng tiêu đề chứ không đếm theo thứ tự.'],
-  ];
+  );
 
   return {
     ten: TEN_TRANG_HUONG_DAN,
@@ -485,22 +560,58 @@ function trangHuongDan(tenTho: string, tuNgay: string, denNgay: string): TrangTi
  *
  * Điền sẵn ngày chứ không để bảng trống: gõ tay ba mươi cái ngày là ba mươi cơ hội gõ
  * sai định dạng, mà sai định dạng thì app không đọc ra.
+ *
+ * Khoảng dài hơn một tháng thì chen thêm một **dòng tên tháng** trước mỗi tháng. File cả
+ * năm là ba trăm sáu mươi mấy dòng ngày giống hệt nhau: không có mốc thì tìm tháng 9 phải
+ * cuộn mà đoán. Dòng ấy không có ngày nên lúc đọc lại nó tự bị bỏ qua, không thành lỗi —
+ * xem `docTrangNhap`.
+ *
+ * Vẫn **một trang duy nhất** dù có cả năm, không phải mười hai trang mỗi tháng một trang:
+ * bộ đọc lấy đúng trang "Chấm công" (`timTrang`), chia ra mười hai trang là mười một tháng
+ * người ta gõ xong mà app không đọc tới.
  */
-export function cacTrangMau(tenTho: string, tuNgay: string, denNgay: string): TrangTinh[] {
+export function cacTrangMau(
+  tenTho: string,
+  tuNgay: string,
+  denNgay: string,
+  coUngTien: boolean = true,
+): TrangTinh[] {
+  const cots = cotNhap(coUngTien);
+  const cacThang = Ngay.cacThangTrongKhoang(tuNgay, denNgay);
+  const nhieuThang = cacThang.length > 1;
+  /** Mấy ô để trống sau cột Ngày và cột Thứ, đúng bằng số cột còn lại. */
+  const conLai = cots.slice(2).map(() => null);
+
   const dongs: O[][] = [];
-  for (let ngay = tuNgay; ngay <= denNgay; ngay = Ngay.congNgay(ngay, 1)) {
-    dongs.push([ngay, Ngay.thu(ngay), null, null, null, null]);
+  for (const { nam, thang } of cacThang) {
+    if (nhieuThang) {
+      dongs.push([nhanThang(nam, thang), ...cots.slice(1).map(() => null)]);
+    }
+
+    const dauThang = Ngay.ghep(nam, thang, 1);
+    const cuoiThang = Ngay.ghep(nam, thang, Ngay.soNgayTrongThang(nam, thang));
+    const dau = dauThang > tuNgay ? dauThang : tuNgay;
+    const cuoi = cuoiThang < denNgay ? cuoiThang : denNgay;
+
+    for (let ngay = dau; ngay <= cuoi; ngay = Ngay.congNgay(ngay, 1)) {
+      dongs.push([ngay, Ngay.thu(ngay), ...conLai]);
+    }
   }
 
   return [
-    { ten: TEN_TRANG_NHAP, cots: COT_NHAP, dongs },
-    trangHuongDan(tenTho, tuNgay, denNgay),
+    { ten: TEN_TRANG_NHAP, cots, dongs },
+    trangHuongDan(tenTho, tuNgay, denNgay, coUngTien, nhieuThang),
   ];
 }
 
 /** File mẫu thành khối byte của một file .xlsx. */
-export function taoFileMau(tenTho: string, tuNgay: string, denNgay: string): Uint8Array {
-  return taoFileExcel(cacTrangMau(tenTho, tuNgay, denNgay));
+export function taoFileMau(
+  tenTho: string,
+  tuNgay: string,
+  denNgay: string,
+  coUngTien: boolean = true,
+): Uint8Array {
+  return taoFileExcel(cacTrangMau(tenTho, tuNgay, denNgay, coUngTien));
 }
 
 /** Cả tháng chứa ngày này — khoảng mặc định của file mẫu. */
@@ -510,6 +621,33 @@ export function khoangThang(trongThang: string): { tuNgay: string; denNgay: stri
     tuNgay: Ngay.ghep(nam, thang, 1),
     denNgay: Ngay.ghep(nam, thang, Ngay.soNgayTrongThang(nam, thang)),
   };
+}
+
+/**
+ * Cả năm chứa ngày này — khoảng của file mẫu cả năm.
+ *
+ * Có nó vì file một tháng chỉ đủ cho người chấm hằng tháng. Chủ chuyển từ sổ giấy sang app
+ * giữa năm thì phải lấy file mẫu tám lần, đổi thợ tám lần, gửi tám file — mà tám file cùng
+ * tên khác tháng nằm cạnh nhau trong Zalo là cơ hội gõ vào file tháng khác.
+ *
+ * Cả năm chứ không phải "từ đầu năm tới hôm nay": người ta còn chấm tiếp mấy tháng sau, mà
+ * ngày chưa tới để trống thì app không đụng tới ngày ấy.
+ */
+export function khoangNam(trongNam: string): { tuNgay: string; denNgay: string } {
+  const { nam } = Ngay.tach(trongNam);
+  return { tuNgay: Ngay.ghep(nam, 1, 1), denNgay: Ngay.ghep(nam, 12, 31) };
+}
+
+/**
+ * Bỏ tiền ứng khỏi những dòng đã đọc — dùng trên **máy thợ**.
+ *
+ * File mẫu của thợ vốn không có cột Ứng tiền, nhưng người ta vẫn có thể chọn đúng cái file
+ * chủ đã gửi, hoặc tự gõ thêm cột ấy. Chặn ở đây chứ không trông vào việc file không có
+ * cột: ứng tiền ghi vào máy thợ thì `SoCong` cắt tiền ra lúc đóng gói, chủ không bao giờ
+ * thấy, mà thợ thì tưởng đã khai. Không nhận còn hơn nhận rồi để rơi mất.
+ */
+export function boUngTien(dongs: DongNhap[]): DongNhap[] {
+  return dongs.map((dong) => (dong.ung === null ? dong : { ...dong, ung: null }));
 }
 
 /** Tóm tắt một lần nhập, viết thành câu để hiện lên màn hình. */

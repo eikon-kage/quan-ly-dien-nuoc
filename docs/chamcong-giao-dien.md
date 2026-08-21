@@ -527,10 +527,10 @@ nhìn thấy mình đang nhập cho ai, và quay lại sửa bước trước kh
 
 1. **Nhập cho thợ nào.** Chỉ có một thợ thì chọn sẵn luôn. Thợ đã nghỉ vẫn chọn được — nhập
    bù sổ cũ là việc hay làm nhất.
-2. **Lấy file.** Nút *Lấy file mẫu tháng này* dựng sẵn một file `.xlsx` đã **điền sẵn cột
-   Ngày và cột Thứ của cả tháng**, gửi qua bảng chia sẻ như lúc xuất. Điền sẵn ngày chứ
-   không đưa bảng trống: gõ tay ba mươi cái ngày là ba mươi cơ hội gõ sai định dạng. Nút
-   *Chọn file Excel đã điền* mở bảng chọn file của máy.
+2. **Lấy file.** Hai nút cạnh nhau, *Mẫu tháng 08/2026* và *Mẫu cả năm 2026*, dựng sẵn một
+   file `.xlsx` đã **điền sẵn cột Ngày và cột Thứ của cả khoảng**, gửi qua bảng chia sẻ như
+   lúc xuất. Điền sẵn ngày chứ không đưa bảng trống: gõ tay ba mươi cái ngày là ba mươi cơ
+   hội gõ sai định dạng. Nút *Chọn file Excel đã điền* mở bảng chọn file của máy.
 3. **Xem lại rồi ghi vào sổ.** Bốn ô tóm tắt — số ngày, tổng công, khoảng ngày, tiền ứng —
    rồi mới tới nút *Ghi vào sổ*.
 
@@ -538,6 +538,47 @@ nhìn thấy mình đang nhập cho ai, và quay lại sửa bước trước kh
 bằng một cú bấm; nhìn con số tổng là biết ngay có phải file mình cần không. Dòng nào đọc
 không ra thì kể rõ *dòng số mấy, sai chỗ nào* chứ không nuốt im, và phần còn lại vẫn ghi
 được bình thường.
+
+### File mẫu cả năm
+
+Có hai nút chứ không chỉ *tháng này*, vì file một tháng chỉ vừa cho người chấm hằng tháng.
+Chủ chuyển từ sổ giấy sang app giữa năm thì phải lấy file mẫu tám lần, đổi thợ tám lần, gửi
+tám file — mà tám file cùng tên khác tháng nằm cạnh nhau trong Zalo là chỗ để gõ vào file
+tháng khác. Nên tên file phân biệt hẳn: `Mau-cham-cong-anh-tuan-08-2026.xlsx` cho một tháng,
+`Mau-cham-cong-anh-tuan-2026.xlsx` cho cả năm. Trùng tên là cái sau đè cái trước trong thư
+mục Tải về, mà cái trước vừa gõ xong nửa tháng.
+
+Cả năm là **cả mười hai tháng**, không phải "từ đầu năm tới hôm nay": người ta còn chấm tiếp
+mấy tháng sau, mà ngày để trống thì app không đụng tới ngày ấy — không phải điền hết file.
+
+Vẫn **một trang duy nhất** dù có 365 ngày, không phải mười hai trang mỗi tháng một trang: bộ
+đọc lấy đúng trang *Chấm công*, chia ra mười hai trang là mười một tháng người ta gõ xong mà
+app không đọc tới. Thay vào đó, khoảng dài hơn một tháng thì chen một **dòng tên tháng**
+(`Tháng 09/2026`) trước mỗi tháng — ba trăm sáu mươi mấy dòng giống hệt nhau thì tìm tháng 9
+phải cuộn mà đoán. Dòng ấy không có ngày nên lúc đọc lại tự bị bỏ qua, không thành lỗi.
+
+### Nhập từ Excel trên máy thợ
+
+Máy thợ cũng có nút này, cạnh *Sổ công của tôi* và *Xuất ra Excel*. Thợ mới cài app giữa
+tháng thì cả tháng công cũ nằm ngoài mười ba ngày mà danh sách chấm bù mời tới — không có ô
+nào mà bấm, mà công ấy vẫn phải khai.
+
+Dùng **chung một màn hình** với máy chủ, khác hẳn lối `ManHinhThoTuCham` làm màn hình riêng:
+ở đây hai bên làm đúng một việc — đọc file, xem trước, ghi — mà đó lại là chỗ nguy nhất
+trong app. Hai bản chép tay của cùng cái chốt ấy là sớm muộn sửa một bên quên bên kia. Chỉ
+khác hai điều, cả hai đều theo đúng luật *máy thợ không biết tiền*:
+
+- **Không có bước chọn thợ.** Người nhập là chính chủ máy, nên còn hai bước.
+- **Không có tiền ứng.** File mẫu của thợ không có cột *Ứng tiền*, bảng xem trước không có ô
+  tiền nào, và nếu thợ chọn đúng cái file chủ đã gửi thì tiền trong đó bị bỏ ngay trước khi
+  xem trước — hiện một con số rồi không ghi là nói dối người đang soát. Bỏ nhưng **nói ra**:
+  *"File có 1 dòng ghi tiền ứng. App này chỉ nhận số công — tiền ứng thì nói với chủ."* Bỏ
+  im thì thợ tưởng đã khai rồi. Ghi vào máy thợ cũng vô ích: `SoCong` cắt tiền ra lúc đóng
+  gói nên chủ không bao giờ thấy.
+
+Công nhập xong đi lên nhóm như mọi buổi thợ tự chấm, kể cả những ngày nằm trước hôm nhận vai
+máy: mốc *gửi kèm* nới xuống tận buổi sớm nhất, còn mốc *khai là đầy đủ* thì không —
+[chamcong-doi-chieu.md](chamcong-doi-chieu.md) nói rõ vì sao hai mốc ấy phải khác nhau.
 
 Bảng gồm sáu cột, mỗi **ngày một dòng** — hai cột Sáng, Chiều đúng như màn hình chấm công,
 điền nhanh hơn hẳn kiểu mỗi buổi một dòng:
@@ -572,13 +613,19 @@ Bốn điều làm cho nhập nhầm không thành tai hoạ:
 File `.xls` đời cũ thì báo thẳng "mở bằng Excel rồi lưu lại thành .xlsx" — nó là định dạng
 khác hẳn, không phải cùng một thứ đổi đuôi.
 
-Xem thử file mẫu: [docs/mau-cham-cong.xlsx](mau-cham-cong.xlsx) — đúng file app dựng ra khi
-bấm *Lấy file mẫu tháng này*.
+Xem thử ba file mẫu, đúng những file app dựng ra:
+
+- [docs/mau-cham-cong.xlsx](mau-cham-cong.xlsx) — một tháng, nút *Mẫu tháng 08/2026*.
+- [docs/mau-cham-cong-ca-nam.xlsx](mau-cham-cong-ca-nam.xlsx) — cả năm, có dòng tên tháng.
+- [docs/mau-cham-cong-may-tho.xlsx](mau-cham-cong-may-tho.xlsx) — bản của máy thợ, năm cột,
+  không có cột *Ứng tiền*.
 
 Máy Mac không chạy được app để nhìn tận mắt, nên phần đọc file kiểm hai đường: bộ kiểm thử
 `nhapExcel.test.ts` dựng file thật rồi đọc lại, và một file điền bằng **openpyxl** — thư
 viện Excel của Python, ghi theo đúng lối Excel thật với bảng chữ dùng chung — cũng đọc ra
-đủ và đúng.
+đủ và đúng. File cả năm cũng qua đúng hai đường ấy: openpyxl mở ra được, điền công vào tháng
+3 với tháng 9 rồi lưu lại thì app đọc ra đúng ba dòng ấy, còn mười hai dòng tên tháng và ba
+trăm sáu mươi dòng để trống thì bỏ qua im lặng, không một lỗi nào.
 
 
 ## Font chữ

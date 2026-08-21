@@ -19,7 +19,9 @@ import {
   BanNhap,
   KetQuaGhi,
   apDungNhap,
+  boUngTien,
   docFileNhap,
+  khoangNam,
   khoangThang,
   tomTat,
   tomTatDoc,
@@ -32,6 +34,16 @@ interface Props {
   duLieu: DuLieuChamCong;
   capNhat: (moi: DuLieuChamCong) => void;
   onDong: () => void;
+  /**
+   * Máy thợ: nhập công cho **chính mình**. Bỏ bước chọn thợ, và không nhận một đồng tiền
+   * ứng nào — xem `boUngTien`.
+   *
+   * Dùng chung màn hình với máy chủ chứ không làm riêng một bản cho thợ, khác hẳn lối
+   * `ManHinhThoTuCham` làm màn hình riêng. Ở đây hai bên làm **đúng một việc** — đọc file
+   * rồi xem trước rồi ghi — mà đó lại là chỗ nguy nhất trong app: một cú bấm đổi hàng chục
+   * buổi công. Hai bản chép tay của cùng cái chốt ấy là sớm muộn sửa một bên quên bên kia.
+   */
+  choTho?: { thoId: string; ten: string };
 }
 
 /** Nhiều lỗi quá thì chỉ kể ra bằng này dòng, kể hết thì đọc không nổi. */
@@ -44,12 +56,16 @@ const SO_LOI_KE_RA = 5;
  * lấy file → xem trước rồi ghi. Xếp dọc thì lúc nào cũng nhìn thấy mình đang nhập cho
  * ai, và quay lại sửa bước trước không phải bấm lui từng trang.
  *
+ * Trên **máy thợ** (`choTho`) chỉ còn hai bước: người nhập là chính chủ máy nên không có
+ * bước chọn thợ, và không có một đồng tiền ứng nào đi qua đây.
+ *
  * **Luôn xem trước rồi mới ghi.** Đây là chỗ duy nhất trong app đổi hàng chục buổi công
  * chỉ bằng một cú bấm, mà nhập nhầm file của thợ khác thì cả tháng công rơi vào tay người
  * khác. Con số tổng ở bảng xem trước là cái chặn duy nhất trước khi việc đó xảy ra.
  */
-export function ManHinhNhapExcel({ duLieu, capNhat, onDong }: Props) {
-  const thos = tatCaTho(duLieu);
+export function ManHinhNhapExcel({ duLieu, capNhat, onDong, choTho }: Props) {
+  /** Máy thợ nhập cho chính mình nên không có danh sách để chọn. */
+  const thos = choTho === undefined ? tatCaTho(duLieu) : [];
   const homNay = Ngay.homNay();
 
   /** Chỉ có một thợ thì khỏi bắt chọn — chọn sẵn luôn. */
@@ -60,10 +76,14 @@ export function ManHinhNhapExcel({ duLieu, capNhat, onDong }: Props) {
   const [banNhap, datBanNhap] = useState<BanNhap | null>(null);
   const [daGhi, datDaGhi] = useState<KetQuaGhi | null>(null);
 
-  const [dangLam, datDangLam] = useState<'mau' | 'chon' | null>(null);
+  const [dangLam, datDangLam] = useState<'thang' | 'nam' | 'chon' | null>(null);
   const [loi, datLoi] = useState<string | null>(null);
 
-  const dangChonTho = tho === null || dangDoi;
+  /** Ai đang được nhập công: thợ vừa chọn, hoặc chính chủ máy nếu đây là máy thợ. */
+  const nhapCho = choTho ?? (tho === null ? null : { thoId: tho.id, ten: tho.ten });
+  const dangChonTho = choTho === undefined && (tho === null || dangDoi);
+  /** Máy thợ không có bước chọn thợ, nên mấy bước sau lùi số xuống một. */
+  const buoc = (thuTu: number) => (choTho === undefined ? thuTu : thuTu - 1);
 
   function chonTho(chon: Tho) {
     datTho(chon);
@@ -76,18 +96,27 @@ export function ManHinhNhapExcel({ duLieu, capNhat, onDong }: Props) {
     datLoi(null);
   }
 
-  async function taiFileMau() {
-    if (tho === null || dangLam !== null) {
+  /**
+   * File mẫu cho trọn một tháng hay trọn cả năm.
+   *
+   * Có cả hai chứ không chỉ tháng này: người chuyển từ sổ giấy sang app giữa năm phải nhập
+   * bù mấy tháng liền, mà lấy file mẫu tám lần rồi gõ vào tám file cùng tên khác tháng là
+   * tự dựng ra chỗ để nhầm.
+   */
+  async function taiFileMau(khoang: 'thang' | 'nam') {
+    if (nhapCho === null || dangLam !== null) {
       return;
     }
 
     datLoi(null);
-    datDangLam('mau');
+    datDangLam(khoang);
     try {
-      const { tuNgay, denNgay } = khoangThang(homNay);
-      await chiaSeFileMau(tho.ten, tuNgay, denNgay);
+      const { tuNgay, denNgay } =
+        khoang === 'nam' ? khoangNam(homNay) : khoangThang(homNay);
+      // Máy thợ: file mẫu không có cột Ứng tiền. Xem ghi chú ở `cotNhap`.
+      await chiaSeFileMau(nhapCho.ten, tuNgay, denNgay, choTho === undefined);
     } catch {
-      datLoi('Chưa gửi được file mẫu. Anh thử lại xem.');
+      datLoi('Chưa gửi được file mẫu. Thử lại xem.');
     } finally {
       datDangLam(null);
     }
@@ -114,7 +143,7 @@ export function ManHinhNhapExcel({ duLieu, capNhat, onDong }: Props) {
         datBanNhap(null);
         datLoi(
           doc.lois.length > 0
-            ? 'File có dòng nhưng không dòng nào đọc được. Anh xem lại cột Ngày và cột Sáng/Chiều.'
+            ? 'File có dòng nhưng không dòng nào đọc được. Xem lại cột Ngày và cột Sáng/Chiều.'
             : 'File này chưa điền công ngày nào cả.',
         );
         return;
@@ -130,29 +159,47 @@ export function ManHinhNhapExcel({ duLieu, capNhat, onDong }: Props) {
     }
   }
 
+  /**
+   * Những dòng thật sự sẽ ghi. Trên máy thợ tiền ứng bị bỏ ngay ở đây, trước cả bảng xem
+   * trước: bảng xem trước phải nói đúng cái sắp xảy ra, hiện một con số tiền rồi không ghi
+   * là nói dối người đang soát.
+   */
+  const dongsGhi =
+    banNhap === null ? null : choTho === undefined ? banNhap.dongs : boUngTien(banNhap.dongs);
+  const tomTatFile = dongsGhi === null ? null : tomTatDoc(dongsGhi);
+  /** Máy thợ: file có cột tiền (file của chủ chẳng hạn) thì nói rõ là không nhận. */
+  const soDongCoUng =
+    banNhap === null || choTho === undefined
+      ? 0
+      : banNhap.dongs.filter((dong) => dong.ung !== null).length;
+
   function ghiVaoSo() {
-    if (tho === null || banNhap === null) {
+    if (nhapCho === null || dongsGhi === null) {
       return;
     }
 
-    const ket = apDungNhap(duLieu, tho.id, banNhap.dongs);
+    const ket = apDungNhap(duLieu, nhapCho.thoId, dongsGhi);
     capNhat(ket.duLieu);
     datDaGhi(ket);
   }
-
-  const tomTatFile = banNhap === null ? null : tomTatDoc(banNhap.dongs);
 
   return (
     <Modal visible animationType="slide" onRequestClose={onDong}>
       <SafeAreaView style={kieu.khung} edges={['top', 'bottom']}>
         <DauTrang
           tieuDe="Nhập từ Excel"
-          phu={tho === null ? 'Chọn thợ trước' : `Nhập công cho ${tho.ten}`}
+          phu={
+            choTho !== undefined
+              ? 'Nhập công của tôi'
+              : nhapCho === null
+                ? 'Chọn thợ trước'
+                : `Nhập công cho ${nhapCho.ten}`
+          }
           onLui={onDong}
         />
 
         <ScrollView contentContainerStyle={kieu.trong}>
-          {thos.length === 0 ? (
+          {choTho === undefined && thos.length === 0 ? (
             <View style={kieu.rong}>
               <Feather name="users" size={34} color={Mau.xam} />
               <Text style={kieu.chuRongTo}>Chưa có thợ nào</Text>
@@ -160,10 +207,13 @@ export function ManHinhNhapExcel({ duLieu, capNhat, onDong }: Props) {
             </View>
           ) : (
             <>
-              {/* ---- Bước 1: nhập cho ai ---- */}
-              <Text style={kieu.nhanBuoc}>1. Nhập cho thợ nào</Text>
+              {/* ---- Bước 1: nhập cho ai. Máy thợ bỏ hẳn bước này: chỉ có một người. ---- */}
+              {choTho === undefined && <Text style={kieu.nhanBuoc}>1. Nhập cho thợ nào</Text>}
 
-              {dangChonTho ? (
+              {/* Điều kiện viết thẳng ra `tho === null || dangDoi` chứ không dùng `dangChonTho`:
+                  hai cái luôn bằng nhau ở nhánh này, nhưng viết thẳng thì nhánh dưới mới
+                  chắc chắn có `tho`. */}
+              {choTho !== undefined ? null : tho === null || dangDoi ? (
                 <View style={kieu.danhSach}>
                   {thos.map((mot) => (
                     <Pressable
@@ -197,29 +247,55 @@ export function ManHinhNhapExcel({ duLieu, capNhat, onDong }: Props) {
               )}
 
               {/* ---- Bước 2: lấy file ---- */}
-              {tho !== null && !dangDoi && (
+              {nhapCho !== null && !dangDoi && (
                 <>
-                  <Text style={kieu.nhanBuoc}>2. Lấy file</Text>
+                  <Text style={kieu.nhanBuoc}>{buoc(2)}. Lấy file</Text>
 
-                  <Pressable
-                    style={[kieu.nutVien, dangLam === 'mau' && kieu.nutMo]}
-                    onPress={taiFileMau}
-                    disabled={dangLam !== null}
-                    accessibilityRole="button"
-                  >
-                    {dangLam === 'mau' ? (
-                      <ActivityIndicator color={Mau.chinh} />
-                    ) : (
-                      <Feather name="download" size={16} color={Mau.chinh} />
-                    )}
-                    <Text style={kieu.chuNutVien}>
-                      {dangLam === 'mau' ? 'Đang tạo file mẫu…' : 'Lấy file mẫu tháng này'}
-                    </Text>
-                  </Pressable>
+                  {/*
+                    Hai nút cạnh nhau, không phải một nút rồi một mục chọn khoảng: đây là
+                    chỗ người dùng đứng lại hỏi "sao chỉ có tháng này", mà hỏi thì phải
+                    thấy ngay câu trả lời chứ không phải mở thêm một hộp nữa.
+                  */}
+                  <View style={kieu.hangMau}>
+                    <Pressable
+                      style={[kieu.nutVien, dangLam === 'thang' && kieu.nutMo]}
+                      onPress={() => taiFileMau('thang')}
+                      disabled={dangLam !== null}
+                      accessibilityRole="button"
+                      accessibilityLabel="Lấy file mẫu tháng này"
+                    >
+                      {dangLam === 'thang' ? (
+                        <ActivityIndicator color={Mau.chinh} />
+                      ) : (
+                        <Feather name="download" size={16} color={Mau.chinh} />
+                      )}
+                      <Text style={kieu.chuNutVien}>
+                        {dangLam === 'thang' ? 'Đang tạo…' : `Mẫu tháng ${thangGon(homNay)}`}
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      style={[kieu.nutVien, dangLam === 'nam' && kieu.nutMo]}
+                      onPress={() => taiFileMau('nam')}
+                      disabled={dangLam !== null}
+                      accessibilityRole="button"
+                      accessibilityLabel="Lấy file mẫu cả năm"
+                    >
+                      {dangLam === 'nam' ? (
+                        <ActivityIndicator color={Mau.chinh} />
+                      ) : (
+                        <Feather name="download" size={16} color={Mau.chinh} />
+                      )}
+                      <Text style={kieu.chuNutVien}>
+                        {dangLam === 'nam' ? 'Đang tạo…' : `Mẫu cả năm ${Ngay.tach(homNay).nam}`}
+                      </Text>
+                    </Pressable>
+                  </View>
 
                   <Text style={kieu.chuPhu}>
-                    File mẫu điền sẵn ngày của cả tháng {thangGon(homNay)}, mở bằng Excel trên
-                    máy tính rồi gõ số công vào hai cột Sáng và Chiều.
+                    File mẫu điền sẵn ngày, mở bằng Excel trên máy tính rồi gõ số công vào hai
+                    cột Sáng và Chiều. File cả năm có sẵn ngày của mười hai tháng — điền tháng
+                    nào cũng được, tháng để trống thì trong máy vẫn nguyên.
                   </Text>
 
                   <Pressable
@@ -248,9 +324,9 @@ export function ManHinhNhapExcel({ duLieu, capNhat, onDong }: Props) {
               )}
 
               {/* ---- Bước 3: xem trước rồi ghi ---- */}
-              {tho !== null && !dangDoi && banNhap !== null && tomTatFile !== null && (
+              {nhapCho !== null && !dangDoi && banNhap !== null && tomTatFile !== null && (
                 <>
-                  <Text style={kieu.nhanBuoc}>3. Xem lại rồi ghi vào sổ</Text>
+                  <Text style={kieu.nhanBuoc}>{buoc(3)}. Xem lại rồi ghi vào sổ</Text>
 
                   {tenFile !== null && (
                     <Text style={kieu.chuPhu} numberOfLines={2}>
@@ -276,13 +352,27 @@ export function ManHinhNhapExcel({ duLieu, capNhat, onDong }: Props) {
                       so={Ngay.khoangGon(tomTatFile.tuNgay, tomTatFile.denNgay)}
                       mau="ngoc"
                     />
-                    <TheSo nhan="Ứng tiền" so={Ngay.tien(tomTatFile.tongUng)} mau="do" />
+                    {/* Máy thợ không có ô tiền nào, kể cả một ô "0 đ": cả app này không biết tiền. */}
+                    {choTho === undefined && (
+                      <TheSo nhan="Ứng tiền" so={Ngay.tien(tomTatFile.tongUng)} mau="do" />
+                    )}
                   </HangO>
 
                   {tomTatFile.soNghi > 0 && (
                     <Text style={kieu.chuPhu}>
                       Có {tomTatFile.soNghi} buổi file ghi là nghỉ — buổi ấy trong máy sẽ bị bỏ
                       chấm.
+                    </Text>
+                  )}
+
+                  {/*
+                    Nói ra chứ không lặng lẽ bỏ: thợ chọn đúng cái file chủ gửi thì trong đó
+                    có cột tiền, mà bỏ im thì thợ tưởng đã khai ứng rồi.
+                  */}
+                  {soDongCoUng > 0 && (
+                    <Text style={kieu.chuPhu}>
+                      File có {soDongCoUng} dòng ghi tiền ứng. App này chỉ nhận số công — tiền
+                      ứng thì nói với chủ, chủ ghi trên máy của chủ.
                     </Text>
                   )}
 
@@ -368,6 +458,10 @@ const kieu = StyleSheet.create({
   },
   chuPhu: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
 
+  // Hai nút file mẫu chia đôi bề ngang. Chữ dài thì tự xuống dòng trong nút — `minHeight`
+  // của nút chỉ là mức thấp nhất, nút cao thêm theo chữ.
+  hangMau: { flexDirection: 'row', gap: 10 },
+
   danhSach: { gap: 8 },
   dongTho: {
     ...theTrang,
@@ -384,6 +478,7 @@ const kieu = StyleSheet.create({
   giua: { flex: 1, gap: 3 },
 
   nutVien: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

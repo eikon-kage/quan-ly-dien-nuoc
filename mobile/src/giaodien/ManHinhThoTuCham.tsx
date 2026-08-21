@@ -17,6 +17,7 @@ import { HopNhapSo } from './HopNhapSo';
 import { HopNoiNhom } from './HopNoiNhom';
 import { HopVaiMay } from './HopVaiMay';
 import { ManHinhDoiChieu } from './ManHinhDoiChieu';
+import { ManHinhNhapExcel } from './ManHinhNhapExcel';
 import { ManHinhSoCuaToi } from './ManHinhSoCuaToi';
 import { DauTrang, HangO, TheSo, theTrang } from './ThanhPhan';
 import { Bong, Co, HeSoChuToiDaLuoi, Mau, PhongChu, Tuoi } from './thietKe';
@@ -61,6 +62,7 @@ interface Props {
 export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien, nhom }: Props) {
   const [moDoiChieu, datMoDoiChieu] = useState(false);
   const [moSoCong, datMoSoCong] = useState(false);
+  const [moNhap, datMoNhap] = useState(false);
   /** null = đóng, 'chon' = mở ra hỏi vai máy, 'ma' = mở thẳng ô dán mã mời. */
   const [moVaiMay, datMoVaiMay] = useState<'chon' | 'ma' | null>(null);
   const [moNhom, datMoNhom] = useState(false);
@@ -410,6 +412,23 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
               </Text>
             </Pressable>
           )}
+
+          {/*
+            Nhập từ Excel cũng có mặt trên máy thợ, không phải việc riêng của chủ. Thợ mới
+            cài app giữa tháng thì ở đây là cả tháng công cũ phải chấm bù — mà danh sách
+            trên chỉ mời chấm bù mười ba ngày, xa hơn nữa là không có ô nào mà bấm. Gõ một
+            bảng trên máy tính rồi nhập vào là đường duy nhất cho quãng ấy.
+
+            Không có tiền ứng ở đường này: xem `choTho` trong ManHinhNhapExcel.
+          */}
+          <Pressable
+            style={kieu.nutViec}
+            onPress={() => datMoNhap(true)}
+            accessibilityRole="button"
+          >
+            <Feather name="upload" size={16} color={Mau.chinh} />
+            <Text style={kieu.chuNutViec}>Nhập từ Excel</Text>
+          </Pressable>
         </View>
 
         {soCuaToi.dongs.length > 0 && (
@@ -543,6 +562,15 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
         />
       )}
 
+      {moNhap && (
+        <ManHinhNhapExcel
+          duLieu={duLieu}
+          capNhat={capNhat}
+          choTho={{ thoId, ten: tenTho }}
+          onDong={() => datMoNhap(false)}
+        />
+      )}
+
       {moNhom && <HopNoiNhom vai="tho" dieuKhien={nhom} onDong={() => datMoNhom(false)} />}
 
       {moVaiMay !== null && (
@@ -661,9 +689,12 @@ const kieu = StyleSheet.create({
 
   // Hai nút việc: viền màu nhạt như bên máy chủ, không phải nút xanh đặc — chúng không
   // phải việc chính của màn hình này.
-  hangNut: { flexDirection: 'row', gap: 10 },
+  // Ba việc thì không nhét vừa một hàng: `minWidth` đẩy cái thứ ba xuống dòng dưới, ở đó
+  // `flex: 1` cho nó ăn hết bề ngang. Ba nút chen một hàng là ba nhãn bị cắt còn một chữ.
+  hangNut: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   nutViec: {
     flex: 1,
+    minWidth: 150,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

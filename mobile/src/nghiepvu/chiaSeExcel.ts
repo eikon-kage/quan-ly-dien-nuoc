@@ -28,10 +28,12 @@ export async function chiaSeFileMau(
   tenTho: string,
   tuNgay: string,
   denNgay: string,
+  /** Máy thợ truyền false: cả app trên máy thợ không biết tiền, xem `cotNhap`. */
+  coUngTien: boolean = true,
 ): Promise<string> {
   return guiFile(
-    taoFileMau(tenTho, tuNgay, denNgay),
-    tenFileMau(tenTho, tuNgay),
+    taoFileMau(tenTho, tuNgay, denNgay, coUngTien),
+    tenFileMau(tenTho, tuNgay, denNgay),
     KIEU_EXCEL,
     'Gửi file mẫu chấm công',
   );

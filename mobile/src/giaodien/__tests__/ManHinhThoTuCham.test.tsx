@@ -8,7 +8,7 @@
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-import { chiaSeSoCong } from '../../nghiepvu/chiaSeExcel';
+import { chiaSeFileMau, chiaSeSoCong } from '../../nghiepvu/chiaSeExcel';
 
 import { SoDaNhan } from '../../nghiepvu/hopThu';
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
@@ -20,12 +20,18 @@ import { DieuKhienDoiChieu } from '../dungDoiChieu';
 import { DieuKhienNhom } from '../dungSupabase';
 import { ManHinhThoTuCham } from '../ManHinhThoTuCham';
 
-// Máy chạy kiểm thử không có bảng chia sẻ của điện thoại.
+// Máy chạy kiểm thử không có bảng chia sẻ của điện thoại, cũng không có bảng chọn file.
 jest.mock('../../nghiepvu/chiaSeExcel', () => ({
   chiaSeSoCong: jest.fn(() => Promise.resolve('file:///tam/So-cong.xlsx')),
+  chiaSeFileMau: jest.fn(() => Promise.resolve('file:///tam/Mau.xlsx')),
+}));
+jest.mock('../../nghiepvu/chonFileExcel', () => ({
+  ...jest.requireActual('../../nghiepvu/chonFileExcel'),
+  chonFileExcel: jest.fn(() => Promise.resolve(null)),
 }));
 
 const gioChiaSe = chiaSeSoCong as jest.MockedFunction<typeof chiaSeSoCong>;
+const guiFileMau = chiaSeFileMau as jest.MockedFunction<typeof chiaSeFileMau>;
 
 const HOM_NAY = Ngay.homNay();
 const HOM_QUA = Ngay.congNgay(HOM_NAY, -1);
@@ -406,5 +412,32 @@ describe('xuất sổ của tôi ra Excel', () => {
 
     fireEvent.press(screen.getByText('Xuất ra Excel'));
     await waitFor(() => expect(gioChiaSe).toHaveBeenCalledTimes(2));
+  });
+});
+
+/**
+ * Nhập từ Excel cũng có trên máy thợ: thợ mới cài app giữa tháng thì cả tháng công cũ nằm
+ * ngoài mười ba ngày mà danh sách chấm bù mời tới, không có ô nào mà bấm.
+ */
+describe('nhập từ Excel trên máy thợ', () => {
+  test('có nút, và mở ra là màn hình nhập cho chính mình — không phải chọn thợ', () => {
+    const { duLieu, caiDat } = kho();
+    dung(duLieu, caiDat);
+
+    fireEvent.press(screen.getByText('Nhập từ Excel'));
+
+    expect(screen.getByText('Nhập công của tôi')).toBeTruthy();
+    expect(screen.queryByText('1. Nhập cho thợ nào')).toBeNull();
+  });
+
+  test('file mẫu lấy ở đây không có cột tiền, đúng như mọi thứ khác trên máy thợ', async () => {
+    const { duLieu, caiDat } = kho();
+    dung(duLieu, caiDat);
+
+    fireEvent.press(screen.getByText('Nhập từ Excel'));
+    fireEvent.press(screen.getByLabelText('Lấy file mẫu cả năm'));
+
+    await waitFor(() => expect(guiFileMau).toHaveBeenCalledTimes(1));
+    expect(guiFileMau.mock.calls[0][3]).toBe(false);
   });
 });

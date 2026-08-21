@@ -5,10 +5,12 @@ import {
   FileKhongDungMau,
   TEN_TRANG_NHAP,
   apDungNhap,
+  boUngTien,
   cacTrangMau,
   docFileNhap,
   docNgay,
   docTrangNhap,
+  khoangNam,
   khoangThang,
   taoFileMau,
   tenFileMau,
@@ -293,6 +295,102 @@ describe('file mẫu', () => {
   });
 
   test('tên file bỏ dấu để gửi qua mạng không lỗi', () => {
-    expect(tenFileMau('Anh Tuấn', '2026-08-19')).toBe('Mau-cham-cong-anh-tuan-08-2026.xlsx');
+    expect(tenFileMau('Anh Tuấn', '2026-08-01', '2026-08-31')).toBe(
+      'Mau-cham-cong-anh-tuan-08-2026.xlsx',
+    );
+  });
+
+  test('file cả năm và file một tháng không trùng tên nhau', () => {
+    // Trùng tên là cái sau đè cái trước trong thư mục Tải về, mà cái trước vừa gõ nửa tháng.
+    expect(tenFileMau('Anh Tuấn', '2026-01-01', '2026-12-31')).toBe(
+      'Mau-cham-cong-anh-tuan-2026.xlsx',
+    );
+    // Khoảng lẻ thì ghi cả hai đầu, không giả vờ là một tháng.
+    expect(tenFileMau('Anh Tuấn', '2026-08-03', '2026-09-05')).toBe(
+      'Mau-cham-cong-anh-tuan-2026-08-03-den-2026-09-05.xlsx',
+    );
+  });
+});
+
+describe('file mẫu cả năm', () => {
+  test('có đủ ngày của mười hai tháng, thêm một dòng tên tháng ngăn giữa', () => {
+    const { tuNgay, denNgay } = khoangNam('2026-08-19');
+    expect([tuNgay, denNgay]).toEqual(['2026-01-01', '2026-12-31']);
+
+    const trang = timTrang(docFileExcel(taoFileMau('Anh Tuấn', tuNgay, denNgay)), TEN_TRANG_NHAP);
+
+    // Một dòng tiêu đề + 365 ngày của 2026 + 12 dòng tên tháng.
+    expect(trang.dongs).toHaveLength(1 + 365 + 12);
+    expect(trang.dongs[1].o[0]).toBe('Tháng 01/2026');
+    expect(trang.dongs[2].o[1]).toBe('Thứ Năm');
+  });
+
+  test('dòng tên tháng không thành lỗi lúc đọc lại, và cũng không thành một ngày', () => {
+    const { tuNgay, denNgay } = khoangNam('2026-08-19');
+    const doc = docFileNhap(taoFileMau('Anh Tuấn', tuNgay, denNgay));
+
+    expect(doc.dongs).toEqual([]);
+    expect(doc.lois).toEqual([]);
+  });
+
+  test('file một tháng thì không chen dòng tên tháng — chỉ có một tháng, nói lại là thừa', () => {
+    const { tuNgay, denNgay } = khoangThang('2026-08-19');
+    const trang = timTrang(docFileExcel(taoFileMau('Anh Tuấn', tuNgay, denNgay)), TEN_TRANG_NHAP);
+
+    expect(trang.dongs).toHaveLength(32);
+  });
+
+  test('điền công vào một tháng thì mấy tháng để trống vẫn nguyên', () => {
+    const { duLieu, thoId } = khoMotTho();
+    const { tuNgay, denNgay } = khoangNam('2026-08-19');
+
+    // Chép lại đúng lối người dùng làm: mở file mẫu cả năm ra, gõ vào một ngày tháng 9.
+    const trangs = cacTrangMau('Anh Tuấn', tuNgay, denNgay);
+    const cham9 = trangs[0].dongs.map((dong) =>
+      dong[0] === '2026-09-10' ? [dong[0], dong[1], 1, 1, null, ''] : dong,
+    );
+    const doc = docFileNhap(taoFileExcel([{ ...trangs[0], dongs: cham9 }]));
+
+    expect(doc.lois).toEqual([]);
+    expect(doc.dongs.map((dong) => dong.ngay)).toEqual(['2026-09-10']);
+
+    const ket = apDungNhap(duLieu, thoId, doc.dongs);
+    expect(ket.themBuoi).toBe(2);
+    expect(ket.duLieu.buoiCongs).toHaveLength(2);
+  });
+});
+
+describe('file mẫu của máy thợ', () => {
+  test('không có cột Ứng tiền — cả app trên máy thợ không biết tiền', () => {
+    const trangs = cacTrangMau('Tôi', '2026-08-01', '2026-08-31', false);
+
+    expect(trangs[0].cots.map((cot) => cot.nhan)).toEqual([
+      'Ngày',
+      'Thứ',
+      'Sáng',
+      'Chiều',
+      'Ghi chú',
+    ]);
+    expect(trangs[1].dongs.flat().join(' ')).not.toContain('Ứng tiền');
+  });
+
+  test('bỏ tiền ứng khỏi những dòng đã đọc, giữ nguyên số công và ghi chú', () => {
+    const doc = docFileNhap(fileVoi([['2026-08-03', '', 1, 0.5, 500000, 'về sớm']]));
+    const sach = boUngTien(doc.dongs);
+
+    expect(sach).toEqual([
+      { soDong: 2, ngay: '2026-08-03', congSang: 1, congChieu: 0.5, ung: null, ghiChu: 'về sớm' },
+    ]);
+  });
+
+  test('chọn đúng file của chủ thì công vẫn vào, tiền ứng thì không', () => {
+    const { duLieu, thoId } = khoMotTho();
+    const doc = docFileNhap(fileVoi([['2026-08-03', '', 1, 1, 500000, '']]));
+
+    const ket = apDungNhap(duLieu, thoId, boUngTien(doc.dongs));
+
+    expect(ket.themBuoi).toBe(2);
+    expect(ket.themUng).toBe(0);
+    expect(ket.duLieu.ungTiens).toEqual([]);
   });
 });

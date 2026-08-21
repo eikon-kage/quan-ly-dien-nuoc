@@ -41,6 +41,12 @@ function khoMotTho(): { duLieu: DuLieuChamCong; ten: string } {
   return { duLieu: them.duLieu, ten: them.tho.ten };
 }
 
+/** Sổ trên máy thợ: đúng một bản ghi thợ, và cần id của nó để nhập cho chính mình. */
+function khoMotThoCoId(): { duLieu: DuLieuChamCong; thoId: string } {
+  const them = themTho(duLieuRong(), 'Tôi', 0, '2026-08-01');
+  return { duLieu: them.duLieu, thoId: them.tho.id };
+}
+
 function khoHaiTho(): DuLieuChamCong {
   const mot = themTho(duLieuRong(), 'Anh Tuấn', 300_000, '2026-08-01');
   return themTho(mot.duLieu, 'Anh Bình', 280_000, '2026-08-01').duLieu;
@@ -48,6 +54,19 @@ function khoHaiTho(): DuLieuChamCong {
 
 function dung(duLieu: DuLieuChamCong, capNhat = jest.fn()) {
   render(<ManHinhNhapExcel duLieu={duLieu} capNhat={capNhat} onDong={jest.fn()} />);
+  return capNhat;
+}
+
+/** Cùng màn hình ấy trên **máy thợ**: nhập cho chính mình, không có tiền. */
+function dungMayTho(duLieu: DuLieuChamCong, thoId: string, capNhat = jest.fn()) {
+  render(
+    <ManHinhNhapExcel
+      duLieu={duLieu}
+      capNhat={capNhat}
+      choTho={{ thoId, ten: 'Tôi' }}
+      onDong={jest.fn()}
+    />,
+  );
   return capNhat;
 }
 
@@ -89,23 +108,82 @@ describe('lấy file mẫu', () => {
   test('dựng file mẫu cho đúng thợ đang chọn, trọn tháng này', async () => {
     dung(khoMotTho().duLieu);
 
-    fireEvent.press(screen.getByText('Lấy file mẫu tháng này'));
+    fireEvent.press(screen.getByLabelText('Lấy file mẫu tháng này'));
 
     await waitFor(() => expect(guiMau).toHaveBeenCalledTimes(1));
-    const [tenTho, tuNgay, denNgay] = guiMau.mock.calls[0];
+    const [tenTho, tuNgay, denNgay, coUngTien] = guiMau.mock.calls[0];
     expect(tenTho).toBe('Anh Tuấn');
     // Trọn một tháng: ngày đầu là mùng 1, ngày cuối cùng tháng cùng năm với ngày đầu.
     expect(tuNgay.endsWith('-01')).toBe(true);
     expect(denNgay.slice(0, 7)).toBe(tuNgay.slice(0, 7));
+    expect(coUngTien).toBe(true);
+  });
+
+  test('nút thứ hai lấy trọn cả năm, cho người nhập bù mấy tháng liền', async () => {
+    dung(khoMotTho().duLieu);
+
+    fireEvent.press(screen.getByLabelText('Lấy file mẫu cả năm'));
+
+    await waitFor(() => expect(guiMau).toHaveBeenCalledTimes(1));
+    const [tenTho, tuNgay, denNgay] = guiMau.mock.calls[0];
+    expect(tenTho).toBe('Anh Tuấn');
+    expect(tuNgay.slice(4)).toBe('-01-01');
+    expect(denNgay).toBe(`${tuNgay.slice(0, 4)}-12-31`);
   });
 
   test('gửi hụt thì nói bằng tiếng người', async () => {
     guiMau.mockRejectedValueOnce(new Error('hết chỗ'));
     dung(khoMotTho().duLieu);
 
-    fireEvent.press(screen.getByText('Lấy file mẫu tháng này'));
+    fireEvent.press(screen.getByLabelText('Lấy file mẫu tháng này'));
 
-    expect(await screen.findByText('Chưa gửi được file mẫu. Anh thử lại xem.')).toBeTruthy();
+    expect(await screen.findByText('Chưa gửi được file mẫu. Thử lại xem.')).toBeTruthy();
+  });
+});
+
+describe('trên máy thợ', () => {
+  test('không có bước chọn thợ, vào thẳng việc lấy file', () => {
+    const { duLieu, thoId } = khoMotThoCoId();
+    dungMayTho(duLieu, thoId);
+
+    expect(screen.getByText('Nhập công của tôi')).toBeTruthy();
+    expect(screen.queryByText('1. Nhập cho thợ nào')).toBeNull();
+    expect(screen.getByText('1. Lấy file')).toBeTruthy();
+    expect(screen.getByText('Chọn file Excel đã điền')).toBeTruthy();
+  });
+
+  test('file mẫu của thợ không có cột Ứng tiền', async () => {
+    const { duLieu, thoId } = khoMotThoCoId();
+    dungMayTho(duLieu, thoId);
+
+    fireEvent.press(screen.getByLabelText('Lấy file mẫu cả năm'));
+
+    await waitFor(() => expect(guiMau).toHaveBeenCalledTimes(1));
+    expect(guiMau.mock.calls[0][3]).toBe(false);
+  });
+
+  test('chọn đúng file của chủ thì công vào sổ, tiền ứng thì không hiện cũng không ghi', async () => {
+    chonFile.mockResolvedValue({
+      ten: 'cong.xlsx',
+      noiDung: fileDaDien([['2026-08-03', '', 1, 1, 500000, '']]),
+    });
+
+    const { duLieu, thoId } = khoMotThoCoId();
+    const capNhat = dungMayTho(duLieu, thoId);
+    fireEvent.press(screen.getByText('Chọn file Excel đã điền'));
+
+    expect(await screen.findByText('Ghi vào sổ')).toBeTruthy();
+    // Không một ô tiền nào trên máy thợ, kể cả ô ghi 0 đ.
+    expect(screen.queryByText('Ứng tiền')).toBeNull();
+    expect(screen.queryByText('500.000 đ')).toBeNull();
+    // Nhưng cũng không bỏ im: nói rõ là phần tiền không nhận.
+    expect(screen.getByText(/File có 1 dòng ghi tiền ứng/)).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Ghi vào sổ'));
+
+    const moi = capNhat.mock.calls[0][0];
+    expect(moi.buoiCongs).toHaveLength(2);
+    expect(moi.ungTiens).toEqual([]);
   });
 });
 
