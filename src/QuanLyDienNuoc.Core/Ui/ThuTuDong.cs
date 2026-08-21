@@ -54,6 +54,39 @@ public static class ThuTuDong
     }
 
     /// <summary>
+    /// Chuyển cả một nhóm dòng lên (hoặc xuống) một bậc, thứ tự trong nhóm giữ nguyên. Trả về
+    /// số dòng đã chuyển được: 0 là cả nhóm đã sát đầu / cuối ngày của nó, danh sách không đổi.
+    /// </summary>
+    public static int ChuyenNhom(IList<ChiTietHoaDon> chiTiet, IEnumerable<Guid> id, bool xuong)
+    {
+        // Chạy theo đúng thứ tự đang hiện trên bảng, không theo thứ tự người dùng bấm chọn.
+        var can = id.ToHashSet();
+        var thuTuChay = TheoThuTu(chiTiet).Where(c => can.Contains(c.Id)).Select(c => c.Id).ToList();
+
+        // Chuyển xuống thì đi từ dòng cuối nhóm lên, chuyển lên thì đi từ dòng đầu nhóm xuống —
+        // làm ngược lại là dòng nọ đè lên dòng kia, cả nhóm dồn cục vào nhau.
+        if (xuong)
+        {
+            thuTuChay.Reverse();
+        }
+
+        var soDaChuyen = 0;
+        foreach (var mot in thuTuChay)
+        {
+            // Một dòng đã sát mép ngày thì dừng luôn: nhóm liền khối không đi tiếp được nữa, mà
+            // đi tiếp là các dòng sau chồng vào chỗ dòng này.
+            if (!Chuyen(chiTiet, mot, xuong))
+            {
+                break;
+            }
+
+            soDaChuyen++;
+        }
+
+        return soDaChuyen;
+    }
+
+    /// <summary>
     /// Đổi chỗ một dòng với dòng liền kề phía trên (hoặc phía dưới). Chỉ chuyển được trong
     /// cùng một ngày — muốn chuyển sang ngày khác thì sửa ô NGÀY. Trả về false khi dòng đã
     /// nằm ở đầu / cuối ngày của nó, lúc đó danh sách không đổi.

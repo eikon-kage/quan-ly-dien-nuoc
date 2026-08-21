@@ -83,7 +83,7 @@ thực tế chỉ hai nút đầu là dùng hằng ngày. Nay mỗi khu giữ ng
 | Trang chủ, chân bảng khách | Mở đơn hàng · Thu tiền | sửa khách · xoá khách |
 | Đơn hàng, dải tiêu đề | năm · hoá đơn · + Hoá đơn mới · In / xem trước | thu tiền · trả cho hoá đơn · chốt (mở lại) · sửa mã · xoá hoá đơn · bảng giá riêng · nhắc nợ · hoàn tác · làm lại · Excel vào/ra |
 | Đơn hàng, hàng nhập hàng | + Thêm dòng · − Trả lại | *(không còn)* |
-| Đơn hàng, thanh tổng tiền | Nhập nhiều dòng | chèn dòng · chuyển lên/xuống · xoá dòng |
+| Đơn hàng, thanh tổng tiền | Nhập nhiều dòng | chèn dòng · chọn tất cả dòng · chuyển lên/xuống · xoá dòng đã chọn |
 | Sổ công nợ | Mở đơn hàng · Thu tiền | soạn tin nhắc nợ · xuất Excel |
 | Sao lưu | Sao lưu ngay | xuất Excel · mở thư mục · khôi phục |
 | Xem trước hoá đơn | In hoá đơn · trang trước/sau | phóng to · thu nhỏ · vừa màn hình |
@@ -170,10 +170,25 @@ Nhãn trên ô nhập chỉ để một hai chữ. Cách gõ tắt tên hàng, g
 ## Chọn nhiều dòng rồi làm một lượt
 
 Bảng chi tiết cho chọn nhiều dòng: `Ctrl`+bấm để chọn thêm từng dòng, `Shift`+bấm để chọn cả
-dải. Xoá (`Delete`) và chuyển lên / xuống (`Alt+↑` / `Alt+↓`) áp cho **cả nhóm đang chọn**,
-ghi thành một bước hoàn tác duy nhất. Chuyển xuống thì chạy từ dòng cuối nhóm lên, chuyển lên
-thì từ dòng đầu xuống — làm ngược lại là cả nhóm dồn cục vào nhau. Chuyển xong nhóm vẫn được
-chọn, bấm `Alt+↓` liên tiếp là cả nhóm đi tiếp.
+dải, `Ctrl+A` chọn hết bảng (trừ dòng vàng đang gõ dở). Xoá (`Delete`) và chuyển lên / xuống
+(`Alt+↑` / `Alt+↓`) áp cho **cả nhóm đang chọn**, ghi thành một bước hoàn tác duy nhất.
+Chuyển xuống thì chạy từ dòng cuối nhóm lên, chuyển lên thì từ dòng đầu xuống — làm ngược lại
+là cả nhóm dồn cục vào nhau (`ThuTuDong.ChuyenNhom`). Chuyển xong nhóm vẫn được chọn, bấm
+`Alt+↓` liên tiếp là cả nhóm đi tiếp.
+
+Ba chỗ cho biết đang làm với mấy dòng, vì "chọn nhầm cả dải rồi bấm Delete" là lỗi khó lấy lại
+nhất ở màn này:
+
+- **Thanh dưới** hiện "Đang chọn 5 dòng · 1.250.000 đ — Delete xoá cả nhóm, Alt+↑ / Alt+↓
+  chuyển cả nhóm" ngay khi chọn từ hai dòng trở lên; bỏ chọn thì về lời nhắc thường.
+- **Menu chuột phải và nút ⋯** đổi chữ theo số dòng: "Xoá 5 dòng đã chọn", "Chuyển 5 dòng lên".
+  Hai chỗ này ăn cùng một danh sách việc trong `DonHangForm.ViecVoiDongDangChon` nên không lệch
+  nhau được.
+- **Hộp hỏi lại trước khi xoá** nói rõ số dòng.
+
+Bấm chuột phải **vào giữa nhóm đang chọn thì giữ nguyên cả nhóm**; chỉ khi bấm ra ngoài nhóm
+mới chuyển con trỏ sang dòng đó. Đặt lại con trỏ là Windows bỏ hết dấu chọn của các dòng khác,
+nên trước đây chọn 5 dòng rồi bấm chuột phải là lệnh trong menu chỉ còn xoá đúng một dòng.
 
 ## Chỗ làm khác bản thiết kế
 

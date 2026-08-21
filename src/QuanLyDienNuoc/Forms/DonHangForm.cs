@@ -52,6 +52,12 @@ public sealed class DonHangForm : Form
     /// <summary>Chặn ghi chồng khi việc ghi dòng nhập đang chờ chạy hoặc đang chạy dở.</summary>
     private bool _dangGhiDongNhap;
 
+    /// <summary>
+    /// Thanh dưới đang hiện lời nhắc "đang chọn N dòng". Nhớ lại để lúc bỏ chọn thì trả về lời
+    /// nhắc thường của màn hình, chứ không xoá mất thông báo của việc vừa làm.
+    /// </summary>
+    private bool _dangNhacNhom;
+
     public DonHangForm(Guid khachId, int nam)
     {
         _khachId = khachId;
@@ -566,32 +572,101 @@ public sealed class DonHangForm : Form
         // người dùng đang trỏ tới chứ không phải dòng đang chọn từ trước.
         _luoiCT.CellMouseDown += (_, e) =>
         {
-            if (e.Button == MouseButtons.Right && e.RowIndex >= 0 && e.ColumnIndex >= 0)
+            if (e.Button != MouseButtons.Right || e.RowIndex < 0 || e.ColumnIndex < 0)
             {
-                _luoiCT.CurrentCell = _luoiCT.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                return;
             }
+
+            // Trừ khi dòng đó đang nằm trong nhóm đã chọn: đặt lại con trỏ là Windows bỏ hết dấu
+            // chọn của các dòng khác, chọn 5 dòng rồi bấm chuột phải vào giữa nhóm thì lệnh
+            // "xoá dòng đã chọn" chỉ còn xoá đúng một dòng.
+            if (_luoiCT.Rows[e.RowIndex].Selected)
+            {
+                return;
+            }
+
+            _luoiCT.CurrentCell = _luoiCT.Rows[e.RowIndex].Cells[e.ColumnIndex];
         };
+
+        // Chọn nhiều dòng thì nhắc ngay ở thanh dưới: đang chọn mấy dòng, thành bao nhiêu tiền,
+        // bấm gì để xoá / chuyển cả nhóm. Không có lời nhắc này thì chọn xong cũng không biết
+        // mình đang giữ đúng mấy dòng.
+        _luoiCT.SelectionChanged += (_, _) => NhacNhomDangChon();
 
         _luoiCT.DataSource = _nguonCT;
         return _luoiCT;
     }
 
-    /// <summary>Menu chuột phải trên lưới chi tiết: chèn, đổi chỗ, xoá dòng.</summary>
+    /// <summary>Một việc làm được với dòng (hoặc cả nhóm dòng) đang chọn trên lưới.</summary>
+    /// <param name="Chu">Chữ hiện trong menu — tính lại lúc mở menu để kèm được số dòng đang chọn.</param>
+    private sealed record ViecDong(Func<string> Chu, Action Lam, Color Mau = default);
+
+    /// <summary>Một dòng menu: tên việc bên trái, phím tắt lùi về phía phải.</summary>
+    private static string MucMenu(string ten, string phimTat) => ten.PadRight(30) + phimTat;
+
+    /// <summary>
+    /// Danh sách việc làm với dòng đang chọn, dùng chung cho menu chuột phải trên lưới và nút ⋯
+    /// dưới bảng — trước đây hai chỗ chép tay hai lần, lệch nhau một việc là người dùng tưởng
+    /// phần mềm làm được ở chỗ này mà không làm được ở chỗ kia. Phần tử null là vạch ngăn.
+    /// <para>
+    /// Chữ của việc xoá và chuyển kèm luôn số dòng đang chọn ("Xoá 5 dòng đã chọn"), để trước
+    /// khi bấm là biết lệnh sắp ăn vào mấy dòng — chọn nhầm cả dải thì thấy ngay ở đây.
+    /// </para>
+    /// </summary>
+    private IReadOnlyList<ViecDong?> ViecVoiDongDangChon() => new ViecDong?[]
+    {
+        new(() => MucMenu("Chèn dòng lên trên", "Ctrl+Enter"), () => ThemDong(chen: true)),
+        new(() => MucMenu("Chèn dòng xuống dưới", "Ctrl+Shift+Enter"), () => ThemDong(chen: true, chenDuoi: true)),
+        null,
+        new(() => MucMenu("Chọn tất cả dòng", "Ctrl+A"), ChonTatCaDong),
+        new(() => MucMenu($"Chuyển {NhomDangChon()} lên", "Alt+↑"), () => ChuyenDong(xuong: false)),
+        new(() => MucMenu($"Chuyển {NhomDangChon()} xuống", "Alt+↓"), () => ChuyenDong(xuong: true)),
+        null,
+        new(() => MucMenu($"Xoá {NhomDangChon()} đã chọn", "Delete"), XoaDong, Theme.Do),
+    };
+
+    /// <summary>"5 dòng" khi đang giữ cả nhóm, còn một dòng thì chỉ là "dòng" — để ghép vào menu.</summary>
+    private string NhomDangChon()
+    {
+        var so = DongDaChon().Count;
+        return so >= 2 ? $"{so} dòng" : "dòng";
+    }
+
+    /// <summary>Menu chuột phải trên lưới chi tiết: chèn, chọn cả bảng, đổi chỗ, xoá dòng.</summary>
     private ContextMenuStrip TaoMenuChuot()
     {
         // Cùng cỡ chữ với menu của nút ba chấm ở thanh tổng tiền — hai chỗ này cùng một danh
         // sách việc, chữ lệch cỡ nhau là nhìn ra ngay.
         var menu = new ContextMenuStrip { Font = Theme.FontNhap, ShowImageMargin = false };
+        var capNhatChu = new List<Action>();
 
-        void Them(string chu, Action lam) => menu.Items.Add(chu, null, (_, _) => lam());
+        foreach (var viec in ViecVoiDongDangChon())
+        {
+            if (viec is null)
+            {
+                menu.Items.Add(new ToolStripSeparator());
+                continue;
+            }
 
-        Them("Chèn dòng lên trên          Ctrl+Enter", () => ThemDong(chen: true));
-        Them("Chèn dòng xuống dưới     Ctrl+Shift+Enter", () => ThemDong(chen: true, chenDuoi: true));
-        menu.Items.Add(new ToolStripSeparator());
-        Them("Chuyển lên                        Alt+↑", () => ChuyenDong(xuong: false));
-        Them("Chuyển xuống                   Alt+↓", () => ChuyenDong(xuong: true));
-        menu.Items.Add(new ToolStripSeparator());
-        Them("Xoá dòng đã chọn              Delete", XoaDong);
+            var muc = new ToolStripMenuItem(viec.Chu(), null, (_, _) => viec.Lam());
+            if (viec.Mau != default)
+            {
+                muc.ForeColor = viec.Mau;
+            }
+
+            menu.Items.Add(muc);
+
+            // Chữ tính lại mỗi lần mở menu, vì số dòng đang chọn đổi liên tục.
+            capNhatChu.Add(() => muc.Text = viec.Chu());
+        }
+
+        menu.Opening += (_, _) =>
+        {
+            foreach (var capNhat in capNhatChu)
+            {
+                capNhat();
+            }
+        };
 
         return menu;
     }
@@ -609,14 +684,17 @@ public sealed class DonHangForm : Form
 
         // Đúng những việc của menu chuột phải trên lưới, để ai không quen chuột phải vẫn tìm
         // được. Trước đây là hai nút chữ dài chiếm hết góc trái dưới bảng.
-        var viecDong = Theme.NutBaCham("Việc với dòng đang chọn", 44)
-            .Viec("Chèn dòng lên trên          Ctrl+Enter", () => ThemDong(chen: true))
-            .Viec("Chèn dòng xuống dưới     Ctrl+Shift+Enter", () => ThemDong(chen: true, chenDuoi: true))
-            .Ngan()
-            .Viec("Chuyển lên                        Alt+↑", () => ChuyenDong(xuong: false))
-            .Viec("Chuyển xuống                   Alt+↓", () => ChuyenDong(xuong: true))
-            .Ngan()
-            .Viec("Xoá dòng đã chọn              Delete", XoaDong, Theme.Do);
+        var viecDong = Theme.NutBaCham("Việc với dòng đang chọn", 44);
+        foreach (var viec in ViecVoiDongDangChon())
+        {
+            if (viec is null)
+            {
+                viecDong.Ngan();
+                continue;
+            }
+
+            viecDong.Viec(viec.Chu, viec.Lam, viec.Mau);
+        }
 
         var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
         trai.Controls.Add(btnNhieuDong);
@@ -796,15 +874,8 @@ public sealed class DonHangForm : Form
 
         _dangNap = false;
 
-        if (hoaDon is null)
-        {
-            _lblTrangThai.Text = "Chưa có hoá đơn nào — gõ dòng hàng đầu tiên là phần mềm tự mở hoá đơn mới.";
-        }
-        else if (hoaDon.DaChot)
-        {
-            _lblTrangThai.Text = $"Hoá đơn {hoaDon.MaHoaDon} đã chốt nên không sửa được. "
-                + "Muốn thêm hàng thì mở nút ⋯ rồi chọn \"Mở lại hoá đơn\".";
-        }
+        _dangNhacNhom = false;
+        _lblTrangThai.Text = NhanCoBan();
 
         CapNhatTong();
     }
@@ -1487,10 +1558,80 @@ public sealed class DonHangForm : Form
         }
     }
 
+    /// <summary>
+    /// Chọn hết các dòng thật của hoá đơn (Ctrl+A). Dòng vàng cuối bảng không chọn: nó chưa vào
+    /// sổ nên xoá hay chuyển nó cùng cả nhóm đều vô nghĩa.
+    /// <para>
+    /// Không dùng <c>SelectAll</c> của Windows, và cũng không dời con trỏ: dời con trỏ khỏi dòng
+    /// vàng là phần mềm ghi luôn dòng đang gõ dở vào sổ, mà người dùng chỉ muốn chọn dòng.
+    /// </para>
+    /// </summary>
+    private void ChonTatCaDong()
+    {
+        var so = 0;
+        foreach (DataGridViewRow hang in _luoiCT.Rows)
+        {
+            var laDongThat = hang.DataBoundItem is ChiTietHoaDon dong && !LaDongNhap(dong);
+            hang.Selected = laDongThat;
+            if (laDongThat)
+            {
+                so++;
+            }
+        }
+
+        if (so == 0)
+        {
+            _lblTrangThai.Text = "Hoá đơn chưa có dòng hàng nào để chọn.";
+            return;
+        }
+
+        NhacNhomDangChon();
+    }
+
+    /// <summary>
+    /// Nhắc ở thanh dưới số dòng đang chọn và tổng tiền của nhóm đó. Chỉ nhắc từ hai dòng trở
+    /// lên — chọn một dòng là chuyện thường, nhắc cũng bằng không. Bỏ chọn thì trả lại lời nhắc
+    /// thường của màn hình.
+    /// </summary>
+    private void NhacNhomDangChon()
+    {
+        if (_dangNap || !_sanSang)
+        {
+            return;
+        }
+
+        var dong = DongDaChon();
+        if (dong.Count >= 2)
+        {
+            _lblTrangThai.Text = $"Đang chọn {dong.Count} dòng · {So.Tien(dong.Sum(c => c.ThanhTien))}"
+                + " — Delete xoá cả nhóm, Alt+↑ / Alt+↓ chuyển cả nhóm.";
+            _dangNhacNhom = true;
+        }
+        else if (_dangNhacNhom)
+        {
+            _lblTrangThai.Text = NhanCoBan();
+            _dangNhacNhom = false;
+        }
+    }
+
+    /// <summary>Lời nhắc thường của thanh dưới, theo tình trạng hoá đơn đang xem.</summary>
+    private string NhanCoBan() => HoaDonHienTai switch
+    {
+        null => "Chưa có hoá đơn nào — gõ dòng hàng đầu tiên là phần mềm tự mở hoá đơn mới.",
+        { DaChot: true } hoaDon => $"Hoá đơn {hoaDon.MaHoaDon} đã chốt nên không sửa được. "
+            + "Muốn thêm hàng thì mở nút ⋯ rồi chọn \"Mở lại hoá đơn\".",
+        _ => "Chọn nhiều dòng: Ctrl+bấm thêm từng dòng, Shift+bấm cả dải, Ctrl+A cả bảng — "
+            + "rồi Delete xoá hoặc Alt+↑ / Alt+↓ chuyển cả nhóm.",
+    };
+
     private void XoaDong()
     {
-        // Dòng cuối chưa ghi vào sổ thì chỉ cần xoá trắng, khỏi hỏi han gì.
-        if (LaDongNhap(_luoiCT.CurrentRow?.DataBoundItem as ChiTietHoaDon))
+        var canXoa = DongDaChon();
+
+        // Không chọn dòng thật nào mà con trỏ đang đứng ở dòng vàng cuối bảng thì chỉ cần xoá
+        // trắng nó, khỏi hỏi han gì — nó chưa vào sổ. Phải xét sau khi đã lấy nhóm dòng đang
+        // chọn: Ctrl+A rồi Delete là con trỏ vẫn ở dòng vàng, mà việc cần làm là xoá cả nhóm.
+        if (canXoa.Count == 0 && LaDongNhap(_luoiCT.CurrentRow?.DataBoundItem as ChiTietHoaDon))
         {
             XoaTrangDongNhap();
             return;
@@ -1507,7 +1648,6 @@ public sealed class DonHangForm : Form
             return;
         }
 
-        var canXoa = DongDaChon();
         if (canXoa.Count == 0)
         {
             _lblTrangThai.Text = "Hãy chọn dòng hàng cần xoá (Ctrl+bấm để chọn thêm, Shift+bấm để chọn cả dải).";
@@ -1659,20 +1799,9 @@ public sealed class DonHangForm : Form
         }
 
         // Chuyển thử trước rồi mới ghi lịch sử, để không đẻ ra bước hoàn tác rỗng khi dòng đã
-        // nằm ở đầu / cuối ngày của nó. Chuyển xuống thì đi từ dòng cuối lên, chuyển lên thì đi
-        // từ dòng đầu xuống — làm ngược lại là cả nhóm dồn cục vào nhau.
+        // nằm ở đầu / cuối ngày của nó.
         var truoc = _kho.ChupNhanh();
-        var thuTuChay = xuong ? Enumerable.Reverse(canChuyen).ToList() : canChuyen;
-        var soDaChuyen = 0;
-        foreach (var dong in thuTuChay)
-        {
-            if (!ThuTuDong.Chuyen(hoaDon.ChiTiet, dong.Id, xuong))
-            {
-                break;
-            }
-
-            soDaChuyen++;
-        }
+        var soDaChuyen = ThuTuDong.ChuyenNhom(hoaDon.ChiTiet, canChuyen.Select(c => c.Id), xuong);
 
         if (soDaChuyen == 0)
         {
@@ -2046,6 +2175,9 @@ public sealed class DonHangForm : Form
                 return true;
             case Keys.Delete when !dangSuaO && _luoiCT.Focused:
                 XoaDong();
+                return true;
+            case Keys.Control | Keys.A when !dangSuaO && _luoiCT.Focused:
+                ChonTatCaDong();
                 return true;
             // Enter ở dòng trống cuối lưới: chốt dòng đang gõ dở thành hàng thật.
             case Keys.Enter when _luoiCT.ContainsFocus
