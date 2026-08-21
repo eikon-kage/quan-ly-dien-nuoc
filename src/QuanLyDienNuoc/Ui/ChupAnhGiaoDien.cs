@@ -50,6 +50,13 @@ public static class ChupAnhGiaoDien
             loi += ChupForm(thuMucRa, "07b-thu-tien-cua-khach", () => new ThuTienForm(khach.Id));
             loi += ChupForm(thuMucRa, "08-tao-hoa-don", () => new HoaDonForm(null, "HD2026-03", 2026));
             loi += ChupForm(thuMucRa, "09-nhap-tu-excel", () => new NhapExcelForm(khach.Id, 2026, hoaDon.Id, fileExcel));
+
+            var fileKhachMau = Path.Combine(thuMucRa, "danh-sach-khach-mau.xlsx");
+            TaoFileKhachMau(fileKhachMau, khach.Ten);
+            loi += ChupForm(
+                thuMucRa,
+                "20-nhap-khach-tu-file",
+                () => new NhapKhachForm(kho.DuLieu.KhachHangs, fileKhachMau));
             loi += ChupForm(thuMucRa, "11-so-cong-no", () => new CongNoForm());
             loi += ChupForm(thuMucRa, "18-hoan-hang", () => new HoanHangForm(hoaDon.Id));
             loi += ChupForm(
@@ -106,6 +113,46 @@ public static class ChupAnhGiaoDien
 
         File.WriteAllText(Path.Combine(thuMucRa, "nhat-ky.txt"), NhatKy.ToString(), Encoding.UTF8);
         return loi == 0 ? 0 : 1;
+    }
+
+    /// <summary>
+    /// File danh sách khách để chụp màn nhập từ file. Cố tình có đủ bốn kiểu dòng — thêm mới,
+    /// trùng khách đã có, trùng dòng phía trên, thiếu tên — để ảnh cho thấy phần mềm chấm dòng
+    /// nào nhập được, chứ không phải một bảng toàn màu xanh.
+    /// </summary>
+    private static void TaoFileKhachMau(string fileRa, string tenKhachDaCo)
+    {
+        NhapKhachHang.XuatFileMau(fileRa);
+
+        NPOI.SS.UserModel.IWorkbook wb;
+        using (var doc = File.OpenRead(fileRa))
+        {
+            wb = NPOI.SS.UserModel.WorkbookFactory.Create(doc);
+        }
+
+        var sheet = wb.GetSheet(NhapKhachHang.TenSheetMau);
+        var dong = new[]
+        {
+            new[] { "Anh Dũng sắt Hà Đông", "0912345678", "12 Nguyễn Trãi, Hà Đông", "Khách quen" },
+            new[] { tenKhachDaCo, "0987654321", "Số 5 Trần Duy Hưng", string.Empty },
+            new[] { "Chị Hoa nước Cầu Giấy", "0903456789", "88 Xuân Thuỷ", "Trả cuối tháng" },
+            new[] { "Chi Hoa nuoc Cau Giay", "0903456789", "88 Xuân Thuỷ", "gõ lại lần hai" },
+            new[] { string.Empty, "0977123456", "Ngõ 12 Tây Sơn", "chưa kịp hỏi tên" },
+            new[] { "Anh Bình điện nước Thanh Xuân", "0912000111", "45 Khương Trung", string.Empty },
+        };
+
+        foreach (var mau in dong)
+        {
+            var hang = sheet.CreateRow(sheet.LastRowNum + 1);
+            for (var i = 0; i < mau.Length; i++)
+            {
+                hang.CreateCell(i).SetCellValue(mau[i]);
+            }
+        }
+
+        using var ghi = new FileStream(fileRa, FileMode.Create, FileAccess.Write);
+        wb.Write(ghi, leaveOpen: false);
+        Ghi($"Đã tạo file danh sách khách mẫu: {fileRa}");
     }
 
     private static int ChupForm(string thuMucRa, string ten, Func<Form> tao)

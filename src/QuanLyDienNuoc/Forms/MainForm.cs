@@ -191,6 +191,11 @@ public sealed class MainForm : Form
         var btnThemKhach = Theme.Nut("+  Thêm khách hàng", Theme.Chinh, 220, 40);
         btnThemKhach.Click += (_, _) => ThemKhach();
 
+        // Cả danh sách khách có sẵn trên Excel thì gõ lại từng người mất cả buổi.
+        var btnNhapFile = Theme.NutPhu("Nhập từ file", 170, 40);
+        btnNhapFile.ForeColor = Theme.Chinh;
+        btnNhapFile.Click += (_, _) => NhapKhachTuFile();
+
         var lblNam = new Label
         {
             Text = "Năm",
@@ -211,10 +216,12 @@ public sealed class MainForm : Form
         };
         benPhai.Controls.Add(lblNam);
         benPhai.Controls.Add(_cboNam);
+        benPhai.Controls.Add(btnNhapFile);
         benPhai.Controls.Add(btnThemKhach);
         nen.Controls.Add(benPhai);
 
         _cboNam.Margin = new Padding(0, 2, 16, 0);
+        btnNhapFile.Margin = new Padding(0, 0, 10, 0);
         btnThemKhach.Margin = new Padding(0);
         return nen;
     }
@@ -700,6 +707,34 @@ public sealed class MainForm : Form
         NapDanhSach();
         ChonLaiKhach(moi.Id);
         _lblTrangThai.Text = $"Đã thêm khách hàng {moi.Ten}.";
+    }
+
+    /// <summary>
+    /// Nhập cả danh sách khách từ file Excel/CSV. Hộp thoại lo phần soát lại từng dòng, ở đây
+    /// chỉ ghi vào sổ một lần cho Ctrl+Z hoàn tác được cả lô chứ không phải bấm từng người.
+    /// </summary>
+    private void NhapKhachTuFile()
+    {
+        if (HopThoai.ChanKhiChiXem(this, _kho))
+        {
+            return;
+        }
+
+        using var form = new NhapKhachForm(_kho.DuLieu.KhachHangs);
+        if (form.ShowDialog(this) != DialogResult.OK || form.KetQua.Count == 0)
+        {
+            return;
+        }
+
+        var themVao = form.KetQua;
+        _kho.ThucHien(
+            $"Nhập {themVao.Count} khách hàng từ file",
+            () => _kho.DuLieu.KhachHangs.AddRange(themVao),
+            phatSuKien: false);
+
+        NapDanhSach();
+        ChonLaiKhach(themVao[0].Id);
+        _lblTrangThai.Text = $"Đã nhập {themVao.Count} khách hàng từ file. Bấm Ctrl+Z nếu muốn bỏ.";
     }
 
     private void SuaKhach()

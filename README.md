@@ -9,6 +9,12 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 - **Màn hình chính**: danh sách khách hàng lọc theo năm (mặc định là năm hiện tại), kèm
   tổng mua / đã trả / còn nợ của khách trong năm đó. Tìm khách không dấu (gõ `nguyen` ra
   `Nguyễn`). Bấm đúp hoặc Enter để mở đơn hàng của khách.
+- **Thêm khách hàng từ file**: đã có danh sách khách trên Excel thì bấm *Nhập từ file* ở
+  màn hình chính. Chưa có file thì bấm *Tải file mẫu* ngay trong màn ấy — file mẫu có dòng
+  tiêu đề đánh số `1. TÊN KHÁCH HÀNG` · `2. ĐIỆN THOẠI` · `3. ĐỊA CHỈ` · `4. GHI CHÚ` kèm
+  một sheet hướng dẫn. Phần mềm nhận cột theo chữ ở dòng tiêu đề (đổi chỗ cột hay thêm cột
+  lạ vẫn đọc đúng), hiện bảng xem trước đánh số đúng cột đó để soát, tự bỏ tích khách đã có
+  và dòng thiếu tên. Xem [docs/nhap-khach-hang-tu-file.md](docs/nhap-khach-hang-tu-file.md).
 - **Đơn hàng của khách**: chọn hoá đơn trong năm ở ô trên cùng, cả màn hình còn lại là chi tiết
   hàng đã lấy theo từng ngày (ngày, tên hàng, đơn vị, đơn giá, số lượng, thành tiền, ghi chú).
 - **Sổ công nợ**: một màn hình cho cả cửa hàng — ai đang nợ, nợ bao nhiêu và **nợ đã bao
@@ -168,6 +174,7 @@ src/
     Excel/XuatHoaDon.cs         điền hoá đơn vào mẫu Excel, chia trang
     Excel/XuatToanBo.cs         xuất toàn bộ dữ liệu ra .xlsx nhiều trang
     Excel/DocHoaDon.cs          đọc ngược file Excel thành dòng hàng
+    Excel/NhapKhachHang.cs      file mẫu danh sách khách và bộ đọc file khách nhập vào
     Excel/ThongTinCuaHang.cs    đọc phần đầu hoá đơn từ file mẫu
     Ui/So.cs, Ui/ChuViet.cs     đọc số kiểu "1.500.000" và phép tính, tìm kiếm không dấu
     Ui/TimHang.cs               khớp tên hàng theo kiểu gõ tắt
@@ -202,6 +209,7 @@ src/
     Forms/VanBanForm.cs         hiện đoạn văn bản soạn sẵn để chép đi (tin nhắc nợ)
     Forms/XemTruocForm.cs       xem trước bản in
     Forms/NhapExcelForm.cs      nhập hoá đơn từ file Excel
+    Forms/NhapKhachForm.cs      nhập cả danh sách khách hàng từ file, có bảng xem trước
 tests/
   QuanLyDienNuoc.Tests/         kiểm thử phần nghiệp vụ (xUnit): `dotnet test`
   ChamCong.Tests/               kiểm thử phần chấm công, kể cả bộ đọc Supabase
@@ -211,6 +219,8 @@ docs/
   anh-giao-dien/                ảnh giao diện mới nhất, do workflow tự commit lên
   giao-dien-may-tinh.md         bảng màu, các mảnh dùng chung và quy tắc dựng giao diện
   chamcong-tren-may-tinh.md     cách máy tính đọc sổ chấm công từ Supabase
+  nhap-khach-hang-tu-file.md    cách nhập danh sách khách từ Excel, kèm quy tắc đọc cột
+  mau-danh-sach-khach-hang.xlsx file mẫu danh sách khách (do phần mềm tự sinh ra)
 ```
 
 ## Xem giao diện mà không có máy Windows
