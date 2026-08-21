@@ -13,6 +13,9 @@ namespace QuanLyDienNuoc.Tests;
 /// </summary>
 public class NhapKhachTests : IDisposable
 {
+    private static readonly string ThuMucMau = Path.Combine(AppContext.BaseDirectory, "MauHoaDon");
+    private static readonly string ThuMucHoaDonCu = Path.Combine(AppContext.BaseDirectory, "HoaDonCu");
+
     private readonly string _thuMucTam = Path.Combine(
         Path.GetTempPath(),
         "qldn-khach-" + Guid.NewGuid().ToString("N")[..8]);
@@ -265,6 +268,90 @@ public class NhapKhachTests : IDisposable
         Assert.Equal("12 Nguyễn Trãi", khach.DiaChi);
         Assert.Equal("Trả cuối tháng", khach.GhiChu);
         Assert.Equal(new DateTime(2026, 8, 21), khach.NgayTao);
+    }
+
+    [Theory]
+    [InlineData("to1.xls")]
+    [InlineData("to2.xls")]
+    public void ChonNhamToHoaDon_NhanRaLaHoaDonChuKhongDocBuaThanhKhach(string tenFile)
+    {
+        // Đúng file chủ cửa hàng đã chọn nhầm (bản ẩn danh): trước đây đọc theo thứ tự cột ra
+        // 32 "khách" gồm tên cửa hàng, "ĐC:", "ĐT:", và từng dòng hàng của tờ hoá đơn.
+        var file = Path.Combine(ThuMucHoaDonCu, tenFile);
+        Assert.True(File.Exists(file), $"Thiếu file kiểm thử {file}");
+
+        var ketQua = NhapKhachHang.Doc(file, Array.Empty<KhachHang>());
+
+        Assert.True(ketQua.LaHoaDon);
+        Assert.Empty(ketQua.Dong);
+        Assert.Single(ketQua.CanhBao);
+    }
+
+    [Fact]
+    public void MauHoaDonGiayCuaCuaHang_CungNhanRaLaHoaDon()
+    {
+        var file = Path.Combine(ThuMucMau, "trang-1.xls");
+        Assert.True(File.Exists(file), $"Thiếu file kiểm thử {file}");
+
+        var ketQua = NhapKhachHang.Doc(file, Array.Empty<KhachHang>());
+
+        Assert.True(ketQua.LaHoaDon);
+        Assert.Empty(ketQua.Dong);
+    }
+
+    [Fact]
+    public void BangHangCoThemCotGhiChu_VanKhongBiCoiLaDanhSachKhach()
+    {
+        // "TÊN HÀNG" + "GHI CHÚ" từng đủ hai nhãn để bị nhận là dòng tiêu đề danh sách khách.
+        var file = TaoFile(
+            new[] { "TT", "TÊN HÀNG", "ĐVT", "SỐ LƯỢNG", "GHI CHÚ" },
+            new[] { "1", "Dây 2x1", "m", "291", string.Empty });
+
+        var ketQua = NhapKhachHang.Doc(file, Array.Empty<KhachHang>());
+
+        Assert.True(ketQua.LaHoaDon);
+        Assert.Empty(ketQua.Dong);
+    }
+
+    [Theory]
+    [InlineData("ĐC: Xóm 9 Liên Minh - Hải Hậu")]
+    [InlineData("ĐT: 0347.458.570- 0816503678")]
+    [InlineData("Tên khách hàng: ...................")]
+    [InlineData("Địa chỉ: ......................")]
+    [InlineData("TT")]
+    [InlineData("1")]
+    [InlineData("Tổng cộng")]
+    public void DongKhongGiongTenKhach_VanHienNhungBoTich(string oTen)
+    {
+        var file = TaoFile(
+            new[] { "Tên khách hàng", "Điện thoại" },
+            new[] { oTen, string.Empty },
+            new[] { "Anh Tuấn sắt", "0912345678" });
+
+        var ketQua = NhapKhachHang.Doc(file, Array.Empty<KhachHang>());
+
+        Assert.Equal(TinhTrangDongKhach.KhongGiongTen, ketQua.Dong[0].TinhTrang);
+        Assert.False(ketQua.Dong[0].Chon);
+        Assert.True(ketQua.Dong[1].Chon);
+        Assert.Equal(1, ketQua.SoSeNhap);
+    }
+
+    [Theory]
+    [InlineData("Anh Tuấn sắt Bình Minh")]
+    [InlineData("Chị Hoa nước Cầu Giấy")]
+    [InlineData("Cửa hàng Điện nước Hùng Vương")]
+    [InlineData("Cô Ba")]
+    [InlineData("Nguyễn Văn Hiền")]
+    public void TenKhachThatKhongBiTuongLaDongRac(string ten)
+    {
+        var file = TaoFile(
+            new[] { "Tên khách hàng", "Điện thoại" },
+            new[] { ten, "0912345678" });
+
+        var dong = Assert.Single(NhapKhachHang.Doc(file, Array.Empty<KhachHang>()).Dong);
+
+        Assert.Equal(TinhTrangDongKhach.ThemMoi, dong.TinhTrang);
+        Assert.True(dong.Chon);
     }
 
     // ---------- Tiện ích dựng file kiểm thử ----------

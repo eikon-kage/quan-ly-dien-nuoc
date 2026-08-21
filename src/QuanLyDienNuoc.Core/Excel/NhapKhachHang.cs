@@ -22,6 +22,12 @@ public enum TinhTrangDongKhach
 
     /// <summary>Không có tên khách nên không nhập được.</summary>
     ThieuTen,
+
+    /// <summary>
+    /// Ô tên không giống tên khách: nhãn của tờ giấy ("ĐC:", "Tên khách hàng: ....."),
+    /// dòng tiêu đề bảng ("TT", "TÊN HÀNG") hay chỉ là con số thứ tự.
+    /// </summary>
+    KhongGiongTen,
 }
 
 /// <summary>Một dòng khách hàng đọc từ file, hiện lên lưới xem trước cho người dùng soát lại.</summary>
@@ -58,6 +64,7 @@ public sealed class DongKhachNhap
         TinhTrangDongKhach.ThemMoi => "Thêm mới",
         TinhTrangDongKhach.TrungKhachCu => $"Đã có khách \"{TenTrung}\" — bỏ qua",
         TinhTrangDongKhach.TrungTrongFile => "Trùng dòng phía trên — bỏ qua",
+        TinhTrangDongKhach.KhongGiongTen => "Không giống tên khách — bỏ qua",
         _ => "Thiếu tên khách — không nhập được",
     };
 
@@ -83,6 +90,13 @@ public sealed class KetQuaNhapKhach
     /// False là file không có tiêu đề, phải đọc theo đúng thứ tự cột 1-2-3-4 của file mẫu.
     /// </summary>
     public bool TheoTieuDe { get; set; }
+
+    /// <summary>
+    /// File này là một tờ hoá đơn (có bảng tên hàng / đvt / số lượng), không phải danh sách
+    /// khách hàng — đọc theo thứ tự cột thì cả phần đầu tờ giấy thành "khách", nên dừng hẳn
+    /// và chỉ đường sang chỗ nhập hàng từ hoá đơn.
+    /// </summary>
+    public bool LaHoaDon { get; set; }
 
     public List<DongKhachNhap> Dong { get; } = new();
 
@@ -191,6 +205,17 @@ public static class NhapKhachHang
             dongDauTien = tieuDe.SoDong + 1;
             ketQua.TheoTieuDe = true;
         }
+        else if (bang.CoBangHang || LaBangHoaDon(bang.Dong))
+        {
+            // Không có tiêu đề danh sách khách mà lại có bảng hàng: đây là tờ hoá đơn. Đoán
+            // theo thứ tự cột ở đây là biến cả phần đầu tờ giấy (tên cửa hàng, "ĐC:", "ĐT:",
+            // "Tên khách hàng: .....") và từng dòng hàng thành mấy chục khách rác.
+            ketQua.LaHoaDon = true;
+            ketQua.CanhBao.Add(
+                "File này là một tờ hoá đơn (có bảng tên hàng · đvt · số lượng), không phải " +
+                "danh sách khách hàng.");
+            return ketQua;
+        }
         else
         {
             ketQua.CanhBao.Add(
@@ -250,6 +275,13 @@ public static class NhapKhachHang
                 continue;
             }
 
+            if (KhongGiongTenKhach(d.Ten))
+            {
+                d.TinhTrang = TinhTrangDongKhach.KhongGiongTen;
+                Tich(d, false);
+                continue;
+            }
+
             if (tenTrongFile.TryGetValue(canhSo, out var truoc))
             {
                 d.TinhTrang = TinhTrangDongKhach.TrungTrongFile;
@@ -283,20 +315,20 @@ public static class NhapKhachHang
 
     // ---------- Đọc file thành bảng chữ ----------
 
-    private sealed record BangChu(string Ten, List<string[]> Dong);
+    private sealed record BangChu(string Ten, List<string[]> Dong, bool CoBangHang = false);
 
     private static BangChu DocExcel(string duongDanFile)
     {
         using var doc = File.OpenRead(duongDanFile);
         using var wb = WorkbookFactory.Create(doc);
 
-        BangChu? dauTien = null;
+        BangChu? chonTam = null;
+        var coBangHang = false;
 
         for (var i = 0; i < wb.NumberOfSheets; i++)
         {
             var sheet = wb.GetSheetAt(i);
             var bang = new BangChu(sheet.SheetName, DocSheet(sheet));
-            dauTien ??= bang;
 
             // Sheet nào có dòng tiêu đề nhận ra được thì lấy sheet đó, khỏi bắt người dùng
             // chọn sheet: file mẫu có thêm sheet "Hướng dẫn" nằm ngay bên cạnh.
@@ -304,9 +336,24 @@ public static class NhapKhachHang
             {
                 return bang;
             }
+
+            // Phải soi hết các sheet mới biết đây là file hoá đơn: tờ hoá đơn cũ của cửa hàng
+            // hay có sheet biểu đồ trống đứng đầu, bảng hàng nằm ở sheet thứ hai.
+            coBangHang |= LaBangHoaDon(bang.Dong);
+
+            if (chonTam is null || (SoDongCoChu(chonTam.Dong) == 0 && SoDongCoChu(bang.Dong) > 0))
+            {
+                chonTam = bang;
+            }
         }
 
-        return dauTien ?? new BangChu(string.Empty, new List<string[]>());
+        var chon = chonTam ?? new BangChu(string.Empty, new List<string[]>());
+        return chon with { CoBangHang = coBangHang };
+    }
+
+    private static int SoDongCoChu(List<string[]> dong)
+    {
+        return dong.Count(d => d.Any(o => o.Trim().Length > 0));
     }
 
     private static List<string[]> DocSheet(ISheet sheet)
@@ -467,11 +514,16 @@ public static class NhapKhachHang
     /// <summary>Nhãn cột đọc từ chữ trên dòng tiêu đề: 0 tên, 1 điện thoại, 2 địa chỉ, 3 ghi chú.</summary>
     private static int? NhanCot(string chu)
     {
-        var s = ChuViet.BoDau(chu);
-        s = new string(s.Select(c => char.IsLetter(c) ? c : ' ').ToArray());
-        s = string.Join(" ", s.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        var s = GonLaiChu(chu);
 
         if (s.Length == 0)
+        {
+            return null;
+        }
+
+        // "TÊN HÀNG" của hoá đơn từng bị nhận là cột tên khách (cùng có chữ "tên"), thành ra
+        // tờ hoá đơn có thêm cột "GHI CHÚ" là đủ hai nhãn và bị coi là danh sách khách.
+        if (NhanBangHang.Any(n => s.Contains(n)))
         {
             return null;
         }
@@ -498,6 +550,94 @@ public static class NhapKhachHang
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Nhãn cột của bảng hàng trên hoá đơn. Thấy chúng là biết đang xem tờ hoá đơn, không phải
+    /// danh sách khách hàng.
+    /// </summary>
+    private static readonly string[] NhanBangHang =
+    {
+        "ten hang", "mat hang", "ten vat tu", "dvt", "don vi", "so luong", "don gia", "thanh tien",
+    };
+
+    /// <summary>Chữ hay gặp ở dòng tiêu đề hoặc dòng chốt của bảng, không phải tên khách.</summary>
+    private static readonly string[] ChuKhongPhaiTen =
+    {
+        "tt", "stt", "so tt", "cong", "tong", "tong cong", "tong tien", "tong cong tien",
+        "ten hang", "mat hang", "dvt", "don vi", "so luong", "don gia", "thanh tien",
+        "ngay", "ghi chu", "tien bang chu", "nguoi mua hang", "nguoi ban hang",
+    };
+
+    /// <summary>
+    /// Bảng này là bảng hàng của một tờ hoá đơn: có ít nhất hai nhãn cột kiểu tên hàng / đvt /
+    /// số lượng / đơn giá nằm cùng một dòng.
+    /// </summary>
+    private static bool LaBangHoaDon(List<string[]> dong)
+    {
+        var het = Math.Min(dong.Count, SoDongDoTieuDe + 10);
+        var nhanCaKhoi = new HashSet<string>();
+
+        for (var i = 0; i < het; i++)
+        {
+            var nhanTrongDong = new HashSet<string>();
+            foreach (var o in dong[i])
+            {
+                var chu = GonLaiChu(o);
+                foreach (var nhan in NhanBangHang.Where(n => chu.Contains(n)))
+                {
+                    nhanTrongDong.Add(nhan);
+                    nhanCaKhoi.Add(nhan);
+                }
+            }
+
+            // Hai nhãn nằm cùng một dòng là dòng tiêu đề của bảng hàng, chắc chắn là hoá đơn.
+            if (nhanTrongDong.Count >= 2)
+            {
+                return true;
+            }
+        }
+
+        // Sheet biểu đồ của file hoá đơn cũ để mỗi nhãn một dòng, không thành dòng tiêu đề nào.
+        return nhanCaKhoi.Count >= 3;
+    }
+
+    /// <summary>
+    /// Ô này không phải tên khách: nhãn của tờ giấy ("ĐC: ...", "Tên khách hàng: ....."), dòng
+    /// tiêu đề hay dòng chốt của bảng, hoặc chỉ là số thứ tự. Không xoá dòng đi — vẫn hiện lên
+    /// bảng nhưng bỏ tích, để người dùng thấy phần mềm bỏ qua cái gì.
+    /// </summary>
+    private static bool KhongGiongTenKhach(string ten)
+    {
+        var gon = ten.Trim();
+        if (gon.Length < 2)
+        {
+            return true;
+        }
+
+        // Chỗ để trống trên tờ in: "Tên khách hàng: .............", "Địa chỉ: ......".
+        if (gon.Contains("..."))
+        {
+            return true;
+        }
+
+        // Nhãn đầu dòng của tờ giấy: "ĐC:", "ĐT:", "Kính gửi:", "Tên khách hàng:".
+        var haiCham = gon.IndexOf(':');
+        if (haiCham >= 0 && haiCham <= 25)
+        {
+            return true;
+        }
+
+        var canhSo = GonLaiChu(ten);
+        return canhSo.Length == 0 || ChuKhongPhaiTen.Contains(canhSo);
+    }
+
+    /// <summary>Bỏ dấu, đổi mọi thứ không phải chữ cái thành khoảng trắng rồi gộp khoảng trắng.</summary>
+    private static string GonLaiChu(string chu)
+    {
+        var s = ChuViet.BoDau(chu);
+        s = new string(s.Select(c => char.IsLetter(c) ? c : ' ').ToArray());
+        return string.Join(" ", s.Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 
     // ---------- Sheet hướng dẫn trong file mẫu ----------

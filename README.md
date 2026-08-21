@@ -14,7 +14,9 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   tiêu đề đánh số `1. TÊN KHÁCH HÀNG` · `2. ĐIỆN THOẠI` · `3. ĐỊA CHỈ` · `4. GHI CHÚ` kèm
   một sheet hướng dẫn. Phần mềm nhận cột theo chữ ở dòng tiêu đề (đổi chỗ cột hay thêm cột
   lạ vẫn đọc đúng), hiện bảng xem trước đánh số đúng cột đó để soát, tự bỏ tích khách đã có
-  và dòng thiếu tên. Xem [docs/nhap-khach-hang-tu-file.md](docs/nhap-khach-hang-tu-file.md).
+  và dòng thiếu tên. Trỏ nhầm vào một tờ hoá đơn thì phần mềm nhận ra, chỉ sang đúng chỗ
+  (*Đơn hàng của khách → Nhập từ Excel*) chứ không đọc bừa thành mấy chục khách rác. Xem
+  [docs/nhap-khach-hang-tu-file.md](docs/nhap-khach-hang-tu-file.md).
 - **Đơn hàng của khách**: chọn hoá đơn trong năm ở ô trên cùng, cả màn hình còn lại là chi tiết
   hàng đã lấy theo từng ngày (ngày, tên hàng, đơn vị, đơn giá, số lượng, thành tiền, ghi chú).
 - **Sổ công nợ**: một màn hình cho cả cửa hàng — ai đang nợ, nợ bao nhiêu và **nợ đã bao

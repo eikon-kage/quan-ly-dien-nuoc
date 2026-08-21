@@ -40,6 +40,15 @@ Cài trong [`Excel/NhapKhachHang.cs`](../src/QuanLyDienNuoc.Core/Excel/NhapKhach
 - **Nhận cột theo chữ ở dòng tiêu đề trước**, so không dấu và bỏ qua số: `Tên khách hàng`,
   `Họ tên`, `SĐT`, `Số điện thoại`, `Địa chỉ`, `Ghi chú`, cả `Name`/`Phone`/`Address`/`Note`.
   Nhờ vậy người dùng đổi chỗ cột, hay chèn thêm cột lạ (`STT`, `Nợ cũ`) vẫn đọc đúng.
+- **Chọn nhầm một tờ hoá đơn thì dừng hẳn**, không đọc bừa. Cả hai việc đều mang chữ "nhập
+  từ Excel" nên chuyện này xảy ra thật: chủ cửa hàng trỏ vào `to1.xls` và phần mềm (bản đầu)
+  đọc ra 32 "khách" gồm tên cửa hàng, dòng `ĐC:`, `ĐT:`, `Tên khách hàng: .....` và từng dòng
+  hàng. Nay thấy nhãn bảng hàng (tên hàng · đvt · số lượng · đơn giá · thành tiền) là biết
+  ngay đây là hoá đơn: hiện hộp thoại chỉ sang *Đơn hàng của khách → Nhập từ Excel*, hoặc mời
+  bấm *Tải file mẫu*. Soi **mọi sheet** mới kết luận — file hoá đơn cũ của cửa hàng có sheet
+  biểu đồ trống đứng trước, bảng hàng nằm ở sheet thứ hai.
+- `TÊN HÀNG` **không** được tính là cột tên khách (cùng có chữ "tên"), nếu không thì tờ hoá
+  đơn có thêm cột `GHI CHÚ` là đủ hai nhãn và bị coi là danh sách khách.
 - **File không có tiêu đề** thì mới đọc theo đúng thứ tự cột của file mẫu (1-2-3-4), và màn
   hình hiện dải cảnh báo màu cam nói rõ là đang đọc theo thứ tự cột — đoán thì phải nói ra.
 - Dò tiêu đề trong 20 dòng đầu, phải có cột tên khách và ít nhất hai cột nhận ra được mới
@@ -60,6 +69,7 @@ Mỗi dòng có một tình trạng, hiện ở cột **TÌNH TRẠNG**:
 | Thêm mới (xanh) | khách chưa có trong phần mềm | có |
 | `Đã có khách "..." — bỏ qua` (cam) | trùng tên (so không dấu) với khách đã có | không |
 | Trùng dòng phía trên — bỏ qua (cam) | hai dòng trong file cùng một tên | không |
+| Không giống tên khách — bỏ qua (xám) | nhãn tờ giấy (`ĐC:`, `Tên khách hàng: .....`), tiêu đề bảng (`TT`, `Tổng cộng`) hay chỉ là số thứ tự | không |
 | Thiếu tên khách (đỏ) | cột 1 để trống, không ghi được | không |
 
 - Bốn cột dữ liệu **sửa được ngay trên bảng**: sửa tên xong là tình trạng tự chấm lại.
@@ -76,4 +86,6 @@ Mỗi dòng có một tình trạng, hiện ở cột **TÌNH TRẠNG**:
 [`tests/QuanLyDienNuoc.Tests/NhapKhachTests.cs`](../tests/QuanLyDienNuoc.Tests/NhapKhachTests.cs)
 — xuất file mẫu rồi đọc lại (không ra khách ảo từ mấy dòng ví dụ), đổi chỗ cột, thêm cột lạ,
 file không tiêu đề, trùng tên với khách cũ và trùng trong cùng file, thiếu tên, dòng trống,
-số điện thoại kiểu số, file CSV dấu `;`.
+số điện thoại kiểu số, file CSV dấu `;`. Kèm test hồi quy chạy trên **chính hai file hoá đơn
+thật** (bản ẩn danh `to1.xls`, `to2.xls`) và mẫu hoá đơn giấy `trang-1.xls`: cả ba phải bị
+nhận ra là hoá đơn và không sinh dòng khách nào.

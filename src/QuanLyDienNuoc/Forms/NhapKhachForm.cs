@@ -247,6 +247,7 @@ public sealed class NhapKhachForm : Form
             {
                 TinhTrangDongKhach.ThemMoi => Theme.Xanh,
                 TinhTrangDongKhach.ThieuTen => Theme.Do,
+                TinhTrangDongKhach.KhongGiongTen => Theme.XamNhat,
                 _ => Theme.Cam,
             };
         }
@@ -339,6 +340,22 @@ public sealed class NhapKhachForm : Form
 
         CapNhatTomTat(ketQua);
 
+        // Chọn nhầm một tờ hoá đơn là chuyện thường: hai việc đều mang chữ "nhập từ Excel".
+        // Nói rõ file là gì và chỉ sang đúng chỗ, chứ không đọc bừa theo thứ tự cột.
+        if (ketQua.LaHoaDon)
+        {
+            _lblTomTat.Text = "File này là một tờ hoá đơn, không phải danh sách khách hàng.";
+            HopThoai.CanhBao(
+                this,
+                "File này là một tờ hoá đơn (có bảng tên hàng · đvt · số lượng), không phải " +
+                "danh sách khách hàng.\n\n" +
+                "• Muốn nhập hàng từ hoá đơn Excel: mở đơn hàng của khách rồi bấm " +
+                "\"Nhập từ Excel\".\n" +
+                "• Muốn nhập danh sách khách: bấm \"Tải file mẫu...\" ở trên, điền mỗi khách " +
+                "một dòng rồi chọn lại file.");
+            return;
+        }
+
         if (ketQua.Dong.Count == 0)
         {
             HopThoai.CanhBao(
@@ -377,6 +394,7 @@ public sealed class NhapKhachForm : Form
         var trung = _nguon.Count(d =>
             d.TinhTrang is TinhTrangDongKhach.TrungKhachCu or TinhTrangDongKhach.TrungTrongFile);
         var thieuTen = _nguon.Count(d => d.TinhTrang == TinhTrangDongKhach.ThieuTen);
+        var khongGiong = _nguon.Count(d => d.TinhTrang == TinhTrangDongKhach.KhongGiongTen);
 
         var cau = $"Đọc được {_nguon.Count} dòng";
         if (ketQua is not null && !string.IsNullOrEmpty(ketQua.TenBang))
@@ -393,6 +411,11 @@ public sealed class NhapKhachForm : Form
         if (thieuTen > 0)
         {
             cau += $" · {thieuTen} dòng thiếu tên";
+        }
+
+        if (khongGiong > 0)
+        {
+            cau += $" · {khongGiong} dòng không giống tên khách";
         }
 
         _lblTomTat.Text = cau;
