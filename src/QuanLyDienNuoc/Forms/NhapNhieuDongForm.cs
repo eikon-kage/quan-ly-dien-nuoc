@@ -35,6 +35,11 @@ public sealed class NhapNhieuDongForm : Form
 
         TaoGiaoDien();
         _txtDong.Text = goSan;
+
+        // Con trỏ về cuối chứ không để Windows bôi đen sẵn cả dòng. Cửa sổ này hay mở kèm chữ
+        // gõ dở từ thanh nhập nhanh: bôi đen sẵn thì ký tự tiếp theo xoá sạch cái đã gõ.
+        _txtDong.Select(_txtDong.TextLength, 0);
+
         XemTruoc();
     }
 
@@ -77,15 +82,19 @@ public sealed class NhapNhieuDongForm : Form
         Theme.ApDungLuoi(_luoi);
         _luoi.ReadOnly = true;
 
-        // Tỷ lệ cột nới cho hai cột hẹp nhất (ĐƠN VỊ, SỐ LƯỢNG): ở cỡ chữ to, cột hẹp là tên
-        // cột phải xuống hai dòng, mà sáu cột mỗi cột một kiểu cao thì đầu bảng nhìn lỗm chỗm.
+        /*
+          Tỷ lệ cột: SỐ LƯỢNG nới cho tên cột đừng xuống hai dòng ở cỡ chữ to, còn TÌNH TRẠNG
+          nới nhiều nhất vì nó chứa **câu**, không phải con số — ảnh chụp ở cỡ 100% đã cắt mất
+          đuôi ("Hàng mới — sẽ thêm vào danh ..."), mà đó đúng là dòng người dùng cần đọc nhất:
+          nó nói vì sao dòng này chưa có giá.
+        */
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(DongXem.TenHang), "TÊN HÀNG", 300),
-            Theme.Cot(nameof(DongXem.DonVi), "ĐƠN VỊ", 115),
-            Theme.Cot(nameof(DongXem.DonGia), "ĐƠN GIÁ", 135, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongXem.SoLuong), "SỐ LƯỢNG", 135, "#,##0.##", canPhai: true),
-            Theme.Cot(nameof(DongXem.ThanhTien), "THÀNH TIỀN", 150, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongXem.TinhTrang), "TÌNH TRẠNG", 200));
+            Theme.Cot(nameof(DongXem.TenHang), "TÊN HÀNG", 280),
+            Theme.Cot(nameof(DongXem.DonVi), "ĐƠN VỊ", 100),
+            Theme.Cot(nameof(DongXem.DonGia), "ĐƠN GIÁ", 130, "#,##0", canPhai: true),
+            Theme.Cot(nameof(DongXem.SoLuong), "SỐ LƯỢNG", 130, "#,##0.##", canPhai: true),
+            Theme.Cot(nameof(DongXem.ThanhTien), "THÀNH TIỀN", 145, "#,##0", canPhai: true),
+            Theme.Cot(nameof(DongXem.TinhTrang), "TÌNH TRẠNG", 270));
         _luoi.DataSource = _nguon;
         _luoi.CellFormatting += (_, e) =>
         {
@@ -253,7 +262,7 @@ public sealed class NhapNhieuDongForm : Form
 
     private static string MoTaTinhTrang(VatTu? vatTu, decimal gia, decimal soLuong) => vatTu switch
     {
-        null => "Hàng mới — sẽ thêm vào danh mục",
+        null => "Hàng mới — thêm vào danh mục",
         _ when gia <= 0m => "Chưa có giá — nhớ sửa lại",
         _ when soLuong < 0m => "Khách trả lại — trừ vào hoá đơn",
         _ => "Có sẵn, dùng giá của khách",
