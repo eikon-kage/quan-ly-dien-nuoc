@@ -101,22 +101,36 @@ export function ManHinhSoCuaToi({ so, soChu, homNay, onDong }: Props) {
    * Buổi lệch sổ chủ, gom theo ngày. Không nói ai đúng ai sai — sửa vẫn là việc của màn
    * hình đối chiếu, ở đây chỉ đánh dấu để thợ biết ngày nào cần mở ra soát.
    */
+  /** Một lần đối chiếu cho cả trang: ô tóm tắt và dấu trên từng dòng đều đọc từ đây. */
+  const ket = useMemo(
+    () => (soChu === null ? null : doiChieu(so, soChu, homNay)),
+    [so, soChu, homNay],
+  );
+
   const lechTheoNgay = useMemo(() => {
     const theoNgay = new Map<string, DongLech[]>();
-    if (soChu === null) {
-      return theoNgay;
-    }
 
-    for (const lech of doiChieu(so, soChu, homNay).lechs) {
+    for (const lech of ket?.lechs ?? []) {
       if (lech.ngay < tuNgay || lech.ngay > denNgay) {
         continue;
       }
       theoNgay.set(lech.ngay, [...(theoNgay.get(lech.ngay) ?? []), lech]);
     }
     return theoNgay;
-  }, [so, soChu, tuNgay, denNgay]);
+  }, [ket, tuNgay, denNgay]);
 
   const soBuoiLech = [...lechTheoNgay.values()].reduce((tong, cac) => tong + cac.length, 0);
+
+  /**
+   * Buổi sổ chủ có mà sổ này chưa biết ngày ấy, trong khoảng đang xem.
+   *
+   * Không đánh dấu được vào tờ lịch — ngày ấy nằm ngoài khoảng sổ này nên danh sách bên dưới
+   * cũng không có dòng nào. Nhưng ô tóm tắt thì **không được nói "Khớp cả"**: sổ chủ đang có
+   * công của mình ở đấy, mà đây lại là chỗ thợ vào tra khi thắc mắc.
+   */
+  const soBuoiChuaBiet = (ket?.chuaBiets ?? []).filter(
+    (lech) => lech.loai === 'minhChuaBiet' && lech.ngay >= tuNgay && lech.ngay <= denNgay,
+  ).length;
 
   /**
    * Danh sách từng ngày, ngày mới nhất lên trên — giống danh sách chấm ở màn hình chính,
@@ -185,11 +199,15 @@ export function ManHinhSoCuaToi({ so, soChu, homNay, onDong }: Props) {
               so={
                 soChu === null
                   ? 'Chưa có'
-                  : soBuoiLech === 0
-                    ? 'Khớp cả'
-                    : `${soBuoiLech} buổi`
+                  : soBuoiLech > 0
+                    ? `${soBuoiLech} buổi`
+                    : soBuoiChuaBiet > 0
+                      ? `Còn ${soBuoiChuaBiet} buổi`
+                      : 'Khớp cả'
               }
-              mau={soBuoiLech > 0 ? 'do' : 'xanhLa'}
+              // Vàng chứ không đỏ cho phần chưa biết: chưa ai ghi trái ai, chỉ là sổ này
+              // chưa có ngày ấy — vào Đối chiếu chấm bù là xong.
+              mau={soBuoiLech > 0 ? 'do' : soBuoiChuaBiet > 0 ? 'ngoc' : 'xanhLa'}
             />
           </HangO>
         </View>

@@ -2,7 +2,13 @@ import { Feather } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { DongLech, KetQuaDoiChieu, doiChieu, layTheoBenKia } from '../nghiepvu/doiChieu';
+import {
+  DongLech,
+  KetQuaDoiChieu,
+  doiChieu,
+  layTheoBenKia,
+  tongChuaBiet,
+} from '../nghiepvu/doiChieu';
 import { BuoiLam, DuLieuChamCong } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { soCuaMay } from '../nghiepvu/soCong';
@@ -98,8 +104,14 @@ export function ManHinhDoiChieu({ duLieu, capNhat, caiDat, dieuKhien, nhom, onDo
     try {
       capNhat(layTheoBenKia(duLieu, thoId, lech));
       datLoiLay(null);
-    } catch {
-      datLoiLay('Buổi này đã nằm trong kỳ đã quyết toán, không sửa được nữa.');
+    } catch (loi) {
+      // Lấy câu của chính lỗi: giờ có hai lẽ chặn khác nhau (đã quyết toán, và bên kia chưa
+      // biết ngày ấy), mà một câu cứng thì có lúc nói sai lẽ.
+      datLoiLay(
+        loi instanceof Error && loi.message !== ''
+          ? loi.message
+          : 'Buổi này không sửa theo sổ bên kia được.',
+      );
     }
   }
 
@@ -211,6 +223,9 @@ function DanhSachTho({
       {thos.map((tho) => {
         const ket = ketTheoTho.get(tho.id);
         const soLech = ket?.lechs.length ?? 0;
+        /** Buổi mới một bên có sổ: chưa phải lệch, nhưng nói "khớp cả" thì cũng không đúng. */
+        const soChuaBiet = ket?.chuaBiets.length ?? 0;
+        const themChuaBiet = soChuaBiet > 0 ? ` · ${soChuaBiet} buổi mới một bên có` : '';
 
         // Chưa lệch mà cũng chưa khớp buổi nào thì chưa so được gì, đừng tô xanh — xem ghi
         // chú cùng chuyện ấy ở `ChiTiet`.
@@ -219,12 +234,12 @@ function DanhSachTho({
         const chu = !ket
           ? 'Chưa gửi sổ lên'
           : ket.khongTrungKhoang
-            ? 'Sổ hai bên chưa có ngày nào chung'
+            ? `Chưa có ngày nào chung${themChuaBiet}`
             : soLech === 0 && ket.soKhop === 0
-              ? 'Chưa có buổi nào so được'
+              ? `Chưa có buổi nào so được${themChuaBiet}`
               : soLech === 0
-                ? `Khớp cả ${ket.soKhop} buổi`
-                : `Lệch ${soLech} buổi · khớp ${ket.soKhop}`;
+                ? `Khớp cả ${ket.soKhop} buổi${themChuaBiet}`
+                : `Lệch ${soLech} buổi · khớp ${ket.soKhop}${themChuaBiet}`;
 
         const mau = chuaSoDuoc ? Mau.xam : soLech === 0 ? Mau.xanhLa : Mau.do;
         const icon = chuaSoDuoc ? 'clock' : soLech === 0 ? 'check-circle' : 'alert-circle';
@@ -299,6 +314,13 @@ function ChiTiet({
                 Hôm nay còn dở: {ket.soTamGac} buổi mới một bên chấm, chưa tính là lệch.
               </Text>
             )}
+            {/*
+              Cùng một lẽ: hai tổng ở trên **không có** những buổi mới một bên có sổ, nên phải
+              nói ra ngay cạnh chúng. Không nói thì đầu trang đọc thành "sổ tôi 4, sổ chủ 2" —
+              nghe như chủ chấm thiếu, trong lúc chủ chấm đủ 4 mà 2 công rơi vào ngày máy này
+              chưa có sổ.
+            */}
+            <CauChuaBiet chuaBiets={ket.chuaBiets} benKia={benKia} />
           </>
         )}
       </View>
@@ -351,15 +373,17 @@ function ChiTiet({
             </>
           )}
         </View>
-      ) : ket.khongTrungKhoang ? (
-        <View style={kieu.trong}>
-          <Feather name="calendar" size={34} color={Mau.xam} />
-          <Text style={kieu.chuTrongTo}>Chưa so được</Text>
-          <Text style={kieu.chuTrong}>
-            Hai sổ không có ngày nào chung. Đợi thêm vài ngày chấm công rồi đối chiếu lại.
-          </Text>
-        </View>
-      ) : ket.lechs.length === 0 && ket.soKhop === 0 ? (
+      ) : (
+        <>
+          {ket.khongTrungKhoang ? (
+            <View style={kieu.trong}>
+              <Feather name="calendar" size={34} color={Mau.xam} />
+              <Text style={kieu.chuTrongTo}>Chưa so được</Text>
+              <Text style={kieu.chuTrong}>
+                Hai sổ không có ngày nào chung. Đợi thêm vài ngày chấm công rồi đối chiếu lại.
+              </Text>
+            </View>
+          ) : ket.lechs.length === 0 && ket.soKhop === 0 ? (
         /*
           Không lệch mà cũng chưa khớp buổi nào thì **đừng nói "hai sổ khớp nhau"**: câu ấy là
           một lời bảo đảm, mà ở đây chưa so được gì cả. Hay gặp nhất là máy thợ vừa cài xong,
@@ -374,22 +398,135 @@ function ChiTiet({
               : 'Trong khoảng hai sổ cùng khai, chưa buổi nào được chấm.'}
           </Text>
         </View>
-      ) : ket.lechs.length === 0 ? (
-        <View style={kieu.trong}>
-          <Feather name="check-circle" size={34} color={Mau.xanhLa} />
-          <Text style={kieu.chuTrongTo}>Hai sổ khớp nhau</Text>
-          <Text style={kieu.chuTrong}>Cả {ket.soKhop} buổi hai bên ghi giống nhau.</Text>
+          ) : ket.lechs.length === 0 ? (
+            /*
+              Có buổi mới một bên có sổ thì **đừng nói "hai sổ khớp nhau"** trơn: câu ấy là một
+              lời bảo đảm cho cả cuốn sổ, mà bên dưới còn nguyên mấy buổi chưa so được. Vẫn để
+              dấu xanh — phần so được thì đúng là không ai ghi trái ai.
+            */
+            <View style={kieu.trong}>
+              <Feather name="check-circle" size={34} color={Mau.xanhLa} />
+              <Text style={kieu.chuTrongTo}>
+                {ket.chuaBiets.length > 0 ? 'Khớp phần so được' : 'Hai sổ khớp nhau'}
+              </Text>
+              <Text style={kieu.chuTrong}>
+                Cả {ket.soKhop} buổi hai bên ghi giống nhau.
+                {ket.chuaBiets.length > 0
+                  ? ` Còn ${ket.chuaBiets.length} buổi mới một bên có sổ, xem bên dưới.`
+                  : ''}
+              </Text>
+            </View>
+          ) : (
+            ket.lechs.map((lech) => (
+              <DongLechO
+                key={`${lech.ngay}|${lech.buoi}`}
+                lech={lech}
+                benKia={benKia}
+                onLay={() => onLay(lech)}
+              />
+            ))
+          )}
+
+          {ket.chuaBiets.length > 0 && (
+            <PhanChuaBiet chuaBiets={ket.chuaBiets} benKia={benKia} onLay={onLay} />
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+/**
+ * Một hai câu về những buổi mới một bên có sổ: mấy buổi, mấy công, và bên nào có.
+ *
+ * Tách hai chiều ra chứ không gộp thành một con số: "bên kia có công mà mình chưa biết" là
+ * việc mình làm được ngay (chấm bù), còn "mình có công mà bên kia chưa tới ngày ấy" thì chỉ
+ * còn cách đợi. Gộp lại thành "3 buổi chưa so được" là bắt người đọc mở ra đếm mới biết mình
+ * phải làm gì.
+ */
+function CauChuaBiet({ chuaBiets, benKia }: { chuaBiets: DongLech[]; benKia: string }) {
+  if (chuaBiets.length === 0) {
+    return null;
+  }
+
+  const tong = tongChuaBiet(chuaBiets);
+  const soBenKiaCo = chuaBiets.filter((lech) => lech.loai === 'minhChuaBiet').length;
+  const soMinhCo = chuaBiets.length - soBenKiaCo;
+
+  return (
+    <>
+      {soBenKiaCo > 0 && (
+        <Text style={kieu.chuPhu}>
+          Sổ {benKia} còn {Ngay.soCong(tong.benKia)} công ở {soBenKiaCo} buổi máy tôi chưa có
+          sổ ngày ấy — chưa tính vào hai tổng trên.
+        </Text>
+      )}
+      {soMinhCo > 0 && (
+        <Text style={kieu.chuPhu}>
+          Sổ tôi còn {Ngay.soCong(tong.minh)} công ở {soMinhCo} buổi mà sổ {benKia} chưa tới
+          ngày ấy — cũng chưa tính vào hai tổng trên.
+        </Text>
+      )}
+    </>
+  );
+}
+
+/**
+ * Số buổi mới một bên có sổ mà quá số này thì gập lại, chỉ hiện câu tóm tắt.
+ *
+ * Máy thợ vừa cài mà sổ chủ đã có ba tháng thì đây là gần hai trăm dòng — mở sẵn ra là đúng
+ * cái màn hình làm người ta đóng app, mà `CauChuaBiet` ở trên đã nói đủ mấy buổi mấy công.
+ */
+const NGUONG_GAP = 6;
+
+/**
+ * Những buổi **mới một bên có sổ**, để riêng hẳn khỏi danh sách lệch.
+ *
+ * Không trộn vào `lechs`: lệch là hai người ghi khác nhau, còn đây là một người chưa nói gì.
+ * Trộn vào thì máy thợ mới cài mở ra thấy mấy chục dòng đỏ "chủ chấm khống" — đúng chỗ sai
+ * mà `SoCong.tuNgay` cảnh báo. Nhưng cũng không cho nó biến mất: xem `KetQuaDoiChieu.chuaBiets`.
+ */
+function PhanChuaBiet({
+  chuaBiets,
+  benKia,
+  onLay,
+}: {
+  chuaBiets: DongLech[];
+  benKia: string;
+  onLay: (lech: DongLech) => void;
+}) {
+  const [mo, datMo] = useState(chuaBiets.length <= NGUONG_GAP);
+
+  return (
+    <>
+      <View style={kieu.theDau}>
+        <View style={kieu.dongDau}>
+          <Text style={kieu.chuTen} numberOfLines={1}>
+            Mới một bên có sổ · {chuaBiets.length} buổi
+          </Text>
+          {chuaBiets.length > NGUONG_GAP && (
+            <NutChip
+              nhan={mo ? 'Ẩn' : 'Xem'}
+              icon={mo ? 'chevron-up' : 'chevron-down'}
+              onPress={() => datMo(!mo)}
+            />
+          )}
         </View>
-      ) : (
-        ket.lechs.map((lech) => (
+        <Text style={kieu.chuPhu}>
+          Chưa phải lệch: những ngày này chỉ một bên có sổ nên chưa ai nói trái ai. Buổi nào sổ
+          {' '}{benKia} có mà sổ tôi trống thì chấm bù được ngay tại đây.
+        </Text>
+      </View>
+
+      {mo &&
+        chuaBiets.map((lech) => (
           <DongLechO
-            key={`${lech.ngay}|${lech.buoi}`}
+            key={`chuabiet|${lech.ngay}|${lech.buoi}`}
             lech={lech}
             benKia={benKia}
             onLay={() => onLay(lech)}
           />
-        ))
-      )}
+        ))}
     </>
   );
 }
@@ -404,7 +541,16 @@ function DongLechO({
   benKia: string;
   onLay: () => void;
 }) {
-  const chuSo = (so: number | null) => (so === null ? 'Chưa chấm' : `${Ngay.soCong(so)} công`);
+  /*
+    Ô trống của bên **không biết ngày ấy** không được viết là "Chưa chấm": chữ ấy là một lời
+    khai (đã xem sổ và hôm ấy không có công), mà bên kia thì chưa có sổ tới ngày đó. Gán cho
+    người ta một lời họ không nói chính là chỗ sinh ra cãi nhau.
+  */
+  const chuSo = (so: number | null, chuaBiet: boolean) =>
+    so !== null ? `${Ngay.soCong(so)} công` : chuaBiet ? 'Chưa biết' : 'Chưa chấm';
+
+  const minhChuaBiet = lech.loai === 'minhChuaBiet';
+  const benKiaChuaBiet = lech.loai === 'benKiaChuaBiet';
 
   return (
     <View style={kieu.theLech}>
@@ -416,19 +562,32 @@ function DongLechO({
           <View style={kieu.nhanChot}>
             <Text style={kieu.chuNhanChot}>Đã trả tiền</Text>
           </View>
+        ) : benKiaChuaBiet ? (
+          /*
+            Không có nút ở đây, và không phải vì cho gọn: "lấy theo bên kia" ở dòng này là xoá
+            một buổi công thật của mình theo lời một người chưa nói gì. Chỉ còn cách đợi bên kia
+            nhập tới ngày ấy — nói ra để người dùng khỏi đi tìm cái nút.
+          */
+          <View style={kieu.nhanChot}>
+            <Text style={kieu.chuNhanChot}>Đợi sổ {benKia}</Text>
+          </View>
         ) : (
-          <NutChip nhan={`Lấy theo sổ ${benKia}`} icon="download" onPress={onLay} />
+          <NutChip
+            nhan={minhChuaBiet ? `Chấm bù theo sổ ${benKia}` : `Lấy theo sổ ${benKia}`}
+            icon="download"
+            onPress={onLay}
+          />
         )}
       </View>
 
       <View style={kieu.dongTong}>
         <View style={[kieu.oSo, kieu.oSoToi]}>
           <Text style={kieu.chuNhanO}>Sổ tôi</Text>
-          <Text style={kieu.chuSoO}>{chuSo(lech.soCongMinh)}</Text>
+          <Text style={kieu.chuSoO}>{chuSo(lech.soCongMinh, minhChuaBiet)}</Text>
         </View>
         <View style={[kieu.oSo, kieu.oSoBenKia]}>
           <Text style={kieu.chuNhanO}>Sổ {benKia}</Text>
-          <Text style={kieu.chuSoO}>{chuSo(lech.soCongBenKia)}</Text>
+          <Text style={kieu.chuSoO}>{chuSo(lech.soCongBenKia, benKiaChuaBiet)}</Text>
         </View>
       </View>
     </View>

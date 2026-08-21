@@ -9,7 +9,13 @@
  *   3. Buổi đã quyết toán thì khoá, lấy theo sổ bên kia phải hỏng.
  */
 
-import { DaChotKhongSuaDuoc, doiChieu, layTheoBenKia } from '../doiChieu';
+import {
+  ChuaBietKhongLayDuoc,
+  DaChotKhongSuaDuoc,
+  doiChieu,
+  layTheoBenKia,
+  tongChuaBiet,
+} from '../doiChieu';
 import { DuLieuChamCong, duLieuRong } from '../kieu';
 import { quyetToan } from '../ky';
 import { SoCong, catSo, cuaSoCuaChu } from '../soCong';
@@ -151,8 +157,10 @@ describe('doiChieu', () => {
       HOM_NAY,
     );
 
-    // Buổi ngày 5 không bị mang ra bắt lỗi: hôm ấy thợ chưa có app.
+    // Buổi ngày 5 không bị mang ra bắt lỗi: hôm ấy thợ chưa có app. Nhưng cũng không mất
+    // hút — ở bài này sổ mình là sổ chủ, nên nó là buổi *bên kia chưa biết*.
     expect(ket.lechs).toEqual([]);
+    expect(ket.chuaBiets.map((l) => [l.ngay, l.loai])).toEqual([['2026-08-05', 'benKiaChuaBiet']]);
     expect(ket.tuNgay).toBe('2026-08-15');
     expect(ket.denNgay).toBe('2026-08-31');
   });
@@ -373,8 +381,11 @@ describe('bên không biết ngày ấy thì không tính là lệch', () => {
 
     // Buổi chấm bù được so và khớp — công không mất hút.
     expect(ket.soKhop).toBe(1);
-    // Chín buổi kia là ngày máy thợ chưa tồn tại: không phải lệch.
+    // Chín buổi kia là ngày máy thợ chưa tồn tại: không phải lệch, nhưng vẫn phải hiện ra
+    // ở phần riêng — chủ đã chấm thật, và thợ chấm bù được từng buổi.
     expect(ket.lechs).toEqual([]);
+    expect(ket.chuaBiets).toHaveLength(9);
+    expect(new Set(ket.chuaBiets.map((l) => l.loai))).toEqual(new Set(['minhChuaBiet']));
     // Đầu trang nói khoảng phủ được buổi đã so, không phải khoảng giao rỗng.
     expect(ket.tuNgay).toBe('2026-08-15');
   });
@@ -428,5 +439,169 @@ describe('bên không biết ngày ấy thì không tính là lệch', () => {
 
     expect(ket.soKhop).toBe(1);
     expect(ket.lechs).toEqual([]);
+    // Buổi ngày 19 chờ chủ nhập tới, không phải chỗ hai bên nói khác nhau.
+    expect(ket.chuaBiets.map((l) => [l.ngay, l.loai])).toEqual([['2026-08-19', 'benKiaChuaBiet']]);
+  });
+});
+
+/**
+ * Buổi **mới một bên có sổ** phải hiện ra, không được bỏ đi lặng lẽ.
+ *
+ * Đây là chỗ sai được kể trong `KetQuaDoiChieu.chuaBiets`: chỉ so từ phía sổ mình ra, nên
+ * ngày chủ đã chấm mà máy thợ chưa biết thì rơi mất — hai tổng đầu trang đọc thành "chủ chấm
+ * thiếu", rồi thợ chấm bù đúng ngày ấy là hai tổng nhảy số.
+ */
+describe('buổi mới một bên có sổ', () => {
+  /** Chủ chấm 17 với 18, thợ chấm 18 với 19, mỗi ngày hai buổi. Máy thợ khai từ 18. */
+  function haiSoLechNgay() {
+    const thoId = tuan();
+    const hai = (ngay: string) => [
+      { ngay, buoi: 'Sang' as const, soCong: 1 },
+      { ngay, buoi: 'Chieu' as const, soCong: 1 },
+    ];
+    return {
+      thoId,
+      soMinh: soTho(thoId, [...hai('2026-08-18'), ...hai('2026-08-19')], '2026-08-18', '2026-08-20'),
+      soChu: {
+        thoId,
+        tenTho: 'Anh Tuấn',
+        nguon: 'chu' as const,
+        tuNgay: '2026-08-17',
+        denNgay: '2026-08-19',
+        dongs: [...hai('2026-08-17'), ...hai('2026-08-18')],
+        taoLuc: TAO_LUC,
+      },
+    };
+  }
+
+  it('công chủ đã chấm ở ngày máy thợ chưa biết thì vẫn hiện ra', () => {
+    const { soMinh, soChu } = haiSoLechNgay();
+    const ket = doiChieu(soMinh, soChu, '2026-08-20');
+
+    // Ngày 17: máy thợ chưa tồn tại nên không phải lệch, nhưng chủ chấm 2 công thật.
+    expect(ket.chuaBiets.map((l) => [l.ngay, l.buoi, l.loai])).toEqual([
+      ['2026-08-17', 'Sang', 'minhChuaBiet'],
+      ['2026-08-17', 'Chieu', 'minhChuaBiet'],
+    ]);
+    expect(tongChuaBiet(ket.chuaBiets)).toEqual({ minh: 0, benKia: 2 });
+
+    // Hai tổng chính vẫn chỉ nói phần so được — nhưng giờ 2 công kia có chỗ để đọc.
+    expect(ket.tongCongMinh).toBe(4);
+    expect(ket.tongCongBenKia).toBe(2);
+    expect(ket.lechs.map((l) => [l.ngay, l.buoi, l.loai])).toEqual([
+      ['2026-08-19', 'Sang', 'chiMinhCo'],
+      ['2026-08-19', 'Chieu', 'chiMinhCo'],
+    ]);
+  });
+
+  it('thợ chấm bù đúng ngày ấy thì buổi chuyển sang khớp, không sinh thêm công lạ', () => {
+    const { soMinh, soChu } = haiSoLechNgay();
+    const daChamBu = {
+      ...soMinh,
+      dongs: [
+        { ngay: '2026-08-17', buoi: 'Sang' as const, soCong: 1 },
+        { ngay: '2026-08-17', buoi: 'Chieu' as const, soCong: 1 },
+        ...soMinh.dongs,
+      ],
+    };
+
+    const ket = doiChieu(daChamBu, soChu, '2026-08-20');
+
+    // Trước khi chấm bù, hai công của chủ ở ngày 17 đã được đếm ở `chuaBiets`; sau khi chấm
+    // bù chúng vào hai tổng. Không có chỗ nào công tự sinh ra.
+    expect(ket.chuaBiets).toEqual([]);
+    expect(ket.soKhop).toBe(4);
+    expect(ket.tongCongMinh).toBe(6);
+    expect(ket.tongCongBenKia).toBe(4);
+  });
+
+  it('lấy theo sổ bên kia được: đó là chấm bù vào sổ mình', () => {
+    let { duLieu, tuan } = kho();
+    const ket = doiChieu(
+      // Sổ mình (máy thợ) khai từ 18, chưa biết gì ngày 17.
+      soTho(tuan, [], '2026-08-18', '2026-08-20'),
+      {
+        thoId: tuan,
+        tenTho: 'Anh Tuấn',
+        nguon: 'chu',
+        tuNgay: '2026-08-17',
+        denNgay: '2026-08-18',
+        dongs: [{ ngay: '2026-08-17', buoi: 'Sang', soCong: 1 }],
+        taoLuc: TAO_LUC,
+      },
+      '2026-08-20',
+    );
+
+    duLieu = layTheoBenKia(duLieu, tuan, ket.chuaBiets[0]);
+    expect(dangCham(duLieu, tuan, '2026-08-17', 'Sang')?.soCong).toBe(1);
+  });
+
+  it('bên kia chưa biết ngày ấy thì không lấy theo được — lấy là xoá công thật của mình', () => {
+    let { duLieu, tuan } = kho();
+    duLieu = cham(duLieu, tuan, '2026-08-19', 'Sang');
+
+    const ket = doiChieu(
+      soTho(tuan, [{ ngay: '2026-08-19', buoi: 'Sang', soCong: 1 }], '2026-08-01', '2026-08-20'),
+      // Chủ mới nhập tới ngày 17, chưa biết gì ngày 19.
+      {
+        thoId: tuan,
+        tenTho: 'Anh Tuấn',
+        nguon: 'chu',
+        tuNgay: '2026-08-01',
+        denNgay: '2026-08-17',
+        dongs: [],
+        taoLuc: TAO_LUC,
+      },
+      '2026-08-20',
+    );
+
+    expect(ket.chuaBiets.map((l) => l.loai)).toEqual(['benKiaChuaBiet']);
+    expect(() => layTheoBenKia(duLieu, tuan, ket.chuaBiets[0])).toThrow(ChuaBietKhongLayDuoc);
+    // Sổ mình không bị chạm tới.
+    expect(dangCham(duLieu, tuan, '2026-08-19', 'Sang')?.soCong).toBe(1);
+  });
+
+  it('buổi của hôm nay vẫn là tạm gác, không thành dòng "chưa biết"', () => {
+    const thoId = tuan();
+    const ket = doiChieu(
+      // Máy thợ nhận vai đúng hôm nay, chưa chấm ô nào.
+      soTho(thoId, [], '2026-08-20', '2026-08-20'),
+      {
+        thoId,
+        tenTho: 'Anh Tuấn',
+        nguon: 'chu',
+        tuNgay: '2026-08-20',
+        denNgay: '2026-08-20',
+        dongs: [{ ngay: '2026-08-20', buoi: 'Sang', soCong: 1 }],
+        taoLuc: TAO_LUC,
+      },
+      '2026-08-20',
+    );
+
+    expect(ket.soTamGac).toBe(1);
+    expect(ket.chuaBiets).toEqual([]);
+  });
+
+  it('chưa so được buổi nào vẫn trả về phần mới một bên có sổ', () => {
+    const thoId = tuan();
+    const ket = doiChieu(
+      soTho(thoId, [], '2026-09-01', '2026-09-30'),
+      {
+        thoId,
+        tenTho: 'Anh Tuấn',
+        nguon: 'chu',
+        tuNgay: '2026-08-01',
+        denNgay: '2026-08-19',
+        dongs: [{ ngay: '2026-08-19', buoi: 'Sang', soCong: 1 }],
+        taoLuc: TAO_LUC,
+      },
+      '2026-09-30',
+    );
+
+    // Hai khoảng khai không giao nhau — nhưng bỏ trắng cả trang thì thợ không bao giờ biết
+    // sổ chủ đang có công của mình.
+    expect(ket.khongTrungKhoang).toBe(true);
+    expect(ket.lechs).toEqual([]);
+    expect(ket.chuaBiets.map((l) => [l.ngay, l.loai])).toEqual([['2026-08-19', 'minhChuaBiet']]);
   });
 });

@@ -19,7 +19,19 @@ export type LoaiLech =
   /** Sổ bên kia có chấm, sổ mình không. */
   | 'chiBenKiaCo'
   /** Hai bên đều có nhưng số công khác nhau. */
-  | 'lechSoCong';
+  | 'lechSoCong'
+  /**
+   * Sổ bên kia có chấm, mà **máy mình không biết ngày ấy** — ngoài khoảng mình khai là đầy
+   * đủ, xem `coYKien`. Chưa phải lệch: mình chưa nói gì thì chưa trái ý ai. Nhưng phải hiện
+   * ra, vì đây là công bên kia đã ghi thật mà sổ mình đang trống — lấy về là chấm bù.
+   */
+  | 'minhChuaBiet'
+  /**
+   * Sổ mình có chấm, mà **bên kia không biết ngày ấy**. Cũng chưa phải lệch, và tuyệt đối
+   * không được "lấy theo bên kia": im lặng của người không biết không phải là lời nói "hôm
+   * ấy nghỉ", lấy theo là xoá mất công thật.
+   */
+  | 'benKiaChuaBiet';
 
 export interface DongLech {
   ngay: string;
@@ -50,6 +62,20 @@ export interface KetQuaDoiChieu {
   /** Số buổi hai bên khớp nhau, để nói được câu "khớp 42 buổi, lệch 3 buổi". */
   soKhop: number;
   lechs: DongLech[];
+  /**
+   * Những buổi **một bên có chấm mà bên kia không biết ngày ấy**: chưa kết luận được ai
+   * đúng, nhưng cũng không được bỏ đi lặng lẽ.
+   *
+   * Đây là chỗ trước đây bỏ hẳn, và bỏ về đúng phía tệ nhất. Máy thợ khai từ hôm nó nhận vai,
+   * nên mấy buổi chủ đã chấm *trước* hôm ấy biến mất khỏi màn hình đối chiếu của thợ: chủ chấm
+   * ngày 17 với 18, thợ chấm 18 với 19, mà đầu trang lại đọc thành "sổ tôi 4 công, sổ chủ 2
+   * công" — hoá ra chủ chấm thiếu. Rồi thợ chấm bù đúng ngày 17 là buổi kia hiện ra, hai tổng
+   * nhảy thành 6 với 4: cùng một sổ chủ mà đọc ra hai con số khác nhau tuỳ theo sổ mình có gì.
+   *
+   * Không cộng vào hai tổng — giống buổi tạm gác: tổng là để so hai bên trên **cùng** một
+   * khoảng, mà mấy buổi này thì chỉ một bên có khoảng. Cộng riêng bằng `tongChuaBiet`.
+   */
+  chuaBiets: DongLech[];
   tongCongMinh: number;
   tongCongBenKia: number;
   /**
@@ -64,6 +90,34 @@ const THU_TU_BUOI: Record<BuoiLam, number> = { Sang: 0, Chieu: 1 };
 
 function khoa(ngay: string, buoi: BuoiLam): string {
   return `${ngay}|${buoi}`;
+}
+
+/** Một dòng để hiện lên, ghép từ hai bên. */
+function dongLech(
+  goc: DongCong,
+  a: DongCong | undefined,
+  b: DongCong | undefined,
+  loai: LoaiLech,
+): DongLech {
+  return {
+    ngay: goc.ngay,
+    buoi: goc.buoi,
+    soCongMinh: a ? a.soCong : null,
+    soCongBenKia: b ? b.soCong : null,
+    loai,
+    // Bên nào khai đã chốt cũng tính là đã chốt: chỉ máy chủ có cờ này, mà chủ mới là bên
+    // trả tiền.
+    daChot: a?.daChot === true || b?.daChot === true,
+  };
+}
+
+/** Xếp theo ngày, trong một ngày thì Sáng trước Chiều — thứ tự người ta đọc một cuốn sổ. */
+function xepTheoNgay(dongs: DongLech[]): DongLech[] {
+  return [...dongs].sort((x, y) =>
+    x.ngay === y.ngay
+      ? THU_TU_BUOI[x.buoi] - THU_TU_BUOI[y.buoi]
+      : x.ngay.localeCompare(y.ngay),
+  );
 }
 
 function theoKhoa(dongs: DongCong[]): Map<string, DongCong> {
@@ -94,9 +148,13 @@ function coYKien(so: SoCong, dong: DongCong | undefined, ngay: string): boolean 
 /**
  * So hai sổ, trả về những buổi nói khác nhau.
  *
- * Chỉ kết luận ở những buổi mà **cả hai bên đều có ý kiến** — xem `coYKien`. Bên nào không
- * khai ngày ấy là đầy đủ và cũng không có dòng nào thì buổi ấy bỏ qua: thiếu một buổi ở đó
- * không có nghĩa là ai sai, xem ghi chú ở `SoCong.tuNgay`.
+ * Chỉ **kết luận là lệch** ở những buổi mà cả hai bên đều có ý kiến — xem `coYKien`. Bên nào
+ * không khai ngày ấy là đầy đủ và cũng không có dòng nào thì buổi ấy không vào `lechs`: thiếu
+ * một buổi ở đó không có nghĩa là ai sai, xem ghi chú ở `SoCong.tuNgay`.
+ *
+ * Nhưng **không bỏ đi**: bên kia có chấm thật, nên buổi ấy sang `chuaBiets` để vẫn hiện lên.
+ * Bỏ hẳn là công của bên kia biến mất khỏi màn hình đối chiếu, mà lại biến mất một chiều —
+ * xem ghi chú ở `chuaBiets`.
  *
  * `homNay` để **tạm gác những buổi của hôm nay mà chỉ một bên có**. Ngày đang chạy thì bên
  * chưa chấm không có nghĩa là bên ấy nói "nghỉ": chủ chấm cả nhóm lúc nghỉ trưa, thợ mở app
@@ -109,8 +167,8 @@ function coYKien(so: SoCong, dong: DongCong | undefined, ngay: string): boolean 
  * người thật sự nói khác nhau, gác lại là che mất.
  *
  * Buổi tạm gác cũng **không cộng vào hai tổng**: tổng phải nói đúng những dòng đang hiện bên
- * dưới, chứ không thì đầu trang bảo lệch 2 công mà không có dòng nào giải thích. Buổi bỏ qua
- * vì một bên không biết cũng vậy.
+ * dưới, chứ không thì đầu trang bảo lệch 2 công mà không có dòng nào giải thích. Buổi trong
+ * `chuaBiets` cũng vậy — có tổng riêng của nó, và màn hình nói riêng một câu.
  */
 export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQuaDoiChieu {
   const giaoTu = soMinh.tuNgay > soBenKia.tuNgay ? soMinh.tuNgay : soBenKia.tuNgay;
@@ -120,6 +178,7 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
   const benKia = theoKhoa(soBenKia.dongs);
 
   const lechs: DongLech[] = [];
+  const chuaBiets: DongLech[] = [];
   let soKhop = 0;
   let soTamGac = 0;
   let tongCongMinh = 0;
@@ -137,14 +196,28 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
       continue;
     }
 
-    // Một bên không biết ngày ấy thì không có chuyện hai bên nói khác nhau.
-    if (!coYKien(soMinh, a, goc.ngay) || !coYKien(soBenKia, b, goc.ngay)) {
+    /*
+      Hôm nay mà chỉ một bên có: gác lại cả khỏi tổng, xem ghi chú ở đầu hàm. Xét **trước**
+      chuyện bên kia có biết ngày ấy hay không: buổi của hôm nay thì bên chưa chấm chưa nói
+      gì cả, gọi nó là "ngày bên kia chưa biết" chỉ thêm một dòng không ai cần đọc, mà câu
+      "hôm nay còn dở" mới là câu đúng.
+    */
+    if (goc.ngay >= homNay && (!a || !b)) {
+      soTamGac += 1;
       continue;
     }
 
-    // Hôm nay mà chỉ một bên có: gác lại cả khỏi tổng, xem ghi chú ở đầu hàm.
-    if (goc.ngay >= homNay && (!a || !b)) {
-      soTamGac += 1;
+    /*
+      Một bên không biết ngày ấy thì không có chuyện hai bên nói khác nhau — nhưng bên kia có
+      chấm thật, nên để riêng một chỗ chứ không bỏ. Vào được tới đây thì đúng một bên có dòng:
+      bên nào có dòng là bên ấy có ý kiến, nên bên không có ý kiến chính là bên không có dòng.
+    */
+    if (!coYKien(soMinh, a, goc.ngay)) {
+      chuaBiets.push(dongLech(goc, a, b, 'minhChuaBiet'));
+      continue;
+    }
+    if (!coYKien(soBenKia, b, goc.ngay)) {
+      chuaBiets.push(dongLech(goc, a, b, 'benKiaChuaBiet'));
       continue;
     }
 
@@ -163,16 +236,7 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
       continue;
     }
 
-    lechs.push({
-      ngay: goc.ngay,
-      buoi: goc.buoi,
-      soCongMinh: a ? a.soCong : null,
-      soCongBenKia: b ? b.soCong : null,
-      loai: !b ? 'chiMinhCo' : !a ? 'chiBenKiaCo' : 'lechSoCong',
-      // Bên nào khai đã chốt cũng tính là đã chốt: chỉ máy chủ có cờ này, mà chủ mới là
-      // bên trả tiền.
-      daChot: a?.daChot === true || b?.daChot === true,
-    });
+    lechs.push(dongLech(goc, a, b, !b ? 'chiMinhCo' : !a ? 'chiBenKiaCo' : 'lechSoCong'));
   }
 
   /*
@@ -180,6 +244,10 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
     chung. Xét theo *kết quả* chứ theo hai mốc khai: khoảng giao có thể rộng mà vẫn không
     buổi nào được chấm, mà cũng có thể hẹp tới mức rỗng trong lúc một buổi chấm bù ngoài
     khoảng vẫn so được.
+
+    Buổi trong `chuaBiets` cũng **không tính là so được** — mới một bên có ý kiến — nhưng vẫn
+    trả về, vì đây đúng là lúc chúng cần được nhìn nhất: máy thợ vừa cài, chưa so được gì, mà
+    sổ chủ thì đã có mấy hôm công.
   */
   if (soTu === null && soTamGac === 0) {
     return {
@@ -188,17 +256,12 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
       khongTrungKhoang: giaoTu > giaoDen,
       soKhop: 0,
       lechs: [],
+      chuaBiets: xepTheoNgay(chuaBiets),
       tongCongMinh: 0,
       tongCongBenKia: 0,
       soTamGac: 0,
     };
   }
-
-  lechs.sort((x, y) =>
-    x.ngay === y.ngay
-      ? THU_TU_BUOI[x.buoi] - THU_TU_BUOI[y.buoi]
-      : x.ngay.localeCompare(y.ngay),
-  );
 
   return {
     // Nới khoảng nói ở đầu trang ra cho phủ hết những buổi thật sự đã so: một dòng chấm bù
@@ -208,11 +271,29 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
     denNgay: soDen !== null && soDen > giaoDen ? soDen : giaoDen,
     khongTrungKhoang: false,
     soKhop,
-    lechs,
+    lechs: xepTheoNgay(lechs),
+    chuaBiets: xepTheoNgay(chuaBiets),
     tongCongMinh,
     tongCongBenKia,
     soTamGac,
   };
+}
+
+/**
+ * Cộng riêng những buổi chưa kết luận được, để đầu trang nói được câu "sổ chủ còn 2 công ở
+ * những ngày máy tôi chưa biết". Hai tổng chính không có mấy công này — xem `chuaBiets`.
+ *
+ * Mỗi dòng chỉ có đúng một bên có số, nên hai tổng này không bao giờ cùng lớn hơn 0 trên cùng
+ * một dòng; cộng cả hai vẫn cần vì hai chiều đều xảy ra được trong cùng một lần đối chiếu.
+ */
+export function tongChuaBiet(chuaBiets: DongLech[]): { minh: number; benKia: number } {
+  let minh = 0;
+  let benKia = 0;
+  for (const dong of chuaBiets) {
+    minh += dong.soCongMinh ?? 0;
+    benKia += dong.soCongBenKia ?? 0;
+  }
+  return { minh, benKia };
 }
 
 /** Buổi đã quyết toán thì khoá, không cho sửa theo sổ bên kia nữa. */
@@ -222,11 +303,22 @@ export class DaChotKhongSuaDuoc extends Error {
   }
 }
 
+/** Bên kia chưa biết ngày ấy thì im lặng của họ không phải là lời "hôm ấy nghỉ". */
+export class ChuaBietKhongLayDuoc extends Error {
+  constructor() {
+    super('Sổ bên kia chưa tới ngày này nên chưa biết — không lấy theo được.');
+  }
+}
+
 /**
  * Lấy theo sổ bên kia cho **một** dòng lệch: ghi vào sổ của chính máy này.
  *
  * Một dòng một lần, không có nút "lấy hết": người bấm phải nhìn từng buổi. Chỗ này là chỗ
  * tiền ra tiền vào, một nút lấy hết là mời người ta bấm cho xong việc.
+ *
+ * Dòng `benKiaChuaBiet` thì **không lấy được**, và chặn ngay ở đây chứ không chỉ ẩn nút trên
+ * màn hình: bên kia không biết ngày ấy nên sổ họ trống, "lấy theo bên kia" hoá ra là xoá một
+ * buổi công thật của mình theo lời một người chưa nói gì.
  */
 export function layTheoBenKia(
   duLieu: DuLieuChamCong,
@@ -235,6 +327,10 @@ export function layTheoBenKia(
 ): DuLieuChamCong {
   if (lech.daChot) {
     throw new DaChotKhongSuaDuoc();
+  }
+
+  if (lech.loai === 'benKiaChuaBiet') {
+    throw new ChuaBietKhongLayDuoc();
   }
 
   if (lech.soCongBenKia === null) {

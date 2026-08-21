@@ -152,6 +152,29 @@ describe('so với sổ chủ', () => {
     expect(screen.queryByText('Sổ chủ ghi khác')).toBeNull();
   });
 
+  /**
+   * Sổ chủ có công ở ngày **sổ này chưa biết** (trước hôm nhận vai máy). Không đánh dấu được
+   * vào dòng nào — ngày ấy nằm ngoài sổ này — nên ô tóm tắt phải nói ra, chứ nói "Khớp cả" là
+   * thợ đóng màn hình mà không biết mình còn 1 buổi chưa chấm bù.
+   */
+  test('chủ có công ở ngày sổ này chưa biết thì không báo khớp cả', () => {
+    dung(
+      // Máy thợ mới có sổ từ 05/08.
+      so([{ ngay: '2026-08-06', buoi: 'Sang', soCong: 1 }], { tuNgay: '2026-08-05' }),
+      so(
+        [
+          { ngay: '2026-08-06', buoi: 'Sang', soCong: 1 },
+          // Chủ chấm hôm 02/08, trước hôm máy thợ có sổ.
+          { ngay: '2026-08-02', buoi: 'Sang', soCong: 1 },
+        ],
+        { nguon: 'chu' },
+      ),
+    );
+
+    expect(screen.getByText('Còn 1 buổi')).toBeTruthy();
+    expect(screen.queryByText('Khớp cả')).toBeNull();
+  });
+
   test('ngày lệch được đánh dấu ngay trên dòng của nó', () => {
     dung(
       so([

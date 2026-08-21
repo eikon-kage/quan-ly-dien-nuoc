@@ -221,6 +221,75 @@ describe('máy thợ', () => {
     expect(screen.getByText('1 công')).toBeTruthy();
   });
 
+  /**
+   * Ngày chủ đã chấm mà máy thợ chưa có sổ tới đó: **phải hiện ra**, và chấm bù được ngay.
+   *
+   * Trước đây buổi ấy rơi mất hẳn, nên đầu trang đọc thành "sổ tôi 1 công, sổ chủ 0 công" —
+   * nghe như chủ chấm thiếu, trong lúc chủ chấm đủ. Xem ghi chú ở `KetQuaDoiChieu.chuaBiets`.
+   */
+  test('chủ đã chấm trước hôm thợ cài app thì hiện ra riêng, chấm bù được', () => {
+    const { duLieu, thoId } = kho();
+    const NGAY_CU = Ngay.congNgay(HOM_NAY, -5);
+
+    // Sổ thợ: chỉ có hôm qua, và máy thợ mới nhận vai từ hai hôm trước.
+    const cuaToi = cham(duLieu, thoId, HOM_QUA, 'Sang');
+    // Sổ chủ: có cả hôm qua (khớp) và một ngày trước hôm thợ cài app.
+    const cuaChu = cham(cuaToi, thoId, NGAY_CU, 'Sang');
+    const soChu: SoCong = {
+      ...catSo(cuaChu, thoId, 'chu', Ngay.congNgay(HOM_NAY, -90), HOM_QUA, ''),
+      tenTho: 'Anh Tuấn',
+    };
+
+    const capNhat = dung(cuaToi, dieuKhienGia([{ so: soChu, suaLuc: '' }]), jest.fn(), {
+      ...CAI_DAT,
+      thoId,
+      batDauTu: Ngay.congNgay(HOM_NAY, -2),
+    });
+
+    // Không gọi là lệch — nhưng cũng không được nói trơn "hai sổ khớp nhau".
+    expect(screen.getByText('Khớp phần so được')).toBeTruthy();
+    expect(screen.getByText('Mới một bên có sổ · 1 buổi')).toBeTruthy();
+    expect(screen.getByText(/Sổ chủ còn 1 công ở 1 buổi máy tôi chưa có/)).toBeTruthy();
+    // Ô của mình không được viết "Chưa chấm": máy này chưa có sổ ngày ấy chứ không phải đã
+    // xem rồi bảo hôm ấy nghỉ.
+    expect(screen.getByText('Chưa biết')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Chấm bù theo sổ chủ'));
+
+    expect(capNhat).toHaveBeenCalledTimes(1);
+    const moi = capNhat.mock.calls[0][0] as DuLieuChamCong;
+    expect(dangCham(moi, thoId, NGAY_CU, 'Sang')?.soCong).toBe(1);
+  });
+
+  /**
+   * Chiều ngược lại: buổi mình đã chấm mà chủ chưa nhập tới ngày ấy. Không có nút lấy theo
+   * chủ — bấm được là xoá một buổi công thật theo lời một người chưa nói gì.
+   */
+  test('chủ chưa nhập tới ngày mình đã chấm thì không có nút lấy theo', () => {
+    const { duLieu, thoId } = kho();
+    const cuaToi = cham(duLieu, thoId, HOM_QUA, 'Sang');
+    const soChu: SoCong = {
+      thoId,
+      tenTho: 'Anh Tuấn',
+      nguon: 'chu',
+      tuNgay: Ngay.congNgay(HOM_NAY, -30),
+      denNgay: Ngay.congNgay(HOM_NAY, -3),
+      dongs: [],
+      taoLuc: '',
+    };
+
+    dung(cuaToi, dieuKhienGia([{ so: soChu, suaLuc: '' }]), jest.fn(), {
+      ...CAI_DAT,
+      thoId,
+      batDauTu: Ngay.congNgay(HOM_NAY, -30),
+    });
+
+    expect(screen.getByText('Mới một bên có sổ · 1 buổi')).toBeTruthy();
+    expect(screen.getByText('Đợi sổ chủ')).toBeTruthy();
+    expect(screen.queryByText('Lấy theo sổ chủ')).toBeNull();
+    expect(screen.queryByText('Chấm bù theo sổ chủ')).toBeNull();
+  });
+
   test('lấy tên do chủ đặt, không phải chữ "Tôi" đặt tạm lúc nhận mã mời', () => {
     // Máy thợ để tên nội bộ là "Tôi" cho tới khi sổ chủ về. Nếu màn hình này lấy tên nội bộ
     // trước thì màn hình chính gọi "Anh Tuấn" mà mở đối chiếu ra lại thành "Tôi".

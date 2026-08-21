@@ -365,7 +365,11 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
                 : ket.khongTrungKhoang
                   ? 'Chưa so được'
                   : ket.lechs.length === 0
-                    ? `Khớp cả ${ket.soKhop} buổi`
+                    ? // Còn buổi mới một bên có sổ thì đừng nói "khớp cả": phần so được thì
+                      // khớp, nhưng sổ chủ đang có công ở ngày máy này chưa có sổ.
+                      ket.chuaBiets.length > 0
+                      ? `Khớp ${ket.soKhop} buổi · ${ket.chuaBiets.length} buổi chưa so được`
+                      : `Khớp cả ${ket.soKhop} buổi`
                     : `Lệch ${ket.lechs.length} buổi`}
             </Text>
           </View>
