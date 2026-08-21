@@ -17,8 +17,10 @@ public static class TinNhacNo
         DateTime homNay,
         ThongTinCuaHang? cuaHang = null)
     {
+        // Lấy cả tờ hoàn hàng (còn lại âm): nhắc nợ mà bỏ phần đã hoàn thì con số đòi cao hơn
+        // số khách thật sự nợ — khách đối chiếu ra là mất tin cuốn sổ.
         var conNo = hoaDons
-            .Where(h => h.ConLai > 0m)
+            .Where(h => h.ConLai != 0m)
             .OrderBy(h => h.NgayMo)
             .ToList();
 
@@ -34,6 +36,15 @@ public static class TinNhacNo
         foreach (var hoaDon in conNo)
         {
             var mocCuoi = hoaDon.ChiTiet.Count > 0 ? hoaDon.ChiTiet.Max(c => c.Ngay) : hoaDon.NgayMo;
+
+            if (hoaDon.LaHoanHang)
+            {
+                sb.AppendLine(
+                    $"- {hoaDon.MaHoaDon} (hoàn hàng ngày {mocCuoi:dd/MM/yyyy}): " +
+                    $"trừ {So.Tien(hoaDon.TienHoan)}đ");
+                continue;
+            }
+
             sb.AppendLine(
                 $"- {hoaDon.MaHoaDon} (lấy hàng đến {mocCuoi:dd/MM/yyyy}): " +
                 $"mua {So.Tien(hoaDon.TongTien)}đ, đã trả {So.Tien(hoaDon.DaThanhToan)}đ, " +

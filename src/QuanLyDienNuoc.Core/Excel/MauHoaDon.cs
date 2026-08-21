@@ -14,7 +14,9 @@ public sealed record ViTriTrang(
     int DongBangChu,
     int DongNgay,
     int DongTenKhach = -1,
-    int DongDiaChi = -1);
+    int DongDiaChi = -1,
+    int DongTieuDe = -1,
+    int DongPhuDe = -1);
 
 /// <summary>Mô tả mẫu hoá đơn giấy của cửa hàng: trang 1 có tiêu đề, các trang sau chỉ có bảng.</summary>
 public static class MauHoaDon
@@ -27,6 +29,9 @@ public static class MauHoaDon
     public const int CotThanhTien = 5;
     public const int CotNgayThang = 3;
 
+    /// <summary>Cột của tên tờ hoá đơn ("HÓA ĐƠN BÁN HÀNG") ở góc trên phải mẫu giấy.</summary>
+    public const int CotTieuDe = 3;
+
     public const string TenFileTrang1 = "trang-1.xls";
     public const string TenFileTrangSau = "trang-sau.xls";
 
@@ -38,7 +43,9 @@ public static class MauHoaDon
         DongBangChu: 40,
         DongNgay: 41,
         DongTenKhach: 3,
-        DongDiaChi: 4);
+        DongDiaChi: 4,
+        DongTieuDe: 2,
+        DongPhuDe: 3);
 
     /// <summary>Trang thứ hai trở đi: chỉ có bảng 35 dòng hàng.</summary>
     public static readonly ViTriTrang TrangSau = new(

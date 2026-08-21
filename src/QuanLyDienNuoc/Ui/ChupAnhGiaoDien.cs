@@ -33,7 +33,7 @@ public static class ChupAnhGiaoDien
         {
             var kho = KhoDuLieu.Instance;
             kho.Nap();
-            var (khach, hoaDon) = TaoDuLieuMau(kho);
+            var (khach, hoaDon, hoanHang, khachHoan) = TaoDuLieuMau(kho);
             Ghi($"Dữ liệu mẫu: {kho.DuLieu.KhachHangs.Count} khách, {kho.DuLieu.HoaDons.Count} hoá đơn, file {kho.DuongDanFile}");
 
             var fileExcel = Path.Combine(thuMucRa, "hoa-don-mau-xuat-ra.xls");
@@ -51,6 +51,7 @@ public static class ChupAnhGiaoDien
             loi += ChupForm(thuMucRa, "08-tao-hoa-don", () => new HoaDonForm(null, "HD2026-03", 2026));
             loi += ChupForm(thuMucRa, "09-nhap-tu-excel", () => new NhapExcelForm(khach.Id, 2026, hoaDon.Id, fileExcel));
             loi += ChupForm(thuMucRa, "11-so-cong-no", () => new CongNoForm());
+            loi += ChupForm(thuMucRa, "18-hoan-hang", () => new HoanHangForm(hoaDon.Id));
             loi += ChupForm(
                 thuMucRa,
                 "13-nhap-nhieu-dong",
@@ -79,7 +80,18 @@ public static class ChupAnhGiaoDien
             XuatToanBo.Xuat(kho.DuLieu, fileToanBo, new DateTime(2026, 8, 3));
             Ghi($"Đã xuất Excel toàn bộ dữ liệu: {fileToanBo}");
 
-            loi += ChupBanIn(thuMucRa, hoaDon, khach);
+            loi += ChupBanIn(thuMucRa, hoaDon, khach, "10-ban-in-trang");
+            var hoaDonGocCuaToHoan = hoanHang.HoaDonGocId is { } gocId ? kho.TimHoaDon(gocId) : null;
+            loi += ChupBanIn(thuMucRa, hoanHang, khachHoan, "19-ban-in-hoan-hang-trang", hoaDonGocCuaToHoan);
+
+            var fileHoanExcel = Path.Combine(thuMucRa, "hoa-don-hoan-hang-xuat-ra.xls");
+            XuatHoaDon.Xuat(
+                hoanHang,
+                khachHoan,
+                fileHoanExcel,
+                ngayIn: new DateTime(2026, 8, 3),
+                hoaDonGoc: hoaDonGocCuaToHoan);
+            Ghi($"Đã xuất Excel tờ hoàn hàng: {fileHoanExcel}");
         }
         catch (Exception ex)
         {
@@ -136,11 +148,21 @@ public static class ChupAnhGiaoDien
     }
 
     /// <summary>Vẽ bản in ra ảnh khổ A4 mà không cần máy in.</summary>
-    private static int ChupBanIn(string thuMucRa, HoaDon hoaDon, KhachHang khach)
+    private static int ChupBanIn(
+        string thuMucRa,
+        HoaDon hoaDon,
+        KhachHang khach,
+        string tenAnh,
+        HoaDon? hoaDonGoc = null)
     {
         try
         {
-            using var taiLieu = new InHoaDon(hoaDon, khach, ThongTinCuaHang.DocTuMau(), new DateTime(2026, 8, 3));
+            using var taiLieu = new InHoaDon(
+                hoaDon,
+                khach,
+                ThongTinCuaHang.DocTuMau(),
+                new DateTime(2026, 8, 3),
+                hoaDonGoc);
 
             // A4 = 8.27 x 11.69 inch. Toạ độ bản in tính bằng 1/100 inch, xuất ảnh ở 150 dpi.
             const int RongA4 = 827;
@@ -160,7 +182,7 @@ public static class ChupAnhGiaoDien
                     taiLieu.VeTrangRaAnh(g, le, trang);
                 }
 
-                var ten = $"10-ban-in-trang-{trang + 1}.png";
+                var ten = $"{tenAnh}-{trang + 1}.png";
                 anh.Save(Path.Combine(thuMucRa, ten), System.Drawing.Imaging.ImageFormat.Png);
                 Ghi($"OK  {ten}  (A4 150dpi)");
             }
@@ -174,7 +196,8 @@ public static class ChupAnhGiaoDien
         }
     }
 
-    private static (KhachHang Khach, HoaDon HoaDon) TaoDuLieuMau(KhoDuLieu kho)
+    private static (KhachHang Khach, HoaDon HoaDon, HoaDon HoanHang, KhachHang KhachHoan)
+        TaoDuLieuMau(KhoDuLieu kho)
     {
         kho.DuLieu.KhachHangs.Clear();
         kho.DuLieu.HoaDons.Clear();
@@ -285,7 +308,19 @@ public static class ChupAnhGiaoDien
             NgayMo = new DateTime(2026, 5, 12),
         };
         rong.ChiTiet.Add(new ChiTietHoaDon { Ngay = new DateTime(2026, 5, 12), TenHang = "Ống nhựa PVC D27", DonVi = "Cây", DonGia = 45000, SoLuong = 6 });
+        rong.ChiTiet.Add(new ChiTietHoaDon { Ngay = new DateTime(2026, 5, 12), TenHang = "Keo dán ống 100g", DonVi = "Lọ", DonGia = 25000, SoLuong = 3 });
         kho.DuLieu.HoaDons.Add(rong);
+
+        // Tờ hoàn hàng cho hoá đơn đã in: khách mang về 2 cây ống với 1 lọ keo chưa dùng. Để ở
+        // khách khác chứ không phải khách mối, vì màn đơn hàng mở ra là chọn hoá đơn mới nhất —
+        // đặt tờ hoàn vào khách mối thì ảnh màn đơn hàng thành ảnh tờ hoàn, mất ảnh màn chính.
+        var hoanHang = BaoCao.HoanHang.Tao(
+            rong,
+            new[] { new BaoCao.MucHoan(rong.ChiTiet[0], 2m), new BaoCao.MucHoan(rong.ChiTiet[1], 1m) },
+            "HH2026-01",
+            new DateTime(2026, 5, 20),
+            "Hàng dùng không hết, còn nguyên đai");
+        kho.DuLieu.HoaDons.Add(hoanHang);
 
         // Một khách nợ đã lâu để dải nhắc nợ và sổ công nợ có cái mà hiện.
         var noLau = new HoaDon
@@ -362,7 +397,7 @@ public static class ChupAnhGiaoDien
         kho.NhatKy.Ghi("Chốt hoá đơn HD2026-02", luc: new DateTime(2026, 6, 28, 17, 5, 0));
         SaoLuu.Tao(kho, kho.CaiDat, new DateTime(2026, 8, 3, 8, 15, 0));
 
-        return (khach, hoaDon);
+        return (khach, hoaDon, hoanHang, khachKhac[0]);
     }
 
     private static void Ghi(string dong)

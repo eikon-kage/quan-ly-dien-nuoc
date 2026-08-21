@@ -28,13 +28,18 @@ public static class XuatHoaDon
         return trang;
     }
 
-    /// <summary>Xuất hoá đơn ra file Excel theo đúng mẫu giấy của cửa hàng.</summary>
+    /// <summary>
+    /// Xuất hoá đơn ra file Excel theo đúng mẫu giấy của cửa hàng.
+    /// <paramref name="hoaDonGoc"/> chỉ dùng khi xuất hoá đơn hoàn hàng, để ghi lên tờ giấy
+    /// là hoàn cho hoá đơn nào.
+    /// </summary>
     public static void Xuat(
         HoaDon hoaDon,
         KhachHang khach,
         string fileRa,
         string? thuMucMau = null,
-        DateTime? ngayIn = null)
+        DateTime? ngayIn = null,
+        HoaDon? hoaDonGoc = null)
     {
         thuMucMau ??= MauHoaDon.ThuMucMacDinh;
         var fileTrang1 = Path.Combine(thuMucMau, MauHoaDon.TenFileTrang1);
@@ -82,12 +87,14 @@ public static class XuatHoaDon
             DienMotTrang(
                 wb.GetSheetAt(i),
                 viTri,
+                hoaDon,
                 trang[i],
                 soThuTu,
                 khach,
                 laTrangCuoi: i == trang.Count - 1,
                 tongCong,
-                ngayIn ?? DateTime.Today);
+                ngayIn ?? DateTime.Today,
+                hoaDonGoc);
             soThuTu += trang[i].Count;
         }
 
@@ -104,13 +111,27 @@ public static class XuatHoaDon
     private static void DienMotTrang(
         ISheet sheet,
         ViTriTrang viTri,
+        HoaDon hoaDon,
         List<ChiTietHoaDon> dong,
         int soThuTuDau,
         KhachHang khach,
         bool laTrangCuoi,
         decimal tongCong,
-        DateTime ngayIn)
+        DateTime ngayIn,
+        HoaDon? hoaDonGoc)
     {
+        // Tờ hoàn hàng dùng chung mẫu giấy với hoá đơn bán, chỉ đổi tên tờ ở góc trên phải —
+        // có vậy chủ cửa hàng sửa mẫu bằng Excel một lần là cả hai loại đổi theo.
+        if (hoaDon.LaHoanHang && viTri.DongTieuDe >= 0)
+        {
+            LayO(sheet, viTri.DongTieuDe, MauHoaDon.CotTieuDe).SetCellValue("HÓA ĐƠN HOÀN HÀNG");
+        }
+
+        if (hoaDon.LaHoanHang && viTri.DongPhuDe >= 0)
+        {
+            LayO(sheet, viTri.DongPhuDe, MauHoaDon.CotTieuDe).SetCellValue(PhuDeHoanHang(hoaDon, hoaDonGoc));
+        }
+
         if (viTri.DongTenKhach >= 0)
         {
             LayO(sheet, viTri.DongTenKhach, 0).SetCellValue($"Tên khách hàng: {khach.Ten}");
@@ -139,27 +160,52 @@ public static class XuatHoaDon
             LayO(sheet, r, MauHoaDon.CotTT).SetCellValue((soThuTuDau + i).ToString());
             LayO(sheet, r, MauHoaDon.CotTenHang).SetCellValue(ct.TenHang);
             LayO(sheet, r, MauHoaDon.CotDonVi).SetCellValue(ct.DonVi);
-            LayO(sheet, r, MauHoaDon.CotSoLuong).SetCellValue((double)ct.SoLuong);
+            LayO(sheet, r, MauHoaDon.CotSoLuong).SetCellValue((double)(ct.SoLuong * hoaDon.DauInRaGiay));
 
             if (ct.DonGia != 0)
             {
                 LayO(sheet, r, MauHoaDon.CotDonGia).SetCellValue((double)ct.DonGia);
             }
 
-            LayO(sheet, r, MauHoaDon.CotThanhTien).SetCellValue((double)ct.ThanhTien);
+            LayO(sheet, r, MauHoaDon.CotThanhTien)
+                .SetCellValue((double)(ct.ThanhTien * hoaDon.DauInRaGiay));
         }
 
         // Dòng tổng: trang cuối là tổng cộng cả hoá đơn, các trang trước là cộng của riêng trang đó.
+        var dau = hoaDon.DauInRaGiay;
         var tienCuaTrang = dong.Sum(c => c.ThanhTien);
-        LayO(sheet, viTri.DongTong, 0).SetCellValue(laTrangCuoi ? "TỔNG CỘNG" : "CỘNG TRANG NÀY");
-        LayO(sheet, viTri.DongTong, MauHoaDon.CotThanhTien)
-            .SetCellValue((double)(laTrangCuoi ? tongCong : tienCuaTrang));
+        var tienDongTong = (laTrangCuoi ? tongCong : tienCuaTrang) * dau;
+
+        LayO(sheet, viTri.DongTong, 0).SetCellValue((laTrangCuoi, hoaDon.LaHoanHang) switch
+        {
+            (false, _) => "CỘNG TRANG NÀY",
+            (true, true) => "TỔNG TIỀN HOÀN LẠI",
+            (true, false) => "TỔNG CỘNG",
+        });
+        LayO(sheet, viTri.DongTong, MauHoaDon.CotThanhTien).SetCellValue((double)tienDongTong);
 
         LayO(sheet, viTri.DongBangChu, 0).SetCellValue(
-            laTrangCuoi ? $"Thành tiền( bằng chữ): {DocSo.DocTien(tongCong)}" : string.Empty);
+            laTrangCuoi ? $"Thành tiền( bằng chữ): {DocSo.DocTien(tongCong * dau)}" : string.Empty);
 
         LayO(sheet, viTri.DongNgay, MauHoaDon.CotNgayThang).SetCellValue(
             laTrangCuoi ? $"Ngày  {ngayIn.Day}   tháng  {ngayIn.Month}   năm {ngayIn.Year}" : string.Empty);
+    }
+
+    /// <summary>Dòng chữ nhỏ dưới tên tờ hoàn hàng: hoàn cho hoá đơn nào, vì sao hoàn.</summary>
+    private static string PhuDeHoanHang(HoaDon hoaDon, HoaDon? hoaDonGoc)
+    {
+        var phan = new List<string>();
+        if (hoaDonGoc is { } goc)
+        {
+            phan.Add($"Hoàn cho hoá đơn {goc.MaHoaDon} ngày {goc.NgayMo:dd/MM/yyyy}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(hoaDon.GhiChu))
+        {
+            phan.Add(hoaDon.GhiChu.Trim());
+        }
+
+        return phan.Count == 0 ? "(Khách trả lại hàng)" : "(" + string.Join(" — ", phan) + ")";
     }
 
     /// <summary>Xoá mọi tab khác trong file, chỉ chừa lại tab mẫu cần dùng.</summary>

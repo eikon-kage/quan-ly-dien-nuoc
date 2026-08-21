@@ -38,6 +38,9 @@ public sealed class DonHangForm : Form
     private readonly int _namBanDau;
     private readonly List<VatTu> _danhMucHang = new();
 
+    /// <summary>Thanh nhập nhanh trên bảng — tắt cả thanh khi đang xem tờ hoàn hàng.</summary>
+    private Control _thanhThemNhanh = null!;
+
     private Guid? _hoaDonId;
     private bool _dangNap;
     private bool _sanSang;
@@ -200,7 +203,13 @@ public sealed class DonHangForm : Form
         // ngăn. Cái nào cả tháng mới bấm một lần thì không đáng một nút riêng ngoài màn hình.
         var viecKhac = Theme.NutBaCham("Việc khác với khách và hoá đơn này", 44)
             .Viec("Thu tiền của khách", MoThuTien, Theme.Xanh)
-            .Viec("Trả cho hoá đơn này", MoThanhToan, bat: () => HoaDonHienTai is not null)
+            .Viec("Trả cho hoá đơn này", MoThanhToan, bat: () => HoaDonHienTai is { LaHoanHang: false })
+            .Ngan()
+            .Viec(
+                "Hoàn hàng cho hoá đơn này",
+                MoHoanHang,
+                Theme.Cam,
+                () => HoaDonHienTai is { LaHoanHang: false, ChiTiet.Count: > 0 })
             .Ngan()
             .Viec(
                 () => HoaDonHienTai is { DaChot: true } ? "Mở lại hoá đơn" : "Chốt hoá đơn",
@@ -285,7 +294,8 @@ public sealed class DonHangForm : Form
         cot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
 
-        cot.Controls.Add(TaoThanhThemNhanh(), 0, 0);
+        _thanhThemNhanh = TaoThanhThemNhanh();
+        cot.Controls.Add(_thanhThemNhanh, 0, 0);
         cot.Controls.Add(Theme.Khung(TaoLuoiChiTiet()), 0, 1);
         cot.Controls.Add(TaoThanhTongTien(), 0, 2);
         return cot;
@@ -842,7 +852,16 @@ public sealed class DonHangForm : Form
 
         _dangNap = true;
         _nguonCT = new BindingList<ChiTietHoaDon>(new List<ChiTietHoaDon>(dong));
-        _luoiCT.ReadOnly = _kho.ChiXem || hoaDon is { DaChot: true };
+
+        // Tờ hoàn hàng không sửa từng dòng trên lưới: số hoàn phải khớp với hoá đơn gốc, sửa
+        // tay ở đây là hoàn quá số khách đã lấy mà không ai chặn. Muốn khác thì xoá tờ, lập lại.
+        _luoiCT.ReadOnly = _kho.ChiXem || hoaDon is { DaChot: true } or { LaHoanHang: true };
+
+        // Xem tờ hoàn hàng thì tắt luôn cả thanh nhập nhanh: để nó sáng đèn rồi chặn lúc bấm
+        // thì người dùng gõ xong cả dòng mới biết là không ghi được vào đây.
+        // Chế độ chỉ xem thì vẫn để thanh sáng đèn: bấm vào có hộp thoại nói rõ vì sao không
+        // ghi được, chứ ô xám ngoét thì người dùng chẳng biết hỏi ai.
+        _thanhThemNhanh.Enabled = hoaDon is not { LaHoanHang: true };
 
         // Dòng trống cuối lưới để gõ thẳng hàng mới. Ngày lấy theo dòng cuối cùng đang có, có vậy
         // gõ liền mấy dòng cùng ngày mới khỏi phải sửa lại ngày từng dòng. Đang gõ dở mà bảng nạp
@@ -885,6 +904,16 @@ public sealed class DonHangForm : Form
         var hoaDon = HoaDonHienTai;
         var tong = hoaDon?.TongTien ?? 0m;
         var daTra = hoaDon?.DaThanhToan ?? 0m;
+
+        // Tờ hoàn hàng: trong sổ là số âm để trừ vào nợ, nhưng bày ra cho người đọc thì nói
+        // thẳng "hoàn lại bao nhiêu, trừ vào nợ" chứ không bắt người ta tự hiểu dấu trừ.
+        if (hoaDon is { LaHoanHang: true })
+        {
+            _lblTong.Text = $"Tiền hoàn lại: {So.Tien(hoaDon.TienHoan)}";
+            _lblDaTra.Text = $"{hoaDon.ChiTiet.Count} món hoàn";
+            _lblConLai.Text = "Trừ vào nợ của khách";
+            return;
+        }
 
         _lblTong.Text = $"Tổng cộng: {So.Tien(tong)}";
         _lblDaTra.Text = $"Đã trả: {So.Tien(daTra)}";
@@ -1046,6 +1075,12 @@ public sealed class DonHangForm : Form
         if (hoaDonDangChon is { DaChot: true })
         {
             HopThoai.CanhBao(this, "Hoá đơn này đã chốt. Hãy bấm \"Mở lại hoá đơn\" trước khi thêm hàng.");
+            return null;
+        }
+
+        if (hoaDonDangChon is { LaHoanHang: true })
+        {
+            HopThoai.CanhBao(this, ChanSuaToHoan);
             return null;
         }
 
@@ -1618,6 +1653,9 @@ public sealed class DonHangForm : Form
     private string NhanCoBan() => HoaDonHienTai switch
     {
         null => "Chưa có hoá đơn nào — gõ dòng hàng đầu tiên là phần mềm tự mở hoá đơn mới.",
+        { LaHoanHang: true } hoaDon => $"{hoaDon.MaHoaDon} là hoá đơn hoàn hàng: "
+            + $"hoàn lại {So.Tien(hoaDon.TienHoan)}, đã trừ vào nợ của khách. "
+            + "Sửa lại thì xoá tờ này rồi lập tờ hoàn mới.",
         { DaChot: true } hoaDon => $"Hoá đơn {hoaDon.MaHoaDon} đã chốt nên không sửa được. "
             + "Muốn thêm hàng thì mở nút ⋯ rồi chọn \"Mở lại hoá đơn\".",
         _ => "Chọn nhiều dòng: Ctrl+bấm thêm từng dòng, Shift+bấm cả dải, Ctrl+A cả bảng — "
@@ -1645,6 +1683,12 @@ public sealed class DonHangForm : Form
         if (hoaDon.DaChot)
         {
             HopThoai.CanhBao(this, "Hoá đơn đã chốt, không xoá được dòng.");
+            return;
+        }
+
+        if (hoaDon.LaHoanHang)
+        {
+            HopThoai.CanhBao(this, ChanSuaToHoan);
             return;
         }
 
@@ -1694,6 +1738,12 @@ public sealed class DonHangForm : Form
         if (hoaDon is { DaChot: true })
         {
             HopThoai.CanhBao(this, "Hoá đơn này đã chốt. Hãy bấm \"Mở lại hoá đơn\" trước khi thêm hàng.");
+            return null;
+        }
+
+        if (hoaDon is { LaHoanHang: true })
+        {
+            HopThoai.CanhBao(this, ChanSuaToHoan);
             return null;
         }
 
@@ -1768,6 +1818,13 @@ public sealed class DonHangForm : Form
             return;
         }
 
+        // Chặn ngay từ đây, đừng để người dùng gõ xong cả chục dòng rồi mới báo không ghi được.
+        if (HoaDonHienTai is { LaHoanHang: true })
+        {
+            HopThoai.CanhBao(this, ChanSuaToHoan);
+            return;
+        }
+
         using var form = new NhapNhieuDongForm(_khachId, _dtNgay.Value.Date);
         if (form.ShowDialog(this) != DialogResult.OK || form.KetQua.Count == 0)
         {
@@ -1788,6 +1845,12 @@ public sealed class DonHangForm : Form
         if (hoaDon.DaChot)
         {
             HopThoai.CanhBao(this, "Hoá đơn đã chốt, không đổi thứ tự dòng được.");
+            return;
+        }
+
+        if (hoaDon.LaHoanHang)
+        {
+            HopThoai.CanhBao(this, ChanSuaToHoan);
             return;
         }
 
@@ -1849,6 +1912,58 @@ public sealed class DonHangForm : Form
     }
 
     // ---------------- Thao tác trên hoá đơn ----------------
+
+    /// <summary>
+    /// Câu nhắc khi người dùng định sửa dòng hàng ngay trên tờ hoàn hàng. Số hoàn phải khớp
+    /// với hoá đơn gốc nên tờ hoàn chỉ lập một lần, sửa thì xoá đi lập lại.
+    /// </summary>
+    private const string ChanSuaToHoan =
+        "Đây là hoá đơn hoàn hàng nên không sửa dòng hàng ở đây được.\n\n"
+        + "Muốn hoàn thêm hoặc hoàn khác đi: chọn hoá đơn bán ở ô trên rồi mở lại \"Hoàn hàng "
+        + "cho hoá đơn này\", hoặc xoá tờ hoàn này rồi lập lại.";
+
+    /// <summary>Lập tờ hoàn hàng cho hoá đơn đang xem, rồi nhảy sang xem luôn tờ vừa lập.</summary>
+    private void MoHoanHang()
+    {
+        if (HoaDonHienTai is not { } hoaDon)
+        {
+            HopThoai.CanhBao(this, "Chưa có hoá đơn nào để hoàn hàng.");
+            return;
+        }
+
+        if (hoaDon.LaHoanHang)
+        {
+            HopThoai.CanhBao(
+                this,
+                "Đây đã là hoá đơn hoàn hàng.\n\nChọn hoá đơn bán ở ô trên rồi hoàn hàng cho nó.");
+            return;
+        }
+
+        if (hoaDon.ChiTiet.Count == 0)
+        {
+            HopThoai.CanhBao(this, "Hoá đơn chưa có dòng hàng nào nên chưa có gì để hoàn.");
+            return;
+        }
+
+        if (HopThoai.ChanKhiChiXem(this, _kho))
+        {
+            return;
+        }
+
+        using var form = new HoanHangForm(hoaDon.Id);
+        if (form.ShowDialog(this) != DialogResult.OK || form.HoaDonHoanDaTao is not { } id)
+        {
+            return;
+        }
+
+        NapHoaDon(id);
+
+        var toHoan = _kho.TimHoaDon(id);
+        _lblTrangThai.Text = toHoan is null
+            ? "Đã lập hoá đơn hoàn hàng."
+            : $"Đã lập hoá đơn hoàn hàng {toHoan.MaHoaDon}: hoàn lại {So.Tien(toHoan.TienHoan)} "
+              + $"cho hoá đơn {hoaDon.MaHoaDon}, đã trừ vào nợ của khách. Bấm Ctrl+Z nếu muốn bỏ.";
+    }
 
     private void TaoHoaDon()
     {
@@ -1952,6 +2067,8 @@ public sealed class DonHangForm : Form
             return;
         }
 
+        var hoaDonGoc = hoaDon.HoaDonGocId is { } gocId ? _kho.TimHoaDon(gocId) : null;
+
         // Không có máy in nào thì bản xem trước không dựng được khổ giấy.
         if (System.Drawing.Printing.PrinterSettings.InstalledPrinters.Count == 0)
         {
@@ -1965,10 +2082,12 @@ public sealed class DonHangForm : Form
 
         try
         {
-            using var taiLieu = new InHoaDon(hoaDon, khach, ThongTinCuaHang.DocTuMau());
+            using var taiLieu = new InHoaDon(hoaDon, khach, ThongTinCuaHang.DocTuMau(), hoaDonGoc: hoaDonGoc);
             using var form = new XemTruocForm(taiLieu);
             form.ShowDialog(this);
-            _lblTrangThai.Text = $"Hoá đơn {hoaDon.MaHoaDon}: {taiLieu.SoTrang} trang.";
+            _lblTrangThai.Text = hoaDon.LaHoanHang
+                ? $"Hoá đơn hoàn hàng {hoaDon.MaHoaDon}: {taiLieu.SoTrang} trang."
+                : $"Hoá đơn {hoaDon.MaHoaDon}: {taiLieu.SoTrang} trang.";
         }
         catch (Exception ex)
         {
@@ -1984,10 +2103,11 @@ public sealed class DonHangForm : Form
             return;
         }
 
-        var tenGoiY = TenFileHopLe($"HoaDon {hoaDon.MaHoaDon} - {khach.Ten}.xls");
+        var tenGoiY = TenFileHopLe(
+            $"{(hoaDon.LaHoanHang ? "HoanHang" : "HoaDon")} {hoaDon.MaHoaDon} - {khach.Ten}.xls");
         using var hopThoai = new SaveFileDialog
         {
-            Title = "Xuất hoá đơn ra Excel",
+            Title = hoaDon.LaHoanHang ? "Xuất hoá đơn hoàn hàng ra Excel" : "Xuất hoá đơn ra Excel",
             Filter = "File Excel (*.xls)|*.xls",
             FileName = tenGoiY,
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
@@ -2000,7 +2120,12 @@ public sealed class DonHangForm : Form
 
         try
         {
-            XuatHoaDon.Xuat(hoaDon, khach, hopThoai.FileName, ngayIn: DateTime.Today);
+            XuatHoaDon.Xuat(
+                hoaDon,
+                khach,
+                hopThoai.FileName,
+                ngayIn: DateTime.Today,
+                hoaDonGoc: hoaDon.HoaDonGocId is { } gocId ? _kho.TimHoaDon(gocId) : null);
         }
         catch (Exception ex)
         {
@@ -2220,6 +2345,8 @@ public sealed class DonHangForm : Form
         public HoaDon HD { get; set; } = null!;
 
         public override string ToString() =>
-            $"{HD.MaHoaDon}  ·  {HD.NgayMo:dd/MM/yyyy}" + (HD.DaChot ? "  ·  đã chốt" : string.Empty);
+            $"{HD.MaHoaDon}  ·  {HD.NgayMo:dd/MM/yyyy}"
+            + (HD.LaHoanHang ? "  ·  hoàn hàng" : string.Empty)
+            + (HD.DaChot ? "  ·  đã chốt" : string.Empty);
     }
 }

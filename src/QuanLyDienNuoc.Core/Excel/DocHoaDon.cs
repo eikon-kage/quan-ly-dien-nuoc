@@ -17,6 +17,12 @@ public sealed class TrangDoc
 
     public DateTime? NgayTrenHoaDon { get; set; }
 
+    /// <summary>
+    /// Tờ giấy này là hoá đơn hoàn hàng (nhận ra ở tên tờ in phía trên bảng). Số lượng trên
+    /// giấy là số dương, đọc vào sổ thì đổi lại thành số âm cho tự trừ vào nợ của khách.
+    /// </summary>
+    public bool LaHoanHang { get; set; }
+
     public List<ChiTietHoaDon> Dong { get; } = new();
 
     public List<string> CanhBao { get; } = new();
@@ -108,6 +114,11 @@ public static class DocHoaDon
                 }
 
                 var khongDau = ChuViet.BoDau(chu);
+                if (khongDau.Contains("hoan hang"))
+                {
+                    trang.LaHoanHang = true;
+                }
+
                 if (trang.TenKhach is null && khongDau.Contains("ten khach hang"))
                 {
                     trang.TenKhach = CatSauDauHaiCham(chu);
@@ -152,6 +163,14 @@ public static class DocHoaDon
             var soLuong = LaySo(hang, cot.SoLuong);
             var donGia = LaySo(hang, cot.DonGia);
             var thanhTien = LaySo(hang, cot.ThanhTien);
+
+            // Tờ hoàn hàng in số dương; vào sổ thì là hàng trả về nên đổi dấu ngay ở đây, để
+            // mọi phép tính bên dưới (kể cả tự tính đơn giá từ thành tiền) làm như dòng trả lại.
+            if (trang.LaHoanHang)
+            {
+                soLuong = -soLuong;
+                thanhTien = -thanhTien;
+            }
 
             // Hoá đơn cũ hay chỉ ghi thành tiền mà bỏ trống đơn giá.
             // Dòng trả lại có số lượng và thành tiền cùng âm nên chia ra vẫn đúng đơn giá.

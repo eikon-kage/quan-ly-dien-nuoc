@@ -353,10 +353,15 @@ public sealed class KhoDuLieu
     public decimal GiaCho(KhachHang khach, VatTu vatTu) =>
         khach.BangGiaRieng.TryGetValue(vatTu.Id, out var gia) && gia > 0 ? gia : vatTu.DonGiaMacDinh;
 
-    public string TaoMaHoaDon(Guid khachId, int nam)
+    /// <summary>
+    /// Mã hoá đơn kế tiếp của khách trong năm: "HD2026-03" cho hoá đơn bán hàng, "HH2026-01"
+    /// cho hoá đơn hoàn hàng. Hai loại đánh số riêng để nhìn mã là biết ngay tờ nào là tờ nào,
+    /// và lập tờ hoàn cũng không làm nhảy số hoá đơn bán.
+    /// </summary>
+    public string TaoMaHoaDon(Guid khachId, int nam, LoaiHoaDon loai = LoaiHoaDon.Ban)
     {
-        var soDaCo = DuLieu.HoaDons.Count(h => h.KhachHangId == khachId && h.Nam == nam);
-        return $"HD{nam}-{soDaCo + 1:00}";
+        var soDaCo = DuLieu.HoaDons.Count(h => h.KhachHangId == khachId && h.Nam == nam && h.Loai == loai);
+        return $"{(loai == LoaiHoaDon.HoanHang ? "HH" : "HD")}{nam}-{soDaCo + 1:00}";
     }
 
     private void TaoDanhMucMau()

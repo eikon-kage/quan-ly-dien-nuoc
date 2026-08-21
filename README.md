@@ -49,6 +49,13 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 - **Khách trả lại hàng**: bấm nút *Trả lại* (hoặc gõ số lượng âm, ví dụ `-2`) là ghi được
   dòng trả hàng — thành tiền âm, trừ thẳng vào hoá đơn, in ra có dấu trừ. Trả lại nhiều hơn
   số đang giữ thì phần mềm hỏi lại. Trong ô nhập nhiều dòng viết `ống 27 x-2`.
+- **Hoá đơn hoàn hàng**: hoá đơn đã in cho khách (hay đã chốt) mà khách mới mang hàng về thì
+  không sửa vào tờ cũ nữa — mở nút ⋯ chọn *Hoàn hàng cho hoá đơn này*, gõ số hoàn vào từng
+  dòng (hoặc bấm *Điền hoàn hết*) là ra một tờ riêng mã `HH2026-01` hoàn cho hoá đơn đó, kèm
+  lý do hoàn. Phần mềm không cho hoàn quá số khách đã lấy, tính cả những lần đã hoàn trước.
+  Tiền hoàn tự trừ vào nợ của khách; tờ hoàn in và xuất Excel được như hoá đơn thường, đầu
+  tờ ghi *HÓA ĐƠN HOÀN HÀNG* và *hoàn cho hoá đơn nào*. Xem thêm
+  [docs/hoa-don-hoan-hang.md](docs/hoa-don-hoan-hang.md).
 - **Thanh toán**: ghi nhiều lần trả tiền cho một hoá đơn, tự tính còn nợ.
 - **Thu tiền của khách (một lần trả cho nhiều hoá đơn)**: khách đưa 5 triệu trả cho 3 hoá đơn
   thì gõ một số tiền, phần mềm chia sẵn từ hoá đơn cũ nhất và cho xem trước hoá đơn nào trừ

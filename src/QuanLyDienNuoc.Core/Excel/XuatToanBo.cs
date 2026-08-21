@@ -72,8 +72,12 @@ public static class XuatToanBo
     private static void TrangHoaDon(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)
     {
         var sheet = TaoTrang(wb, kieu, "Hoá đơn",
-            ("Khách hàng", 30), ("Mã hoá đơn", 15), ("Năm", 8), ("Mở ngày", 13), ("Chốt ngày", 13),
+            ("Khách hàng", 30), ("Mã hoá đơn", 15), ("Loại", 13), ("Hoàn cho hoá đơn", 17),
+            ("Năm", 8), ("Mở ngày", 13), ("Chốt ngày", 13),
             ("Số dòng hàng", 13), ("Tổng tiền", 16), ("Đã trả", 16), ("Còn nợ", 16), ("Ghi chú", 26));
+
+        // Tờ hoàn hàng có tổng tiền âm nên trong bảng này nó tự trừ vào cột tổng cuối trang.
+        var maTheoId = duLieu.HoaDons.ToDictionary(h => h.Id, h => h.MaHoaDon);
 
         var dong = 1;
         foreach (var hoaDon in SapXepHoaDon(duLieu))
@@ -81,25 +85,33 @@ public static class XuatToanBo
             var r = sheet.CreateRow(dong++);
             Chu(r, 0, TenKhach(duLieu, hoaDon.KhachHangId), kieu);
             Chu(r, 1, hoaDon.MaHoaDon, kieu);
-            SoNguyen(r, 2, hoaDon.Nam, kieu);
-            Ngay(r, 3, hoaDon.NgayMo, kieu);
+            Chu(r, 2, hoaDon.LaHoanHang ? "Hoàn hàng" : "Bán hàng", kieu);
+            Chu(
+                r,
+                3,
+                hoaDon.HoaDonGocId is { } gocId && maTheoId.TryGetValue(gocId, out var maGoc)
+                    ? maGoc
+                    : string.Empty,
+                kieu);
+            SoNguyen(r, 4, hoaDon.Nam, kieu);
+            Ngay(r, 5, hoaDon.NgayMo, kieu);
             if (hoaDon.NgayChot is { } chot)
             {
-                Ngay(r, 4, chot, kieu);
+                Ngay(r, 6, chot, kieu);
             }
             else
             {
-                Chu(r, 4, string.Empty, kieu);
+                Chu(r, 6, string.Empty, kieu);
             }
 
-            SoNguyen(r, 5, hoaDon.ChiTiet.Count, kieu);
-            Tien(r, 6, hoaDon.TongTien, kieu);
-            Tien(r, 7, hoaDon.DaThanhToan, kieu);
-            Tien(r, 8, hoaDon.ConLai, kieu);
-            Chu(r, 9, hoaDon.GhiChu, kieu);
+            SoNguyen(r, 7, hoaDon.ChiTiet.Count, kieu);
+            Tien(r, 8, hoaDon.TongTien, kieu);
+            Tien(r, 9, hoaDon.DaThanhToan, kieu);
+            Tien(r, 10, hoaDon.ConLai, kieu);
+            Chu(r, 11, hoaDon.GhiChu, kieu);
         }
 
-        ChotDong(sheet, dong, 10, 5, 6, 7, 8);
+        ChotDong(sheet, dong, 12, 7, 8, 9, 10);
     }
 
     private static void TrangChiTiet(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)

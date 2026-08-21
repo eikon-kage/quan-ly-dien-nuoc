@@ -280,12 +280,18 @@ public sealed class ThuTienForm : Form
         _nguonPhanBo.RaiseListChangedEvents = false;
         _nguonPhanBo.Clear();
 
-        foreach (var hoaDon in ThuTien.XepTuCuNhat(hoaDons).Where(h => h.ConLai > 0m))
+        // Lấy cả tờ hoàn hàng (đang nợ âm) chứ không chỉ hoá đơn còn nợ: cộng cột ĐANG NỢ của
+        // bảng này phải ra đúng con số "đang nợ" ở dòng tóm tắt, không thì chủ cửa hàng đọc hai
+        // chỗ ra hai số rồi không biết tin số nào. Tiền được chia vào hoá đơn còn nợ, tờ hoàn
+        // đứng đó cho thấy vì sao nợ ít hơn tổng các hoá đơn.
+        foreach (var hoaDon in ThuTien.XepTuCuNhat(hoaDons).Where(h => h.ConLai != 0m))
         {
             var tra = theoHoaDon.GetValueOrDefault(hoaDon.Id);
             _nguonPhanBo.Add(new DongPhanBo
             {
-                Ma = hoaDon.DaChot ? hoaDon.MaHoaDon + " (chốt)" : hoaDon.MaHoaDon,
+                Ma = hoaDon.LaHoanHang
+                    ? hoaDon.MaHoaDon + " (hoàn hàng)"
+                    : hoaDon.DaChot ? hoaDon.MaHoaDon + " (chốt)" : hoaDon.MaHoaDon,
                 NgayMo = hoaDon.NgayMo,
                 TongTien = hoaDon.TongTien,
                 ConNo = hoaDon.ConLai,

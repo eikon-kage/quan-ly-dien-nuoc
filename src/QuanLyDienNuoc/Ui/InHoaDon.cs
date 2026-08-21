@@ -7,6 +7,10 @@ namespace QuanLyDienNuoc.Ui;
 /// <summary>
 /// Vẽ hoá đơn ra giấy đúng như mẫu Excel của cửa hàng. Dùng cho cả xem trước lẫn in thật,
 /// không cần máy có Excel. Toạ độ tính theo đơn vị 1/100 inch của máy in.
+/// <para>
+/// Hoá đơn hoàn hàng in cùng bố cục, chỉ khác tên tờ, dòng "hoàn cho hoá đơn ..." và các con
+/// số ghi thành số dương — trong sổ chúng là số âm để tự trừ vào nợ.
+/// </para>
 /// </summary>
 public sealed class InHoaDon : PrintDocument
 {
@@ -24,21 +28,33 @@ public sealed class InHoaDon : PrintDocument
 
     private readonly List<List<ChiTietHoaDon>> _trang;
     private readonly HoaDon _hoaDon;
+    private readonly HoaDon? _hoaDonGoc;
     private readonly KhachHang _khach;
     private readonly ThongTinCuaHang _cuaHang;
     private readonly DateTime _ngayIn;
 
     private int _trangHienTai;
 
-    public InHoaDon(HoaDon hoaDon, KhachHang khach, ThongTinCuaHang cuaHang, DateTime? ngayIn = null)
+    /// <param name="hoaDonGoc">
+    /// Hoá đơn bán mà tờ hoàn hàng này hoàn cho — chỉ để in dòng nhắc, hoá đơn bán thì bỏ trống.
+    /// </param>
+    public InHoaDon(
+        HoaDon hoaDon,
+        KhachHang khach,
+        ThongTinCuaHang cuaHang,
+        DateTime? ngayIn = null,
+        HoaDon? hoaDonGoc = null)
     {
         _hoaDon = hoaDon;
+        _hoaDonGoc = hoaDonGoc;
         _khach = khach;
         _cuaHang = cuaHang;
         _ngayIn = ngayIn ?? DateTime.Today;
         _trang = XuatHoaDon.ChiaTrang(hoaDon.ChiTiet);
 
-        DocumentName = $"Hoá đơn {hoaDon.MaHoaDon} - {khach.Ten}";
+        DocumentName = hoaDon.LaHoanHang
+            ? $"Hoá đơn hoàn hàng {hoaDon.MaHoaDon} - {khach.Ten}"
+            : $"Hoá đơn {hoaDon.MaHoaDon} - {khach.Ten}";
         DefaultPageSettings.Margins = new Margins(60, 50, 50, 50);
         ChonKhoA4();
     }
@@ -172,11 +188,16 @@ public sealed class InHoaDon : PrintDocument
         g.DrawString(_cuaHang.NganhNghe2, _fontNho, but, new RectangleF(traiPhai, y, rongPhai, 18f), canhGiua);
         y += 20f;
 
+        // Tên tờ giấy: hoá đơn hoàn hàng phải thấy ngay từ trên cùng, không thể để khách với
+        // cửa hàng đọc nửa tờ mới biết đây không phải hoá đơn bán.
+        var tieuDe = _hoaDon.LaHoanHang ? "HOÁ ĐƠN HOÀN HÀNG" : _cuaHang.TieuDe;
+        var phuDe = _hoaDon.LaHoanHang ? "(Khách trả lại hàng)" : _cuaHang.PhuDe;
+
         g.DrawString(_cuaHang.DienThoai, _fontNho, but, khung.Left, y);
-        g.DrawString(_cuaHang.TieuDe, _fontTieuDe, but, new RectangleF(traiPhai, y - 2f, rongPhai, 30f), canhGiua);
+        g.DrawString(tieuDe, _fontTieuDe, but, new RectangleF(traiPhai, y - 2f, rongPhai, 30f), canhGiua);
         y += 32f;
 
-        g.DrawString(_cuaHang.PhuDe, _fontPhuDe, butMo, new RectangleF(traiPhai, y - 6f, rongPhai, 18f), canhGiua);
+        g.DrawString(phuDe, _fontPhuDe, butMo, new RectangleF(traiPhai, y - 6f, rongPhai, 18f), canhGiua);
 
         g.DrawString($"Tên khách hàng: {_khach.Ten}", _fontThuong, but, khung.Left, y);
         y += 22f;
@@ -185,6 +206,20 @@ public sealed class InHoaDon : PrintDocument
         g.DrawString($"Địa chỉ: {diaChi}", _fontThuong, but, khung.Left, y);
         y += 26f;
 
+        if (_hoaDon.LaHoanHang && DongNhacHoanHang() is { } nhac)
+        {
+            // Lý do hoàn là chữ người dùng tự gõ, dài bao nhiêu cũng được — đóng khung lại cho
+            // nó cắt bằng "…" thay vì chạy tràn ra khỏi lề phải của tờ giấy.
+            using var motDong = new StringFormat
+            {
+                FormatFlags = StringFormatFlags.NoWrap,
+                Trimming = StringTrimming.EllipsisCharacter,
+            };
+
+            g.DrawString(nhac, _fontThuong, but, new RectangleF(khung.Left, y, khung.Width, 22f), motDong);
+            y += 24f;
+        }
+
         return y;
     }
 
@@ -192,7 +227,8 @@ public sealed class InHoaDon : PrintDocument
     {
         using var canhPhai = new StringFormat { Alignment = StringAlignment.Far };
         g.DrawString(
-            $"{_khach.Ten} — hoá đơn {_hoaDon.MaHoaDon} — trang {soTrang + 1}/{_trang.Count}",
+            $"{_khach.Ten} — {(_hoaDon.LaHoanHang ? "hoá đơn hoàn hàng" : "hoá đơn")} {_hoaDon.MaHoaDon}"
+            + $" — trang {soTrang + 1}/{_trang.Count}",
             _fontNho,
             but,
             new RectangleF(khung.Left, khung.Top, khung.Width, 18f),
@@ -261,6 +297,7 @@ public sealed class InHoaDon : PrintDocument
         }
 
         // Nội dung
+        var dau = _hoaDon.DauInRaGiay;
         var soThuTu = SoThuTuDauTrang(soTrang);
         for (var i = 0; i < dong.Count; i++)
         {
@@ -272,14 +309,14 @@ public sealed class InHoaDon : PrintDocument
             g.DrawString((soThuTu + i).ToString(), _fontBang, but, O(0), canhGiua);
             g.DrawString(ct.TenHang, _fontBang, but, O(1), canhTrai);
             g.DrawString(ct.DonVi, _fontBang, but, O(2), canhGiua);
-            g.DrawString(So.Luong(ct.SoLuong), _fontBang, but, O(3), canhPhai);
+            g.DrawString(So.Luong(ct.SoLuong * dau), _fontBang, but, O(3), canhPhai);
 
             if (ct.DonGia != 0)
             {
                 g.DrawString(So.Tien(ct.DonGia), _fontBang, but, O(4), canhPhai);
             }
 
-            g.DrawString(So.Tien(ct.ThanhTien), _fontBang, but, O(5), canhPhai);
+            g.DrawString(So.Tien(ct.ThanhTien * dau), _fontBang, but, O(5), canhPhai);
         }
     }
 
@@ -317,9 +354,15 @@ public sealed class InHoaDon : PrintDocument
         g.DrawRectangle(viet, trai, yTong, phai - trai, caoDongTong);
         g.DrawLine(viet, mocCot[5], yTong, mocCot[5], yTong + caoDongTong);
 
-        var tien = laTrangCuoi ? _hoaDon.TongTien : dong.Sum(c => c.ThanhTien);
+        var dau = _hoaDon.DauInRaGiay;
+        var tien = (laTrangCuoi ? _hoaDon.TongTien : dong.Sum(c => c.ThanhTien)) * dau;
         g.DrawString(
-            laTrangCuoi ? "TỔNG CỘNG" : "CỘNG TRANG NÀY",
+            (laTrangCuoi, _hoaDon.LaHoanHang) switch
+            {
+                (false, _) => "CỘNG TRANG NÀY",
+                (true, true) => "TỔNG TIỀN HOÀN LẠI",
+                (true, false) => "TỔNG CỘNG",
+            },
             _fontBangDam,
             but,
             new RectangleF(trai + 6f, yTong, mocCot[5] - trai - 12f, caoDongTong),
@@ -339,7 +382,7 @@ public sealed class InHoaDon : PrintDocument
         }
 
         g.DrawString(
-            $"Thành tiền (bằng chữ): {DocSo.DocTien(_hoaDon.TongTien)}",
+            $"Thành tiền (bằng chữ): {DocSo.DocTien(_hoaDon.TongTien * dau)}",
             _fontThuong,
             but,
             new RectangleF(trai, y, phai - trai, caoBangChu),
@@ -355,7 +398,34 @@ public sealed class InHoaDon : PrintDocument
             canhGiua);
         y += 22f;
 
-        g.DrawString("KHÁCH HÀNG", _fontDam, but, new RectangleF(trai, y, nuaKhung, 20f), canhGiua);
-        g.DrawString("NGƯỜI BÁN HÀNG", _fontDam, but, new RectangleF(trai + nuaKhung, y, nuaKhung, 20f), canhGiua);
+        g.DrawString(
+            _hoaDon.LaHoanHang ? "KHÁCH TRẢ HÀNG" : "KHÁCH HÀNG",
+            _fontDam,
+            but,
+            new RectangleF(trai, y, nuaKhung, 20f),
+            canhGiua);
+        g.DrawString(
+            _hoaDon.LaHoanHang ? "NGƯỜI NHẬN HÀNG" : "NGƯỜI BÁN HÀNG",
+            _fontDam,
+            but,
+            new RectangleF(trai + nuaKhung, y, nuaKhung, 20f),
+            canhGiua);
+    }
+
+    /// <summary>Dòng nhắc trên tờ hoàn hàng: hoàn cho hoá đơn nào, vì sao hoàn.</summary>
+    private string? DongNhacHoanHang()
+    {
+        var phan = new List<string>();
+        if (_hoaDonGoc is { } goc)
+        {
+            phan.Add($"Hoàn cho hoá đơn {goc.MaHoaDon} ngày {goc.NgayMo:dd/MM/yyyy}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_hoaDon.GhiChu))
+        {
+            phan.Add($"lý do: {_hoaDon.GhiChu.Trim()}");
+        }
+
+        return phan.Count == 0 ? null : string.Join("   ·   ", phan);
     }
 }

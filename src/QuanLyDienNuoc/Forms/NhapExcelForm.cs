@@ -265,7 +265,9 @@ public sealed class NhapExcelForm : Form
         _cboDich.Items.Clear();
         _cboDich.Items.Add(new MucDich(null, $"— Tạo hoá đơn mới ({_nam}) —"));
 
-        foreach (var hoaDon in _kho.HoaDonCuaKhach(_khachId, _nam))
+        // Không cho nhập hàng vào tờ hoàn hàng: số hoàn phải khớp với hoá đơn gốc, đổ thêm
+        // hàng vào đó là tờ hoàn nói một chuyện khác hẳn hoá đơn nó hoàn cho.
+        foreach (var hoaDon in _kho.HoaDonCuaKhach(_khachId, _nam).Where(h => !h.LaHoanHang))
         {
             _cboDich.Items.Add(new MucDich(
                 hoaDon.Id,
@@ -422,6 +424,12 @@ public sealed class NhapExcelForm : Form
         if (hoaDon is not null && hoaDon.DaChot)
         {
             HopThoai.CanhBao(this, "Hoá đơn này đã chốt. Hãy mở lại hoá đơn trước khi nhập thêm hàng.");
+            return;
+        }
+
+        if (hoaDon is { LaHoanHang: true })
+        {
+            HopThoai.CanhBao(this, "Không nhập hàng vào hoá đơn hoàn hàng được. Hãy chọn hoá đơn bán hàng.");
             return;
         }
 
