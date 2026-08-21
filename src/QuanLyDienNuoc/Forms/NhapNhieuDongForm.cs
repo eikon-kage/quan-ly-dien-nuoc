@@ -45,6 +45,12 @@ public sealed class NhapNhieuDongForm : Form
 
     private void TaoGiaoDien()
     {
+        /*
+          Mọi dòng có chữ trong đó đều `AutoSize`, chỉ bảng xem trước ăn phần còn lại. Trước
+          đây năm dòng đặt cứng 92 / 150 / — / 56 / 80 px: vừa khít ở cỡ hiển thị 100%, còn
+          máy đặt 125% thì chữ to lên mà ô vẫn thế nên phụ đề bị cắt mất nửa dưới và dòng gợi
+          ý bị cắt mất đuôi. Xem "Chữ bị cắt" trong docs/giao-dien-may-tinh.md.
+        */
         var goc = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -52,50 +58,34 @@ public sealed class NhapNhieuDongForm : Form
             RowCount = 5,
             BackColor = Theme.Nen,
         };
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 150));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
+        // Tiêu đề gọi đúng tên cái nút vừa bấm ("NHẬP NHIỀU DÒNG"), không thêm chữ "cùng lúc"
+        // nữa: thanh tiêu đề cửa sổ đã nói câu đủ, mà 19pt thì mỗi chữ thêm là một quãng dài.
+        // Cách gõ để xuống dưới, nằm cạnh ô gõ — chỗ người ta thật sự cần đọc nó.
         goc.Controls.Add(
-            Theme.ThanhTieuDe(
-                "NHẬP NHIỀU DÒNG CÙNG LÚC",
-                $"Ngày lấy hàng: {_ngay:dd/MM/yyyy}. Cách nhau bằng dấu phẩy, số lượng viết sau chữ x."),
+            Theme.ThanhTieuDe("NHẬP NHIỀU DÒNG", $"Hàng lấy ngày {_ngay:dd/MM/yyyy}", tuCao: true),
             0,
             0);
 
-        _txtDong.Multiline = true;
-        _txtDong.ScrollBars = ScrollBars.Vertical;
-        _txtDong.Font = Theme.FontNhap;
-        _txtDong.BorderStyle = BorderStyle.FixedSingle;
-        _txtDong.Dock = DockStyle.Fill;
-        _txtDong.TextChanged += (_, _) => XemTruoc();
-
-        var oNen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat, Padding = new Padding(20, 10, 20, 10) };
-        var nhan = new Label
-        {
-            Text = "GÕ VÀO ĐÂY   —   ví dụ:  ống 27 x10, co 90 x5, keo dán ống x1 @8000   ·   trả lại thì viết số âm: ống 27 x-2",
-            Font = Theme.FontNhan,
-            ForeColor = Theme.Xam,
-            Dock = DockStyle.Top,
-            Height = 24,
-        };
-        var oKhung = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat };
-        oKhung.Controls.Add(Theme.Khung(_txtDong));
-        oNen.Controls.Add(oKhung);
-        oNen.Controls.Add(nhan);
-        goc.Controls.Add(oNen, 0, 1);
+        goc.Controls.Add(KhoiGoVaoDay(), 0, 1);
 
         Theme.ApDungLuoi(_luoi);
         _luoi.ReadOnly = true;
+
+        // Tỷ lệ cột nới cho hai cột hẹp nhất (ĐƠN VỊ, SỐ LƯỢNG): ở cỡ chữ to, cột hẹp là tên
+        // cột phải xuống hai dòng, mà sáu cột mỗi cột một kiểu cao thì đầu bảng nhìn lỗm chỗm.
         _luoi.Columns.AddRange(
             Theme.Cot(nameof(DongXem.TenHang), "TÊN HÀNG", 300),
-            Theme.Cot(nameof(DongXem.DonVi), "ĐƠN VỊ", 90),
-            Theme.Cot(nameof(DongXem.DonGia), "ĐƠN GIÁ", 130, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongXem.SoLuong), "SỐ LƯỢNG", 110, "#,##0.##", canPhai: true),
-            Theme.Cot(nameof(DongXem.ThanhTien), "THÀNH TIỀN", 140, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongXem.TinhTrang), "TÌNH TRẠNG", 190));
+            Theme.Cot(nameof(DongXem.DonVi), "ĐƠN VỊ", 115),
+            Theme.Cot(nameof(DongXem.DonGia), "ĐƠN GIÁ", 135, "#,##0", canPhai: true),
+            Theme.Cot(nameof(DongXem.SoLuong), "SỐ LƯỢNG", 135, "#,##0.##", canPhai: true),
+            Theme.Cot(nameof(DongXem.ThanhTien), "THÀNH TIỀN", 150, "#,##0", canPhai: true),
+            Theme.Cot(nameof(DongXem.TinhTrang), "TÌNH TRẠNG", 200));
         _luoi.DataSource = _nguon;
         _luoi.CellFormatting += (_, e) =>
         {
@@ -111,29 +101,121 @@ public sealed class NhapNhieuDongForm : Form
             }
         };
 
-        var vien = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 10, 20, 6), BackColor = Theme.Nen };
+        var vien = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 12, 20, 6), BackColor = Theme.Nen };
         vien.Controls.Add(Theme.Khung(_luoi));
         goc.Controls.Add(vien, 0, 2);
 
-        _lblTong.Dock = DockStyle.Fill;
+        // Neo phải và `AutoSize`: dòng cao đúng bằng chữ 15pt của máy đó, không phải 56px cứng.
+        _lblTong.AutoSize = true;
+        _lblTong.Anchor = AnchorStyles.Right;
         _lblTong.Font = Theme.FontSo;
         _lblTong.ForeColor = Theme.Chinh;
-        _lblTong.TextAlign = ContentAlignment.MiddleRight;
-        _lblTong.Padding = new Padding(0, 0, 24, 0);
+        _lblTong.Margin = new Padding(20, 8, 24, 8);
         goc.Controls.Add(_lblTong, 0, 3);
 
-        var btnThem = Theme.Nut("THÊM VÀO HOÁ ĐƠN", Theme.Xanh, 280, 52);
+        // `noTheoChu`: chữ dài mười bảy ký tự trong nút rộng cứng 280px là vừa khít ở 100%.
+        var btnThem = Theme.Nut("THÊM VÀO HOÁ ĐƠN", Theme.Xanh, 280, 52, noTheoChu: true);
         btnThem.Click += (_, _) => Xong();
 
         var btnHuy = Theme.NutPhu("Huỷ", 120, 52);
         btnHuy.Click += (_, _) => Close();
 
-        var nut = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(20, 4, 20, 10) };
+        var nut = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Padding = new Padding(20, 4, 20, 12),
+        };
         nut.Controls.Add(btnThem);
         nut.Controls.Add(btnHuy);
         goc.Controls.Add(nut, 0, 4);
 
         Controls.Add(goc);
+    }
+
+    /// <summary>
+    /// Khối xanh nhạt: nhãn, ô gõ, rồi mấy dòng chỉ cách gõ.
+    ///
+    /// Cách gõ tách thành **mỗi luật một dòng ngắn** thay cho một dòng dài 110 ký tự như
+    /// trước. Dòng dài ấy vừa bị cắt mất đuôi trên máy cỡ chữ to (nhãn `AutoSize = false`,
+    /// cao 24px, dài hơn khung là mất chữ), mà kể cả đọc được đủ thì ba luật nhồi một dòng
+    /// cũng không ai đọc hết. Mỗi dòng dưới 55 ký tự nên còn nguyên ở cỡ 150%.
+    /// </summary>
+    private Control KhoiGoVaoDay()
+    {
+        var khoi = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.ChinhNhat,
+            Padding = new Padding(20, 12, 20, 14),
+        };
+        khoi.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        khoi.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        khoi.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        khoi.Controls.Add(
+            new Label
+            {
+                Text = "GÕ VÀO ĐÂY  —  mỗi món cách nhau bằng dấu phẩy",
+                Font = Theme.FontNhan,
+                ForeColor = Theme.ChuDam,
+                AutoSize = true,
+                Margin = new Padding(2, 0, 0, 8),
+            },
+            0,
+            0);
+
+        _txtDong.Multiline = true;
+        _txtDong.ScrollBars = ScrollBars.Vertical;
+        _txtDong.Font = Theme.FontNhap;
+        _txtDong.TextChanged += (_, _) => XemTruoc();
+
+        // Cao đúng ba dòng chữ **của máy này**: `Font.Height` là số điểm ảnh thật ở cỡ hiển
+        // thị đang dùng, nên máy 125% thì ô cũng cao thêm một phần tư. Cộng lề trong của thẻ.
+        var oNhap = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = (Theme.FontNhap.Height * 3) + 24,
+            BackColor = Theme.ChinhNhat,
+            Margin = new Padding(0),
+        };
+        oNhap.Controls.Add(Theme.Khung(_txtDong));
+        khoi.Controls.Add(oNhap, 0, 1);
+
+        var chiDan = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = new Padding(2, 8, 0, 0),
+        };
+        foreach (var dong in new[]
+        {
+            "Số lượng viết sau chữ x:   ống 27 x10, co 90 x5",
+            "Giá viết sau @, gõ tắt được:   keo x1 @8k, bồn x1 @2tr5",
+            "Khách trả lại thì số lượng âm:   ống 27 x-2",
+        })
+        {
+            chiDan.Controls.Add(new Label
+            {
+                Text = dong,
+                Font = Theme.FontPhu,
+                ForeColor = Theme.Xam,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, 3),
+            });
+        }
+
+        khoi.Controls.Add(chiDan, 0, 2);
+        return khoi;
     }
 
     private void XemTruoc()

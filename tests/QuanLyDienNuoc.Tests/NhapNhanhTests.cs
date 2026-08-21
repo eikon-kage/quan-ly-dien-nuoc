@@ -128,6 +128,46 @@ public class NhapNhanhTests
     }
 
     [Theory]
+    [InlineData("ống 27 x10 @45k", 45_000)]
+    [InlineData("ống 27 x10 @1tr", 1_000_000)]
+    [InlineData("ống 27 x10 @1tr5", 1_500_000)]
+    [InlineData("ống 27 x10 @150 nghìn", 150_000)]
+    [InlineData("ống 27 x10 @ 45k", 45_000)]
+    public void Tach_DocDuocGiaGoTat(string dong, decimal mongDoi)
+    {
+        var muc = DongNhapNhanh.Tach(dong);
+
+        Assert.Single(muc);
+        Assert.Equal("ống 27", muc[0].Ten);
+        Assert.Equal(10m, muc[0].SoLuong);
+        Assert.Equal(mongDoi, muc[0].DonGia);
+    }
+
+    [Fact]
+    public void Tach_GiaGoTatKhongDocDuocThiVanGiuDungTenVaSoLuong()
+    {
+        // Đọc hụt cái giá thì thôi, nhưng tên hàng với số lượng thì không được sai theo:
+        // dòng trượt khớp là cả câu thành một cái tên hàng lạ.
+        var muc = DongNhapNhanh.Tach("ống 27 x10 @1tr50");
+
+        Assert.Single(muc);
+        Assert.Equal("ống 27", muc[0].Ten);
+        Assert.Equal(10m, muc[0].SoLuong);
+        Assert.Null(muc[0].DonGia);
+    }
+
+    [Fact]
+    public void Tach_GiaGoTatDiChungVoiNhieuMonTrenMotDong()
+    {
+        var muc = DongNhapNhanh.Tach("ống 27 x10 @45k, co 90 x5, keo x1 @8k");
+
+        Assert.Equal(3, muc.Count);
+        Assert.Equal(45_000m, muc[0].DonGia);
+        Assert.Null(muc[1].DonGia);
+        Assert.Equal(8_000m, muc[2].DonGia);
+    }
+
+    [Theory]
     [InlineData("ống 27 x10; co 90 x5")]
     [InlineData("ống 27 x10\nco 90 x5")]
     public void Tach_ChapNhanDauChamPhayVaXuongDong(string dong)

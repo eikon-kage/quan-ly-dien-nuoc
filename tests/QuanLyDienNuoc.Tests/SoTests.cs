@@ -34,6 +34,39 @@ public class SoTests
         Assert.Equal(0m, giaTri);
     }
 
+    [Theory]
+    [InlineData("100k", 100_000)]
+    [InlineData("100K", 100_000)]
+    [InlineData("1tr", 1_000_000)]
+    [InlineData("1TR", 1_000_000)]
+    [InlineData("1tr5", 1_500_000)]          // "một triệu năm", lối nói miệng
+    [InlineData("10k5", 10_500)]
+    [InlineData("1,5tr", 1_500_000)]         // thập phân trước đuôi
+    [InlineData("150 nghìn", 150_000)]
+    [InlineData("150 ngan", 150_000)]
+    [InlineData("2 triệu", 2_000_000)]
+    [InlineData("2trieu", 2_000_000)]
+    [InlineData("3 củ", 3_000_000)]
+    [InlineData("45.000", 45_000)]           // số thuần vẫn đọc như cũ
+    [InlineData("1.500.000", 1_500_000)]
+    public void TryDocTien_DocDuocTienGoTatKieuNoiMieng(string nhap, decimal mongDoi)
+    {
+        Assert.True(So.TryDocTien(nhap, out var giaTri));
+        Assert.Equal(mongDoi, giaTri);
+    }
+
+    [Theory]
+    [InlineData("1tr50")]   // hai chữ số sau đuôi: người hiểu 1.050.000, người hiểu 1.500.000
+    [InlineData("k")]
+    [InlineData("k5")]
+    [InlineData("abc")]
+    [InlineData("ống 27")]
+    public void TryDocTien_KhongDoanKhiChuaChac(string nhap)
+    {
+        Assert.False(So.TryDocTien(nhap, out var giaTri));
+        Assert.Equal(0m, giaTri);
+    }
+
     [Fact]
     public void Doc_TraVeKhongKhiKhongDocDuoc()
     {

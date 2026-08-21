@@ -55,7 +55,12 @@ public static class ChupAnhGiaoDien
             loi += ChupForm(
                 thuMucRa,
                 "13-nhap-nhieu-dong",
-                () => new NhapNhieuDongForm(khach.Id, new DateTime(2026, 8, 3), "ống 27 x10, co 90 x5, keo dán ống x2, băng tan x5"));
+                // Dòng mẫu có luôn giá gõ tắt (@45k, @8k): ảnh giao diện là chỗ người ta nhìn
+                // thấy cách gõ trước cả khi đọc hướng dẫn.
+                () => new NhapNhieuDongForm(
+                    khach.Id,
+                    new DateTime(2026, 8, 3),
+                    "ống 27 x10 @45k, co 90 x5, keo dán ống x2 @8k, băng tan x5"));
             loi += ChupForm(thuMucRa, "14-sao-luu", () => new SaoLuuForm());
             loi += ChupForm(thuMucRa, "15-nhat-ky", () => new NhatKyForm());
             loi += ChupForm(

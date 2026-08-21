@@ -477,6 +477,29 @@ public sealed class DonHangForm : Form
     {
         Theme.ApDungLuoi(_luoiCT);
         _luoiCT.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
+
+        // Bấm một lần vào ô là sửa được luôn, không phải bấm lần nữa hay nhấn F2 — nhập cả hoá
+        // đơn dài thì mỗi ô tiết kiệm một cú bấm là đỡ hẳn tay. Vẫn giữ EditMode là
+        // EditOnKeystrokeOrF2 chứ không đổi sang EditOnEnter: EditOnEnter mở ô sửa cả khi chỉ đi
+        // bằng mũi tên, lúc đó lưới lúc nào cũng coi như đang gõ dở nên mất hết phím tắt Ctrl+Z,
+        // Delete, Ctrl+A, Alt+↑/↓ và Esc.
+        _luoiCT.CellMouseClick += (_, e) =>
+        {
+            // Ctrl/Shift+bấm là đang gom nhóm dòng để xoá hay chuyển, mở ô sửa lúc đó là phá mất
+            // nhóm vừa chọn. Chuột phải để dành cho menu. Ô đang sửa rồi thì cũng bỏ qua, không
+            // thì bấm vào giữa chữ để đặt con trỏ lại bị chọn hết cả ô.
+            if (e.Button != MouseButtons.Left
+                || e.RowIndex < 0
+                || e.ColumnIndex < 0
+                || (ModifierKeys & (Keys.Control | Keys.Shift)) != 0
+                || _luoiCT.IsCurrentCellInEditMode)
+            {
+                return;
+            }
+
+            _luoiCT.BeginEdit(selectAll: true);
+        };
+
         _luoiCT.Columns.AddRange(
             Theme.Cot(nameof(ChiTietHoaDon.Ngay), "NGÀY", 90, "dd/MM/yyyy", chiDoc: false),
             Theme.Cot(nameof(ChiTietHoaDon.TenHang), "TÊN HÀNG", 260, chiDoc: false),
@@ -688,7 +711,10 @@ public sealed class DonHangForm : Form
         // Nhập nhiều dòng để ngoài chứ không nằm trong menu: gõ cả đơn hàng bằng một dòng
         // "ống 27 x10, co 90 x5" là cách nhập nhanh nhất, mà nằm trong menu thì không ai thấy.
         // Đặt ở đây, ngay dưới bảng, vì hàng ô nhập phía trên đã đủ rộng cho màn 1366.
-        var btnNhieuDong = Theme.Nut("NHẬP NHIỀU DÒNG", Theme.Chinh, 210, 44);
+        // `noTheoChu`: chữ này dài mười lăm ký tự, mà 210px chỉ vừa khít ở cỡ hiển thị 100%
+        // — máy đặt 125% là chữ tràn ra ngoài rồi bị cắt. Cho nút nở theo chữ thay vì hạ cỡ
+        // chữ xuống: người đặt chữ to là người cần chữ to.
+        var btnNhieuDong = Theme.Nut("NHẬP NHIỀU DÒNG", Theme.Chinh, 210, 44, noTheoChu: true);
         btnNhieuDong.Margin = new Padding(0, 0, 10, 0);
         btnNhieuDong.Click += (_, _) => NhapNhieuDong();
 

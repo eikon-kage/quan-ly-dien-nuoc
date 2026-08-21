@@ -120,6 +120,7 @@ public static class Theme
 
         private bool _troChuot;
         private bool _dangBam;
+        private bool _noTheoChu;
 
         /// <summary>Phông đã hạ cỡ cho vừa nút. Chỉ phông này được dispose, phông của Theme là phông dùng chung.</summary>
         private Font? _fontHa;
@@ -139,6 +140,51 @@ public static class Theme
 
         /// <summary>Màu viền; để trống là nút tô đặc, không viền.</summary>
         public Color MauVien { get; set; } = Color.Empty;
+
+        /// <summary>
+        /// Cho nút **nở ra cho vừa chữ**: bề ngang bề cao đặt tay chỉ còn là mức thấp nhất.
+        ///
+        /// Vì sao cần: cỡ nút đặt bằng con số cứng (210x44), còn phông thì đặt bằng **điểm**
+        /// (12pt) nên nó to theo cỡ hiển thị của Windows. Máy đặt 125% hay 150% là chữ dài
+        /// thêm một phần tư, một nửa, mà nút vẫn 210 — chữ dài hơn ô thì bị cắt. `PhongVua`
+        /// đỡ được bằng cách hạ cỡ chữ, nhưng hạ chữ trên máy người ta *cố tình* đặt chữ to
+        /// là làm ngược điều họ muốn. Nở nút ra thì chữ giữ nguyên cỡ mà vẫn đọc được.
+        ///
+        /// Chỉ bật cho nút chữ dài, không bật sẵn cho mọi nút: nút nằm trong khung xếp tay
+        /// mà tự nở là đè lên nút bên cạnh. Hàng nút của thanh tổng tiền nằm trong
+        /// `FlowLayoutPanel` có `AutoSize` nên nở được thoải mái.
+        /// </summary>
+        public void NoTheoChu()
+        {
+            _noTheoChu = true;
+            // GrowOnly (mặc định của Button): chỉ nới ra, không bao giờ co nhỏ hơn cỡ đặt tay.
+            MinimumSize = new Size(Width, Height);
+            AutoSize = true;
+        }
+
+        /// <summary>
+        /// Bề ngang vừa đủ cho chữ nằm trên **một dòng**, cộng lề hai bên.
+        ///
+        /// Đo ở đây chứ không đo lúc dựng nút: lúc dựng chưa biết máy này hiển thị ở cỡ nào,
+        /// còn lúc bố trí thì phông đã là phông thật, đo ra đúng số điểm ảnh thật.
+        /// </summary>
+        public override Size GetPreferredSize(Size proposedSize)
+        {
+            if (!_noTheoChu)
+            {
+                return base.GetPreferredSize(proposedSize);
+            }
+
+            var chu = TextRenderer.MeasureText(
+                Text,
+                Font,
+                new Size(int.MaxValue, int.MaxValue),
+                TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+
+            return new Size(
+                Math.Max(MinimumSize.Width, chu.Width + (LeNgang * 2)),
+                Math.Max(MinimumSize.Height, chu.Height + (LeDoc * 2)));
+        }
 
         /// <summary>
         /// Vẽ ba chấm thay cho chữ. Vẽ tay chứ không dùng ký tự "⋯": phông Segoe UI thiếu
@@ -330,9 +376,13 @@ public static class Theme
     }
 
     /// <summary>Nút việc chính: tô đặc một màu, chữ trắng.</summary>
-    public static Button Nut(string chu, Color mau, int rong = 200, int cao = 46)
+    /// <param name="noTheoChu">
+    /// Cho nút nở ra cho vừa chữ, `rong` và `cao` thành mức thấp nhất — xem `NutBo.NoTheoChu`.
+    /// Bật cho nút chữ dài đứng trong khung tự co (`FlowLayoutPanel` có `AutoSize`).
+    /// </param>
+    public static Button Nut(string chu, Color mau, int rong = 200, int cao = 46, bool noTheoChu = false)
     {
-        return new NutBo
+        var nut = new NutBo
         {
             Text = chu,
             Width = rong,
@@ -343,6 +393,13 @@ public static class Theme
             Cursor = Cursors.Hand,
             Margin = new Padding(0, 0, 10, 0),
         };
+
+        if (noTheoChu)
+        {
+            nut.NoTheoChu();
+        }
+
+        return nut;
     }
 
     /// <summary>Nút việc phụ: nền trắng, viền mảnh — theo bản thiết kế, cạnh nút chính.</summary>
@@ -958,13 +1015,23 @@ public static class Theme
     /// Dải tiêu đề đầu mỗi cửa sổ con. Theo bản thiết kế thì nền trắng, chữ đen, kẻ một
     /// vạch dưới — thay cho dải xanh đậm cũ. Màu xanh giờ chỉ dành cho nút việc chính.
     /// </summary>
-    public static Panel ThanhTieuDe(string tieuDe, string phuDe)
+    /// <param name="tuCao">
+    /// Cho thanh **tự cao theo chữ**, để đặt vào một dòng `AutoSize` của `TableLayoutPanel`.
+    /// Dòng đặt cứng 92px là vừa khít ở cỡ hiển thị 100%: máy 125% là phụ đề bị cắt mất nửa
+    /// dưới, đúng lỗi vừa gặp ở màn Nhập nhiều dòng.
+    /// </param>
+    public static Panel ThanhTieuDe(string tieuDe, string phuDe, bool tuCao = false)
     {
         // Xếp bằng neo trên chứ không đặt cứng toạ độ y = 14 và y = 52: cỡ chữ 19pt kèm dấu
         // tiếng Việt cao bao nhiêu thì tuỳ máy (Windows đặt cỡ chữ 125% là cao thêm một phần
         // tư). Đặt cứng thì tiêu đề tràn xuống đè lên phụ đề, mà tiêu đề nằm trên nên nó che
         // mất nửa trên của phụ đề — đúng chỗ vừa bị cắt.
         var panel = new Panel { Dock = DockStyle.Fill, BackColor = Trang, Padding = new Padding(24, 12, 24, 8) };
+        if (tuCao)
+        {
+            panel.AutoSize = true;
+            panel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        }
 
         var lblTieuDe = new Label
         {

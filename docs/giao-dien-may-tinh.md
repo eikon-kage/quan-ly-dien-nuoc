@@ -41,7 +41,7 @@ Lấy đúng biến màu của bộ thiết kế, khai báo ở [`Ui/Theme.cs`](
 | Mảnh | Ở đâu | Là gì |
 | --- | --- | --- |
 | `Theme.The` | Theme.cs | thẻ trắng bo góc, có bóng nhẹ |
-| `Theme.Nut` / `Theme.NutPhu` | Theme.cs | nút bo góc tự vẽ, có trạng thái trỏ chuột / đang bấm / đang được bàn phím chọn; chữ không vừa nút thì tự hạ cỡ chứ không để bị cắt |
+| `Theme.Nut` / `Theme.NutPhu` | Theme.cs | nút bo góc tự vẽ, có trạng thái trỏ chuột / đang bấm / đang được bàn phím chọn; chữ không vừa nút thì tự hạ cỡ chứ không để bị cắt, hoặc `noTheoChu: true` cho nút nở theo chữ |
 | `Theme.NutBaCham` | Theme.cs | nút ⋯ gom các việc ít dùng vào một menu |
 | `ThanhPhanTrang` | ThanhPhanTrang.cs | thanh phân trang: hai nút lùi/tiến và câu "Trang 2/7" |
 | `Theme.HopO` / `Theme.HopTim` | Theme.cs | ô nhập bo góc; ô tìm kiếm có kính lúp và chữ gợi ý mờ |
@@ -155,6 +155,22 @@ hỏi. Gõ tắt ("o27", "27 ong") để riêng cho màn **Nhập nhiều dòng*
 và nhắc một câu ở thanh dưới: để nguyên chữ vô nghĩa thì người ta gõ tiếp vào giữa nó, ra một
 chuỗi sai nữa.
 
+### Giá gõ tắt: `8k`, `2tr5`
+
+Trong màn **Nhập nhiều dòng**, giá viết sau dấu `@` và nhận luôn lối nói miệng: `@8k` là 8.000,
+`@2tr` là 2.000.000, `@2tr5` là 2.500.000 ("hai triệu năm"). Nhận cả `nghìn`, `ngàn`, `ng`,
+`triệu`, `trieu`, `củ`. Có nó vì đó là cách cả nước nói giá: bắt gõ đủ `2500000` là bảy chữ số
+không có dấu ngăn, thừa hay thiếu một số 0 thì lệch mười lần — mà lệch giá thì tới lúc thu tiền
+mới lộ.
+
+**Một** chữ số sau đuôi là phần mười của đuôi ấy (`2tr5` = 2,5 triệu, `10k5` = 10.500). Hai chữ số
+trở lên thì **không đoán**: `1tr50` có người hiểu 1.050.000, người hiểu 1.500.000. Không đọc được
+thì bỏ trống giá và bảng xem trước ghi *"Chưa có giá — nhớ sửa lại"*, chứ tên hàng và số lượng vẫn
+vào đúng — trượt cả dòng thì cả câu thành một cái tên hàng lạ, tệ hơn nhiều.
+
+Chỉ giá mới đọc kiểu này, số lượng thì không: `x2k` hai nghìn cái ống là chuyện không có, mà nhận
+bừa thì một cú gõ nhầm thành hai nghìn cái. Bộ đọc nằm ở `So.TryDocTien`.
+
 Gõ tên hàng → `Enter` sang thẳng **ô số lượng** (đơn vị và đơn giá phần mềm tự điền theo danh
 mục, gõ tay chỉ khi cần sửa) → `Enter` là ghi dòng. Thiếu ô nào thì **không có hộp thoại chặn
 giữa**: thanh dưới nhắc một câu, con trỏ nhảy về đúng ô còn thiếu. Nhập cả chục dòng liền tay
@@ -200,10 +216,15 @@ nên trước đây chọn 5 dòng rồi bấm chuột phải là lệnh trong m
    không có tài khoản người dùng và không có gì để thông báo. Chỗ đó dành cho việc thật: chọn
    năm và nút thêm khách hàng.
 
-## Chữ bị cắt — ba cái bẫy đã gặp thật
+## Chữ bị cắt — bốn cái bẫy đã gặp thật
 
-Máy khách đặt cỡ chữ Windows 125% là mọi chỗ đặt cứng chiều cao đều lộ ra. Ba chỗ đã cắt chữ thật
-và cách chữa:
+Máy khách đặt cỡ hiển thị Windows 125% là mọi chỗ đặt cứng đều lộ ra. Gốc của cả bốn là một điều:
+**cỡ control đặt bằng con số điểm ảnh, còn phông đặt bằng điểm (`12pt`)** — phông tính theo điểm
+thì to lên theo cỡ hiển thị, con số điểm ảnh thì không. Máy 125% là chữ dài thêm một phần tư trong
+cái ô vẫn y nguyên. (Các form đặt `AutoScaleMode.Dpi` nhưng **không đặt `AutoScaleDimensions`**, mà
+thiếu nó thì WinForms tính hệ số phóng ra 1 và không phóng cỡ control nào cả.)
+
+Bốn chỗ đã cắt chữ thật và cách chữa:
 
 1. **Nhãn trên ô nhập** (`NGÀY LẤY`, `ĐƠN VỊ`) — ô nhãn cao 20px, mà chữ hoa tiếng Việt có dấu cả
    trên (`Ầ`) lẫn dưới (`Ị`) nên cao hơn chữ hoa tiếng Anh: cắt mất dấu là đọc ra chữ khác. Nay ô
@@ -216,9 +237,28 @@ và cách chữa:
 3. **Tên cột trong đầu bảng** — tên dài trong cột hẹp thì Windows cho xuống hai dòng, mà đầu bảng
    cao cố định 46px là mất hẳn dòng dưới (`SỐ HĐ NỢ` chỉ còn thấy `SỐ HĐ`). Nay đầu bảng
    `AutoSize` theo chữ, lề trên dưới 9px để một dòng vẫn thoáng như cũ.
+4. **Nút `NHẬP NHIỀU DÒNG`** — nút rộng cứng 210px, mà ở cỡ 100% chữ đã chiếm 150px trên 190px
+   lòng nút: chỉ còn 40px dư, nên 125% là chữ tràn ra. `NutBo` vốn đỡ bằng cách **hạ cỡ chữ** cho
+   vừa nút, nhưng hạ chữ trên máy người ta *cố tình* đặt chữ to là làm ngược điều họ muốn — mà
+   dưới 9,5pt thì nó hết chỗ hạ và cắt thật. Nay `Theme.Nut(..., noTheoChu: true)` cho nút **nở
+   ra theo chữ**: hai con số 210x44 thành mức thấp nhất, bề ngang thật đo lúc bố trí (
+   `GetPreferredSize`) nên đo trên phông thật. Nút này nằm trong `FlowLayoutPanel` có `AutoSize`
+   nên nở được mà không đè ai.
 
-Quy tắc rút ra: **đừng đặt cứng chiều cao cho thứ có chữ trong đó.** Nút thì tự hạ cỡ chữ, nhãn
-thì tự vẽ, đầu bảng thì `AutoSize`.
+Quy tắc rút ra: **đừng đặt cứng cỡ cho thứ có chữ trong đó** — cứ coi con số ấy là mức thấp nhất.
+Nút chữ dài thì `noTheoChu`, nhãn thì tự vẽ, đầu bảng thì `AutoSize`.
+
+Màn **Nhập nhiều dòng** là chỗ đầu tiên làm theo quy tắc ấy cho cả cửa sổ: năm dòng của
+`TableLayoutPanel` trước đây đặt cứng 92 / 150 / — / 56 / 80 px, nay **bốn dòng có chữ đều
+`AutoSize`**, chỉ bảng xem trước ăn phần còn lại. Ô gõ thì cao đúng ba dòng chữ *của máy đó*
+(`Theme.FontNhap.Height * 3`) thay vì 150px cứng, `Theme.ThanhTieuDe(..., tuCao: true)` cho thanh
+tiêu đề tự cao, và ba dòng chỉ cách gõ thay cho một dòng dài 110 ký tự — dòng ấy vừa bị cắt mất
+đuôi, mà đọc được đủ cũng không ai đọc hết ba luật nhồi một dòng.
+
+Chữa gốc thì phải đặt `AutoScaleDimensions = new SizeF(96F, 96F)` cho từng form để WinForms phóng
+mọi cỡ đặt tay theo cỡ hiển thị. Chưa làm: nó phóng lại **toàn bộ** bố cục của mọi cửa sổ một
+lượt, mà máy làm việc là macOS nên không chạy thử được để nhìn — đổi kiểu ấy thì phải có máy
+Windows ngồi soát từng màn hình.
 
 ## Thứ tự neo trong WinForms — chỗ dễ sai nhất
 

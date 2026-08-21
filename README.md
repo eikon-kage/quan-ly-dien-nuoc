@@ -28,7 +28,8 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 - **Tính ngay trong ô**: gõ `3+2*4` vào ô số lượng hoặc đơn giá là ra `11`, khỏi bấm máy
   tính riêng. Dùng được cả trên lưới lẫn thanh nhập nhanh.
 - **Nhập nhiều dòng một lượt**: gõ `ống 27 x10, co 90 x5, keo x1` rồi xem trước giá trước
-  khi ghi vào hoá đơn.
+  khi ghi vào hoá đơn. Muốn ghi luôn giá thì thêm `@`, gõ tắt kiểu nói miệng cũng được:
+  `keo x1 @8k`, `bồn 1000 x1 @2tr5`, `van x2 @150 nghìn`.
 - **Bộ hàng thường dùng**: gom các món hay đi cùng nhau thành một bộ ("Bộ lắp bồn nước"),
   chọn một lần là ra đủ dòng, giá vẫn lấy theo bảng giá của khách.
 - **Cảnh báo nhập sai**: giá lệch quá 20% so với lần gần nhất bán cho chính khách đó, dòng
