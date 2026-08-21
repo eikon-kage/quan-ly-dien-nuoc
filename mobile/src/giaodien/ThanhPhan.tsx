@@ -6,7 +6,7 @@
  */
 
 import { Feather } from '@expo/vector-icons';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -198,19 +198,36 @@ export function ThanhDoan({
  * Căn trái cũng gỡ được luôn một mớ code: bản cũ phải tự vẽ chữ gợi ý bằng một lớp phủ,
  * vì Android có lỗi đẩy con nháy ra sát mép phải khi ô căn giữa mà còn trống và có
  * `placeholder`. Ô căn trái không gặp lỗi ấy nên dùng `placeholder` thật.
+ *
+ * **Ô đang gõ thì đổi viền sang xanh**, chứ không để trình duyệt tự vẽ dấu focus của nó.
+ * Trên bản web, Chrome vẽ quanh `<input>` một vòng xanh dày, bo góc không theo bo góc của ô
+ * — nhìn như một nét lệch chồng lên thẻ, mà máy iOS/Android lại không có vòng ấy nên ba bản
+ * khác hẳn nhau. Vòng của trình duyệt bỏ ở [index.html](../../public/index.html); dấu đang
+ * gõ thì vẽ ở đây, bằng cách đổi màu đúng nét viền 1px vốn có nên ô không xê dịch.
  */
 export function ONhap({
   nhan,
   coSo = false,
   ...props
 }: { nhan: string; /** Chữ to hơn, dùng cho ô nhập số tiền và số công. */ coSo?: boolean } & TextInputProps) {
+  const [dangGo, datDangGo] = useState(false);
+
   return (
-    <View style={kieu.oNhap}>
+    <View style={[kieu.oNhap, dangGo && kieu.oNhapDangGo]}>
       <Text style={kieu.nhanTrongO}>{nhan}</Text>
       <TextInput
         style={[kieu.chuTrongO, coSo && kieu.chuSoTrongO]}
         placeholderTextColor={Mau.xam}
         {...props}
+        // Sau `...props` để người gọi truyền thêm `onFocus`/`onBlur` thì vẫn gọi được cả hai.
+        onFocus={(bien) => {
+          datDangGo(true);
+          props.onFocus?.(bien);
+        }}
+        onBlur={(bien) => {
+          datDangGo(false);
+          props.onBlur?.(bien);
+        }}
       />
     </View>
   );
@@ -282,6 +299,7 @@ const kieu = StyleSheet.create({
     paddingTop: 9,
     paddingBottom: 6,
   },
+  oNhapDangGo: { borderColor: Mau.chinh },
   nhanTrongO: { fontSize: Co.chuNho, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuTrongO: {
     // Không đặt height: chữ hệ thống to lên thì ô phải cao theo, kẻo cắt cụt.

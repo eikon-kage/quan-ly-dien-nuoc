@@ -426,6 +426,13 @@ Bản đầu để nhãn nằm *ngoài* ô, còn ô nhập số thì **căn gi�
    nháy ra sát mép phải, nên bản cũ phải tự vẽ chữ gợi ý bằng một lớp phủ riêng. Ô căn trái
    không gặp lỗi ấy, dùng `placeholder` thật là xong.
 
+**Ô đang gõ thì viền đổi sang xanh** (`Mau.chinh`), vẫn đúng nét 1px nên ô không xê dịch —
+dấu "đang gõ" do app tự vẽ, không nhờ trình duyệt. Trên bản web, Chrome vẽ hộ quanh `<input>`
+một vòng xanh dày, bo góc không theo bo góc của ô nên nhìn như một nét lệch chồng lên thẻ, mà
+máy iOS/Android lại không có vòng ấy — ba bản khác hẳn nhau. Vòng của Chrome bỏ bằng
+`input:focus { outline: none }` trong [index.html](../mobile/public/index.html), khai **ngoài**
+`#root` vì `Modal` của react-native-web gắn hộp thoại vào `body` bằng portal.
+
 **Bàn phím đẩy hộp lên** — lấy đúng cách của `CommonModal` bên `trustybot-mobile`, gom vào
 [`HopDay`](../mobile/src/giaodien/HopDay.tsx) làm vỏ chung cho cả ba hộp trượt từ đáy:
 

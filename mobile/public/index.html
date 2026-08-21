@@ -63,6 +63,15 @@
         background-color: #f6f8fb;
         -webkit-tap-highlight-color: transparent;
       }
+      /* Chrome vẽ quanh ô nhập đang gõ một vòng xanh dày, bo góc không theo bo góc của ô,
+         mà máy iOS/Android thì không có vòng ấy. Bỏ đi để ba bản nhìn giống nhau — dấu
+         "đang gõ" do app tự vẽ: viền ô đổi sang xanh, xem `ONhap` trong
+         src/giaodien/ThanhPhan.tsx. Không giới hạn trong `#root`: hộp thoại của
+         react-native-web gắn vào `body` bằng portal nên nằm ngoài `#root`. */
+      input:focus,
+      textarea:focus {
+        outline: none;
+      }
       /* Chữ chờ trong lúc tải mã. React dựng xong là xoá sạch, không cần tự dọn. */
       #mo-dau {
         margin: auto;
