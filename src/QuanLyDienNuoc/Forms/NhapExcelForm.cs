@@ -9,12 +9,19 @@ namespace QuanLyDienNuoc.Forms;
 /// <summary>
 /// Đọc một file hoá đơn Excel rồi nhập các dòng hàng vào phần mềm.
 /// Cho chọn bảng nào trong file, ngày lấy hàng và nhập vào hoá đơn nào.
+/// <para>
+/// Tờ hoàn hàng cũng là một đơn hàng, có file Excel riêng và nhập vào y như hoá đơn bán —
+/// chỉ khác là tiền của nó trừ đi. Đọc thấy tên tờ là hoàn hàng thì màn hình này chuyển sang
+/// nhập vào tờ hoàn (tạo tờ mới hoặc chọn tờ hoàn đang mở), chứ không đổ hàng hoàn vào hoá
+/// đơn bán.
+/// </para>
 /// </summary>
 public sealed class NhapExcelForm : Form
 {
     private readonly KhoDuLieu _kho = KhoDuLieu.Instance;
     private readonly Guid _khachId;
     private readonly int _nam;
+    private readonly Guid? _dichBanDau;
 
     private readonly DataGridView _luoiBang = new();
     private readonly BindingList<DongBang> _nguonBang = new();
@@ -30,10 +37,25 @@ public sealed class NhapExcelForm : Form
     private KetQuaDocExcel? _ketQua;
     private bool _dangNap;
 
+    /// <summary>Loại của các bảng đang tích: tờ bán, tờ hoàn, hay tích lẫn cả hai.</summary>
+    private LoaiToNhap _loai = LoaiToNhap.KhongCo;
+
+    /// <summary>
+    /// Mã hoá đơn gốc ghi trên các bảng hoàn đang tích ("Hoàn cho hoá đơn HD2026-02"). Đọc theo
+    /// đúng những bảng đang tích chứ không quét cả file: bỏ tích một tờ là bỏ luôn mã của nó.
+    /// </summary>
+    private string? _maGoc;
+
+    /// <summary>Các bảng đang tích ghi hoàn cho nhiều hoá đơn khác nhau.</summary>
+    private bool _lonMaGoc;
+
+    private bool _daNapDich;
+
     public NhapExcelForm(Guid khachId, int nam, Guid? hoaDonDangChon, string duongDanFile)
     {
         _khachId = khachId;
         _nam = nam;
+        _dichBanDau = hoaDonDangChon;
 
         Text = "Nhập hoá đơn từ Excel";
         StartPosition = FormStartPosition.CenterParent;
@@ -44,7 +66,9 @@ public sealed class NhapExcelForm : Form
         AutoScaleMode = AutoScaleMode.Dpi;
 
         TaoGiaoDien();
-        NapDich(hoaDonDangChon);
+
+        // Nạp file trước rồi mới dựng ô "NHẬP VÀO": danh sách hoá đơn đích tuỳ vào file này là
+        // tờ bán hay tờ hoàn.
         NapFile(duongDanFile);
     }
 
@@ -53,6 +77,12 @@ public sealed class NhapExcelForm : Form
 
     /// <summary>Hoá đơn đã nhận dữ liệu, để màn hình gọi mở đúng hoá đơn đó.</summary>
     public Guid? HoaDonDaNhap { get; private set; }
+
+    /// <summary>
+    /// Số tiền hoàn của riêng lần nhập này (số dương). Nhập thêm vào tờ hoàn đã có sẵn thì đây
+    /// không phải tổng của cả tờ, nên nơi gọi nói về lần nhập vừa rồi thì lấy con số này.
+    /// </summary>
+    public decimal TienHoanDaNhap { get; private set; }
 
     private KhachHang? Khach => _kho.TimKhach(_khachId);
 
@@ -74,7 +104,8 @@ public sealed class NhapExcelForm : Form
         khung.Controls.Add(
             Theme.ThanhTieuDe(
                 "NHẬP HOÁ ĐƠN TỪ EXCEL",
-                "Chọn bảng cần lấy, đặt ngày lấy hàng rồi nhập vào hoá đơn của khách"),
+                "Chọn bảng cần lấy, đặt ngày lấy hàng rồi nhập vào hoá đơn bán "
+                + "hoặc hoá đơn hoàn hàng của khách"),
             0,
             0);
 
@@ -165,9 +196,10 @@ public sealed class NhapExcelForm : Form
         };
         _luoiBang.Columns.Add(cotChon);
         _luoiBang.Columns.AddRange(
-            Theme.Cot(nameof(DongBang.Ten), "BẢNG", 130),
-            Theme.Cot(nameof(DongBang.SoDong), "DÒNG", 60, canPhai: true),
-            Theme.Cot(nameof(DongBang.Tong), "TIỀN", 110, "#,##0", canPhai: true));
+            Theme.Cot(nameof(DongBang.Ten), "BẢNG", 120),
+            Theme.Cot(nameof(DongBang.Loai), "LOẠI", 90),
+            Theme.Cot(nameof(DongBang.SoDong), "DÒNG", 55, canPhai: true),
+            Theme.Cot(nameof(DongBang.Tong), "TIỀN", 105, "#,##0", canPhai: true));
         _luoiBang.DataSource = _nguonBang;
         _luoiBang.CellContentClick += (_, e) =>
         {
@@ -259,23 +291,59 @@ public sealed class NhapExcelForm : Form
         return nen;
     }
 
-    private void NapDich(Guid? hoaDonDangChon)
-    {
-        _dangNap = true;
-        _cboDich.Items.Clear();
-        _cboDich.Items.Add(new MucDich(null, $"— Tạo hoá đơn mới ({_nam}) —"));
+    /// <summary>
+    /// Câu nhắc khi người dùng tích lẫn tờ bán với tờ hoàn: một tờ cộng vào nợ của khách, tờ
+    /// kia trừ ra, dồn cả hai vào một hoá đơn là sổ ghi ngược dấu.
+    /// </summary>
+    private const string ChanLonLoai =
+        "Đang tích lẫn cả bảng bán hàng và bảng hoàn hàng. Hai loại này vào hai hoá đơn khác "
+        + "nhau (tờ bán cộng vào nợ, tờ hoàn trừ ra) nên hãy nhập từng loại một lượt.";
 
-        // Không cho nhập hàng vào tờ hoàn hàng: số hoàn phải khớp với hoá đơn gốc, đổ thêm
-        // hàng vào đó là tờ hoàn nói một chuyện khác hẳn hoá đơn nó hoàn cho.
-        foreach (var hoaDon in _kho.HoaDonCuaKhach(_khachId, _nam).Where(h => !h.LaHoanHang))
+    /// <summary>
+    /// Câu nhắc khi các bảng đang tích ghi hoàn cho những hoá đơn khác nhau: cả nhóm chỉ vào
+    /// được một tờ hoàn, mà tờ hoàn chỉ nối vào một hoá đơn bán — dồn cả nhóm vào một mã là
+    /// trừ số đã hoàn vào hoá đơn không phải nó.
+    /// </summary>
+    private const string ChanLonMaGoc =
+        "Các bảng đang tích ghi hoàn cho những hoá đơn khác nhau. Mỗi tờ hoàn chỉ nối vào một "
+        + "hoá đơn bán nên hãy tích riêng từng hoá đơn gốc một lượt.";
+
+    /// <summary>
+    /// Dựng lại ô "NHẬP VÀO" theo loại tờ đang tích: tờ bán chỉ nhập vào hoá đơn bán, tờ hoàn
+    /// chỉ nhập vào tờ hoàn — một tờ cộng vào nợ của khách, tờ kia trừ ra, đổ lẫn vào nhau là
+    /// sổ sai dấu. Hoá đơn đã chốt cũng bày ra để người dùng thấy vì sao chưa nhập được vào đó.
+    /// </summary>
+    private void NapDich()
+    {
+        var dangNapCu = _dangNap;
+        _dangNap = true;
+
+        // Giữ lại chỗ đang chọn khi đổi loại tờ: lần đầu thì lấy hoá đơn màn đơn hàng đang mở.
+        var dangChon = _daNapDich ? (_cboDich.SelectedItem as MucDich)?.Id : _dichBanDau;
+
+        // Tờ hoàn thuộc đúng năm của hoá đơn nó hoàn cho, có thể khác năm đang xem — nhãn phải
+        // nói đúng năm đó, không thì người dùng tưởng tờ mới nằm ở năm đang mở.
+        var namToMoi = _loai.LaHoanHang ? GocTrenGiay()?.Nam ?? _nam : _nam;
+
+        _cboDich.Items.Clear();
+        _cboDich.Items.Add(new MucDich(
+            null,
+            _loai.LaHoanHang
+                ? $"— Tạo hoá đơn hoàn hàng mới ({namToMoi}) —"
+                : $"— Tạo hoá đơn mới ({namToMoi}) —"));
+
+        foreach (var hoaDon in _kho.HoaDonCuaKhach(_khachId, _nam)
+            .Where(h => h.LaHoanHang == _loai.LaHoanHang))
         {
+            var tien = hoaDon.LaHoanHang ? hoaDon.TienHoan : hoaDon.TongTien;
             _cboDich.Items.Add(new MucDich(
                 hoaDon.Id,
-                $"{hoaDon.MaHoaDon} · mở {hoaDon.NgayMo:dd/MM/yyyy} · {So.Tien(hoaDon.TongTien)}"));
+                $"{hoaDon.MaHoaDon} · mở {hoaDon.NgayMo:dd/MM/yyyy} · {So.Tien(tien)}"
+                + (hoaDon.DaChot ? " · đã chốt" : string.Empty)));
         }
 
         _cboDich.SelectedIndex = 0;
-        if (hoaDonDangChon is { } id)
+        if (dangChon is { } id)
         {
             for (var i = 0; i < _cboDich.Items.Count; i++)
             {
@@ -287,7 +355,8 @@ public sealed class NhapExcelForm : Form
             }
         }
 
-        _dangNap = false;
+        _daNapDich = true;
+        _dangNap = dangNapCu;
     }
 
     private void ChonFileKhac()
@@ -331,6 +400,7 @@ public sealed class NhapExcelForm : Form
                     Trang = trang,
                     Chon = true,
                     Ten = trang.TenSheet,
+                    Loai = trang.LaHoanHang ? "Hoàn hàng" : "Bán hàng",
                     SoDong = trang.Dong.Count,
                     Tong = trang.TongTien,
                 });
@@ -361,12 +431,33 @@ public sealed class NhapExcelForm : Form
     private void CapNhatXemTruoc()
     {
         var ngay = _dtNgay.Value.Date;
+        var dangTich = _nguonBang.Where(b => b.Chon).ToList();
+
+        var loaiMoi = LoaiToNhap.Xet(dangTich.Select(b => b.Trang));
+
+        // Bỏ tích hết, hay đang tích lẫn cả hai loại, thì giữ nguyên danh sách hoá đơn đích của
+        // loại đang chọn: tích lại là chọn tiếp được, không mất chỗ đang chọn.
+        var theoLoaiCu = dangTich.Count == 0 || loaiMoi.LonLoai;
+        var laToHoan = theoLoaiCu ? _loai.LaHoanHang : loaiMoi.LaHoanHang;
+
+        // Mã hoá đơn gốc lấy ở đúng những bảng hoàn đang tích: đổi chỗ tích là đổi hoá đơn gốc,
+        // nên ô "NHẬP VÀO" phải dựng lại theo (nhãn năm của tờ hoàn mới đi theo hoá đơn đó).
+        var (maGoc, lonMaGoc) = MaGocTrenGiay(dangTich.Where(b => b.Trang.LaHoanHang).Select(b => b.Trang));
+        var doiLoai = !_daNapDich || laToHoan != _loai.LaHoanHang || maGoc != _maGoc;
+
+        _loai = loaiMoi with { LaHoanHang = laToHoan };
+        _maGoc = maGoc;
+        _lonMaGoc = lonMaGoc;
+        if (doiLoai)
+        {
+            NapDich();
+        }
 
         _nguonXem.RaiseListChangedEvents = false;
         _nguonXem.Clear();
 
         var canhBao = new List<string>();
-        foreach (var bang in _nguonBang.Where(b => b.Chon))
+        foreach (var bang in dangTich)
         {
             foreach (var dong in bang.Trang.Dong)
             {
@@ -380,18 +471,68 @@ public sealed class NhapExcelForm : Form
         _nguonXem.RaiseListChangedEvents = true;
         _nguonXem.ResetBindings();
 
+        // Dòng hoàn mang số lượng âm nên tổng của tờ hoàn là số âm; nói "hoàn lại 90.000đ"
+        // dễ đọc hơn là bày ra "-90.000đ".
         var tong = _nguonXem.Sum(d => d.ThanhTien);
-        _lblTomTat.Text = $"SẼ NHẬP {_nguonXem.Count} DÒNG · TỔNG {So.Tien(tong)}";
+        _lblTomTat.Text = _loai.LaHoanHang
+            ? $"SẼ NHẬP {_nguonXem.Count} DÒNG HOÀN · HOÀN LẠI {So.Tien(-tong)} (TRỪ VÀO NỢ)"
+            : $"SẼ NHẬP {_nguonXem.Count} DÒNG · TỔNG {So.Tien(tong)}";
 
+        if (_loai.LonLoai)
+        {
+            _lblCanhBao.ForeColor = Theme.Do;
+            _lblCanhBao.Text = "⚠ " + ChanLonLoai;
+            return;
+        }
+
+        if (_lonMaGoc)
+        {
+            _lblCanhBao.ForeColor = Theme.Do;
+            _lblCanhBao.Text = "⚠ " + ChanLonMaGoc;
+            return;
+        }
+
+        _lblCanhBao.ForeColor = Theme.Cam;
         _lblCanhBao.Text = canhBao.Count == 0
             ? string.Empty
             : $"⚠ {canhBao.Count} dòng cần xem lại: {string.Join("  ·  ", canhBao.Take(2))}"
               + (canhBao.Count > 2 ? "  ·  ..." : string.Empty);
     }
 
+    /// <summary>
+    /// Mã hoá đơn gốc ghi trên nhóm bảng đang tích, kèm cờ báo nhóm ghi nhiều mã khác nhau.
+    /// Đọc theo từng bảng chứ không lấy mã đầu tiên của cả file: file có hai tờ hoàn cho hai
+    /// hoá đơn thì bỏ tích tờ này phải bỏ luôn mã của nó.
+    /// </summary>
+    private static (string? Ma, bool Lon) MaGocTrenGiay(IEnumerable<TrangDoc> trang)
+    {
+        var ma = trang
+            .Select(t => t.MaHoaDonGoc)
+            .Where(m => !string.IsNullOrWhiteSpace(m))
+            .Select(m => m!.Trim())
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        return (ma.FirstOrDefault(), ma.Count > 1);
+    }
+
+    /// <summary>Hoá đơn bán mà các bảng đang tích ghi là hoàn cho, tìm trong sổ theo mã trên giấy.</summary>
+    private HoaDon? GocTrenGiay() => _lonMaGoc
+        ? null
+        : BaoCao.HoanHang.TimHoaDonGoc(_kho.HoaDonCuaKhach(_khachId), _maGoc);
+
+    /// <summary>
+    /// Lý do hoàn in trên các bảng đang tích — ghi chú của tờ hoàn in ra giấy chính là câu này,
+    /// nên cũng phải theo bảng đang tích chứ không phải lý do của tờ nào đó trong file.
+    /// </summary>
+    private string LyDoTrenGiay() => (_nguonBang
+        .Where(b => b.Chon)
+        .Select(b => b.Trang.LyDoHoan)
+        .FirstOrDefault(l => !string.IsNullOrWhiteSpace(l)) ?? string.Empty).Trim();
+
     private void Nhap()
     {
-        if (Khach is not { } khach)
+        if (Khach is null)
         {
             return;
         }
@@ -402,13 +543,26 @@ public sealed class NhapExcelForm : Form
             return;
         }
 
+        if (_loai.LonLoai)
+        {
+            HopThoai.CanhBao(this, ChanLonLoai);
+            return;
+        }
+
+        if (_lonMaGoc)
+        {
+            HopThoai.CanhBao(this, ChanLonMaGoc);
+            return;
+        }
+
         if (_cboDich.SelectedItem is not MucDich dich)
         {
             return;
         }
 
+        var laToHoan = _loai.LaHoanHang;
         var ngay = _dtNgay.Value.Date;
-        var dongMoi = _nguonXem.Select(d => new ChiTietHoaDon
+        var dongDoc = _nguonXem.Select(d => new ChiTietHoaDon
         {
             Ngay = ngay,
             TenHang = d.TenHang,
@@ -427,22 +581,95 @@ public sealed class NhapExcelForm : Form
             return;
         }
 
-        if (hoaDon is { LaHoanHang: true })
+        // Ô "NHẬP VÀO" chỉ bày hoá đơn cùng loại, nhưng máy khác vừa đổi sổ thì vẫn xét lại:
+        // đổ tờ hoàn vào hoá đơn bán là số tiền đảo dấu, không ai nhận ra.
+        if (hoaDon is not null && hoaDon.LaHoanHang != laToHoan)
         {
-            HopThoai.CanhBao(this, "Không nhập hàng vào hoá đơn hoàn hàng được. Hãy chọn hoá đơn bán hàng.");
+            HopThoai.CanhBao(
+                this,
+                laToHoan
+                    ? "Đây là tờ hoàn hàng nên phải nhập vào hoá đơn hoàn hàng. "
+                      + "Hãy chọn lại ở ô NHẬP VÀO."
+                    : "Không nhập hàng bán vào hoá đơn hoàn hàng được. Hãy chọn hoá đơn bán hàng.");
             return;
+        }
+
+        // Tờ hoàn mới nối vào hoá đơn nó hoàn cho theo mã ghi trên giấy; nhập thêm vào tờ hoàn
+        // có sẵn thì theo chỗ nối của tờ đó.
+        var gocTrenGiay = laToHoan ? GocTrenGiay() : null;
+        var goc = laToHoan
+            ? taoMoi
+                ? gocTrenGiay
+                : hoaDon!.HoaDonGocId is { } gocCuId ? _kho.TimHoaDon(gocCuId) : null
+            : null;
+
+        // Giấy ghi hoàn cho hoá đơn này mà tờ hoàn đang chọn nối vào hoá đơn khác thì dừng lại:
+        // nhập vào đây là trừ số đã hoàn vào hoá đơn không phải nó, mà hoá đơn trên giấy vẫn
+        // để 0 nên còn hoàn được lần thứ hai. Ô "NHẬP VÀO" tự chọn sẵn tờ đang mở nên chuyện
+        // này xảy ra chỉ vì không để ý, không phải vì người dùng cố tình.
+        if (laToHoan && !taoMoi && !string.IsNullOrWhiteSpace(_maGoc) && gocTrenGiay?.Id != goc?.Id)
+        {
+            HopThoai.CanhBao(
+                this,
+                $"Giấy ghi hoàn cho hoá đơn {_maGoc}, mà tờ hoàn {hoaDon!.MaHoaDon} đang "
+                + (goc is null ? "không nối vào hoá đơn nào" : $"nối vào hoá đơn {goc.MaHoaDon}")
+                + ".\n\nNhập vào đây thì số hoàn trừ vào hoá đơn không phải nó. Hãy chọn "
+                + "\"Tạo hoá đơn hoàn hàng mới\" ở ô NHẬP VÀO, hoặc chọn tờ hoàn của đúng "
+                + "hoá đơn đó.");
+            return;
+        }
+
+        // Giấy ghi mã mà tra trong sổ không ra (hoá đơn của khách khác, hay gõ sai mã): tờ hoàn
+        // vẫn nhập được và nợ vẫn đúng, nhưng cột ĐÃ HOÀN của hoá đơn kia vẫn để 0 nên hoàn
+        // được lần thứ hai — nói trước một câu để người dùng còn kịp xem lại mã.
+        if (laToHoan && !string.IsNullOrWhiteSpace(_maGoc) && goc is null && !HopThoai.Hoi(
+            this,
+            $"Giấy ghi hoàn cho hoá đơn {_maGoc} mà trong sổ của khách này không có mã đó "
+            + "(hoá đơn của khách khác, hay giấy ghi sai mã?).\n\nNhập tiếp thì tờ hoàn đứng "
+            + "riêng: nợ của khách vẫn trừ đúng, nhưng hoá đơn kia không biết đã hoàn nên vẫn "
+            + "hoàn được lần nữa.\n\nVẫn nhập?"))
+        {
+            return;
+        }
+
+        // Biết hoàn cho hoá đơn nào thì ghép từng dòng vào đúng dòng của hoá đơn đó, để màn
+        // hình hoàn hàng cộng đúng cột ĐÃ HOÀN và không cho hoàn lần nữa số đã hoàn bằng file.
+        var dongMoi = dongDoc;
+        var canhBaoGhep = new List<string>();
+        if (goc is not null)
+        {
+            var ghep = BaoCao.HoanHang.GhepVaoHoaDonGoc(_kho.HoaDonCuaKhach(_khachId), goc, dongDoc);
+            dongMoi = ghep.Dong;
+            canhBaoGhep = ghep.CanhBao;
         }
 
         hoaDon ??= new HoaDon
         {
             KhachHangId = _khachId,
-            Nam = _nam,
-            MaHoaDon = _kho.TaoMaHoaDon(_khachId, _nam),
+            Loai = laToHoan ? LoaiHoaDon.HoanHang : LoaiHoaDon.Ban,
+
+            // Tờ hoàn thuộc đúng năm của hoá đơn nó hoàn cho — hai tờ phải cùng năm mới đối
+            // chiếu được với nhau.
+            HoaDonGocId = goc?.Id,
+            Nam = goc?.Nam ?? _nam,
+            MaHoaDon = _kho.TaoMaHoaDon(
+                _khachId,
+                goc?.Nam ?? _nam,
+                laToHoan ? LoaiHoaDon.HoanHang : LoaiHoaDon.Ban),
             NgayMo = ngay,
-            GhiChu = "Nhập từ " + Path.GetFileName(_txtFile.Text),
+
+            // Ghi chú của tờ hoàn in ra giấy thành lý do hoàn, nên lấy đúng lý do đọc được
+            // trong file chứ không ghi "nhập từ file nào" lên tờ đưa khách.
+            GhiChu = laToHoan
+                ? LyDoTrenGiay()
+                : "Nhập từ " + Path.GetFileName(_txtFile.Text),
         };
 
-        _kho.ThucHien($"Nhập {dongMoi.Count} dòng từ Excel", () =>
+        var moTaViec = laToHoan
+            ? $"Nhập {dongDoc.Count} dòng hoàn hàng từ Excel"
+            : $"Nhập {dongDoc.Count} dòng từ Excel";
+
+        _kho.ThucHien(moTaViec, () =>
         {
             if (taoMoi)
             {
@@ -452,14 +679,27 @@ public sealed class NhapExcelForm : Form
             hoaDon.ChiTiet.AddRange(dongMoi);
         }, phatSuKien: false);
 
-        SoDongDaNhap = dongMoi.Count;
+        // Đếm theo số dòng trên giấy: ghép vào hoá đơn gốc có thể tách một dòng thành hai khi
+        // hoá đơn gốc bán món đó ở hai ngày, người dùng không cần biết chuyện tách đó.
+        SoDongDaNhap = dongDoc.Count;
         HoaDonDaNhap = hoaDon.Id;
+        TienHoanDaNhap = -dongMoi.Sum(d => d.ThanhTien);
 
-        HopThoai.Bao(
-            this,
-            $"Đã nhập {dongMoi.Count} dòng vào hoá đơn {hoaDon.MaHoaDon}"
-            + (taoMoi ? " (hoá đơn mới tạo)." : ".")
-            + "\n\nNếu nhập nhầm, bấm Ctrl+Z để hoàn tác.");
+        var loiNhac = laToHoan
+            ? $"Đã nhập {dongDoc.Count} dòng vào hoá đơn hoàn hàng {hoaDon.MaHoaDon}"
+              + (taoMoi ? " (tờ hoàn mới tạo)." : ".")
+              + $"\n\nHoàn lại {So.Tien(TienHoanDaNhap)}, đã trừ vào nợ của khách"
+              + (goc is null ? "." : $" — hoàn cho hoá đơn {goc.MaHoaDon}.")
+            : $"Đã nhập {dongDoc.Count} dòng vào hoá đơn {hoaDon.MaHoaDon}"
+              + (taoMoi ? " (hoá đơn mới tạo)." : ".");
+
+        if (canhBaoGhep.Count > 0)
+        {
+            loiNhac += "\n\n⚠ Cần xem lại:\n· " + string.Join("\n· ", canhBaoGhep.Take(3))
+                + (canhBaoGhep.Count > 3 ? $"\n· … và {canhBaoGhep.Count - 3} chỗ nữa." : string.Empty);
+        }
+
+        HopThoai.Bao(this, loiNhac + "\n\nNếu nhập nhầm, bấm Ctrl+Z để hoàn tác.");
 
         DialogResult = DialogResult.OK;
         Close();
@@ -483,6 +723,9 @@ public sealed class NhapExcelForm : Form
         public bool Chon { get; set; }
 
         public string Ten { get; set; } = string.Empty;
+
+        /// <summary>Tờ bán hay tờ hoàn — để người dùng thấy vì sao ô "NHẬP VÀO" đổi danh sách.</summary>
+        public string Loai { get; set; } = string.Empty;
 
         public int SoDong { get; set; }
 

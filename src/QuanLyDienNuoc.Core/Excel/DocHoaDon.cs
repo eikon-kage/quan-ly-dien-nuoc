@@ -23,6 +23,15 @@ public sealed class TrangDoc
     /// </summary>
     public bool LaHoanHang { get; set; }
 
+    /// <summary>
+    /// Mã hoá đơn bán ghi trên tờ hoàn ("Hoàn cho hoá đơn HD2026-02"). Có mã thì lúc nhập
+    /// vào sổ, tờ hoàn nối lại được đúng hoá đơn nó hoàn cho; không có thì nó đứng riêng.
+    /// </summary>
+    public string? MaHoaDonGoc { get; set; }
+
+    /// <summary>Lý do hoàn in trên tờ giấy (hàng lỗi, khách lấy thừa…), nếu có.</summary>
+    public string? LyDoHoan { get; set; }
+
     public List<ChiTietHoaDon> Dong { get; } = new();
 
     public List<string> CanhBao { get; } = new();
@@ -44,6 +53,42 @@ public sealed class KetQuaDocExcel
         .FirstOrDefault(n => n is not null);
 
     public int TongSoDong => Trang.Sum(t => t.Dong.Count);
+
+    /// <summary>Mã hoá đơn bán mà file này hoàn cho, lấy ở tờ đầu tiên có ghi.</summary>
+    public string? MaHoaDonGoc => Trang
+        .Select(t => t.MaHoaDonGoc)
+        .FirstOrDefault(m => !string.IsNullOrWhiteSpace(m));
+
+    /// <summary>Lý do hoàn ghi trong file, lấy ở tờ đầu tiên có ghi.</summary>
+    public string? LyDoHoan => Trang
+        .Select(t => t.LyDoHoan)
+        .FirstOrDefault(l => !string.IsNullOrWhiteSpace(l));
+}
+
+/// <summary>
+/// Loại của nhóm bảng người dùng tích chọn để nhập: cả nhóm là tờ bán, cả nhóm là tờ hoàn,
+/// hay lẫn lộn cả hai — lẫn lộn thì không nhập được vào cùng một hoá đơn.
+/// </summary>
+public sealed record LoaiToNhap(bool LaHoanHang, bool LonLoai)
+{
+    /// <summary>Chưa tích bảng nào.</summary>
+    public static readonly LoaiToNhap KhongCo = new(false, false);
+
+    /// <summary>
+    /// Xét loại của nhóm bảng đang tích: tờ hoá đơn bán cộng vào nợ của khách, tờ hoàn trừ
+    /// ra, nên trộn hai loại vào một hoá đơn là tờ giấy nói một chuyện mà sổ ghi chuyện khác.
+    /// </summary>
+    public static LoaiToNhap Xet(IEnumerable<TrangDoc> trang)
+    {
+        var dang = trang.ToList();
+        if (dang.Count == 0)
+        {
+            return KhongCo;
+        }
+
+        var soHoan = dang.Count(t => t.LaHoanHang);
+        return new LoaiToNhap(soHoan == dang.Count, soHoan > 0 && soHoan < dang.Count);
+    }
 }
 
 /// <summary>
@@ -57,6 +102,14 @@ public static class DocHoaDon
 
     private static readonly Regex MauNgay = new(
         @"ng[aà]y\s*\.*\s*(\d{1,2})\D+th[aá]ng\s*\.*\s*(\d{1,2})\D+n[aă]m\s*\.*\s*(\d{4})",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+    /// <summary>Phần trong ngoặc dưới tên tờ hoàn hàng: "(Hoàn cho hoá đơn HD2026-02 ngày … — lý do)".</summary>
+    private static readonly Regex MauTrongNgoac = new(@"\(([^)]*)\)", RegexOptions.Singleline);
+
+    /// <summary>Câu "hoàn cho hoá đơn &lt;mã&gt;" — viết có dấu hay không dấu đều nhận.</summary>
+    private static readonly Regex MauHoanCho = new(
+        @"ho[àa]n\s+cho\s+(?:ho[áa]\s*[đd][ơo]n|h[đd])\s*:?\s*([^\s)]+)",
         RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
     public static KetQuaDocExcel Doc(string duongDanFile, DateTime ngayChoDongHang)
@@ -119,6 +172,17 @@ public static class DocHoaDon
                     trang.LaHoanHang = true;
                 }
 
+                // Mẫu giấy đang dùng gộp "hoàn cho hoá đơn nào" vào cùng ô tên tờ, mẫu cũ có
+                // dòng phụ đề riêng — đọc cả hai chỗ để file nào cũng lấy lại được hoá đơn gốc.
+                // Tờ hoàn đứng riêng ở mẫu cũ thì dòng phụ đề chỉ còn "(hàng lỗi)", chẳng có chữ
+                // nào để nhận ra, nên câu trong ngoặc dưới tên tờ hoàn cũng đọc luôn.
+                if (khongDau.Contains("hoan hang")
+                    || khongDau.Contains("hoan cho")
+                    || (trang.LaHoanHang && chu.TrimStart().StartsWith('(')))
+                {
+                    DocPhuDeHoan(chu, trang);
+                }
+
                 if (trang.TenKhach is null && khongDau.Contains("ten khach hang"))
                 {
                     trang.TenKhach = CatSauDauHaiCham(chu);
@@ -128,6 +192,42 @@ public static class DocHoaDon
                     trang.DiaChi = CatSauDauHaiCham(chu);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Đọc dòng chữ trong ngoặc dưới tên tờ hoàn hàng để lấy lại mã hoá đơn gốc và lý do hoàn.
+    /// Nhờ vậy file Excel của tờ hoàn là chứng từ đủ: nhập vào máy khác vẫn biết nó hoàn cho
+    /// hoá đơn nào, vì sao hoàn — không phải gõ lại bằng tay.
+    /// </summary>
+    private static void DocPhuDeHoan(string chu, TrangDoc trang)
+    {
+        var trongNgoac = MauTrongNgoac.Match(chu);
+        var noiDung = (trongNgoac.Success ? trongNgoac.Groups[1].Value : chu).Trim();
+
+        var hoanCho = MauHoanCho.Match(noiDung);
+        if (hoanCho.Success)
+        {
+            trang.MaHoaDonGoc ??= hoanCho.Groups[1].Value.Trim().Trim(',', '.', ';');
+        }
+
+        if (!trongNgoac.Success)
+        {
+            return;
+        }
+
+        // Lý do nằm sau dấu gạch ngang dài, nhưng chỉ khi câu có cả mã hoá đơn gốc: không có mã
+        // thì cả câu trong ngoặc là lý do, cắt ở dấu gạch là mất nửa câu ("(hàng lỗi — sứt vòi)").
+        // Câu mặc định "(Khách trả lại hàng)" chỉ là tên tờ nói lại nên bỏ.
+        var viTriGach = hoanCho.Success ? noiDung.IndexOfAny(new[] { '—', '–' }) : -1;
+        var lyDo = viTriGach >= 0
+            ? noiDung[(viTriGach + 1)..]
+            : hoanCho.Success ? string.Empty : noiDung;
+
+        lyDo = lyDo.Trim();
+        if (lyDo.Length > 0 && ChuViet.BoDau(lyDo) != "khach tra lai hang")
+        {
+            trang.LyDoHoan ??= lyDo;
         }
     }
 

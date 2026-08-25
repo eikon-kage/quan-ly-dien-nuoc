@@ -1,3 +1,4 @@
+using NPOI.HSSF.UserModel;
 using QuanLyDienNuoc.Excel;
 using QuanLyDienNuoc.Models;
 using Xunit;
@@ -258,6 +259,109 @@ public class HoaDonExcelTests : IDisposable
         Assert.Equal("Ống 90", trangDau.Dong[0].TenHang);
         Assert.Equal(143000m, trangDau.Dong[0].DonGia);
         Assert.All(trangDau.Dong, d => Assert.Equal(new DateTime(2026, 8, 3), d.Ngay));
+    }
+
+    [Fact]
+    public void Doc_ToHoanGoTayHaiDongTieuDe_VanLayDuocHoaDonGocVaLyDo()
+    {
+        // Tờ hoàn gõ tay trên Excel (hoặc mẫu giấy cũ có dòng phụ đề riêng): tên tờ một dòng,
+        // "hoàn cho hoá đơn nào" một dòng khác. Cả hai kiểu đều phải đọc ra được hoá đơn gốc.
+        Directory.CreateDirectory(_thuMucTam);
+        var file = Path.Combine(_thuMucTam, "hoan-go-tay.xls");
+
+        var wb = new HSSFWorkbook();
+        var sheet = wb.CreateSheet("Trang 1");
+        sheet.CreateRow(0).CreateCell(0).SetCellValue("HÓA ĐƠN HOÀN HÀNG");
+        sheet.CreateRow(1).CreateCell(0)
+            .SetCellValue("(Hoàn cho hoá đơn HD2026-02 ngày 02/06/2026 — hàng lỗi)");
+
+        var tieuDe = sheet.CreateRow(2);
+        foreach (var (cot, chu) in new[] { (0, "TÊN HÀNG"), (1, "ĐVT"), (2, "SỐ LƯỢNG"), (3, "ĐƠN GIÁ") })
+        {
+            tieuDe.CreateCell(cot).SetCellValue(chu);
+        }
+
+        var hang = sheet.CreateRow(3);
+        hang.CreateCell(0).SetCellValue("Ống 27");
+        hang.CreateCell(1).SetCellValue("Cây");
+        hang.CreateCell(2).SetCellValue(2d);
+        hang.CreateCell(3).SetCellValue(45000d);
+
+        using (var ghi = new FileStream(file, FileMode.Create, FileAccess.Write))
+        {
+            wb.Write(ghi, leaveOpen: false);
+        }
+
+        var doc = DocHoaDon.Doc(file, new DateTime(2026, 6, 2));
+
+        Assert.True(doc.Trang[0].LaHoanHang);
+        Assert.Equal("HD2026-02", doc.MaHoaDonGoc);
+        Assert.Equal("hàng lỗi", doc.LyDoHoan);
+
+        // Trên giấy ghi 2, vào sổ là hàng trả về nên thành -2.
+        Assert.Equal(-2m, Assert.Single(doc.Trang[0].Dong).SoLuong);
+        Assert.Equal(-90_000m, doc.Trang[0].TongTien);
+    }
+
+    [Fact]
+    public void Doc_ToHoanMauCuDungRiengThiVanLayDuocLyDoODongPhuDe()
+    {
+        // Mẫu giấy cũ có dòng phụ đề riêng. Tờ hoàn không nối vào hoá đơn nào thì dòng đó chỉ
+        // còn đúng lý do — không có chữ "hoàn" nào để nhận ra, mà vẫn phải lấy được lý do.
+        var doc = DocMotToHoanGoTay("hoan-mau-cu.xls", "HÓA ĐƠN HOÀN HÀNG", "(Hàng lỗi)");
+
+        Assert.True(doc.Trang[0].LaHoanHang);
+        Assert.Null(doc.MaHoaDonGoc);
+        Assert.Equal("Hàng lỗi", doc.LyDoHoan);
+    }
+
+    [Fact]
+    public void Doc_LyDoCoDauGachMaKhongCoMaHoaDonGocThiKhongBiCatMatNuaCau()
+    {
+        // Dấu gạch dài chỉ là chỗ ngăn giữa mã hoá đơn gốc và lý do. Câu không có mã thì cắt ở
+        // dấu gạch là mất nửa câu lý do người bán đã ghi.
+        var doc = DocMotToHoanGoTay(
+            "hoan-ly-do-co-gach.xls",
+            "HÓA ĐƠN HOÀN HÀNG (Hàng lỗi — sứt vòi, khách không nhận)",
+            null);
+
+        Assert.Null(doc.MaHoaDonGoc);
+        Assert.Equal("Hàng lỗi — sứt vòi, khách không nhận", doc.LyDoHoan);
+    }
+
+    /// <summary>Một tờ hoàn gõ tay: dòng tên tờ, dòng phụ đề (nếu có) rồi một dòng hàng.</summary>
+    private KetQuaDocExcel DocMotToHoanGoTay(string tenFile, string tenTo, string? phuDe)
+    {
+        Directory.CreateDirectory(_thuMucTam);
+        var file = Path.Combine(_thuMucTam, tenFile);
+
+        var wb = new HSSFWorkbook();
+        var sheet = wb.CreateSheet("Trang 1");
+        var dong = 0;
+        sheet.CreateRow(dong++).CreateCell(0).SetCellValue(tenTo);
+        if (phuDe is not null)
+        {
+            sheet.CreateRow(dong++).CreateCell(0).SetCellValue(phuDe);
+        }
+
+        var tieuDe = sheet.CreateRow(dong++);
+        foreach (var (cot, chu) in new[] { (0, "TÊN HÀNG"), (1, "ĐVT"), (2, "SỐ LƯỢNG"), (3, "ĐƠN GIÁ") })
+        {
+            tieuDe.CreateCell(cot).SetCellValue(chu);
+        }
+
+        var hang = sheet.CreateRow(dong);
+        hang.CreateCell(0).SetCellValue("Ống 27");
+        hang.CreateCell(1).SetCellValue("Cây");
+        hang.CreateCell(2).SetCellValue(2d);
+        hang.CreateCell(3).SetCellValue(45000d);
+
+        using (var ghi = new FileStream(file, FileMode.Create, FileAccess.Write))
+        {
+            wb.Write(ghi, leaveOpen: false);
+        }
+
+        return DocHoaDon.Doc(file, new DateTime(2026, 6, 2));
     }
 
     [Fact]

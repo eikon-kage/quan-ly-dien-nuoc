@@ -225,7 +225,7 @@ public sealed class DonHangForm : Form
             .Viec("Làm lại          Ctrl+Y", LamLai, bat: () => _kho.CoTheLamLai)
             .Ngan()
             .Viec("Xuất hoá đơn ra Excel", XuatExcel)
-            .Viec("Nhập hàng từ file Excel", NhapTuExcel);
+            .Viec("Nhập hoá đơn / tờ hoàn từ file Excel", NhapTuExcel);
 
         // Nền của hàng nút phải đúng màu dải tiêu đề: nút bo góc tự xoá nền bằng màu khung cha,
         // sai màu là lộ ra bốn góc vuông.
@@ -2176,7 +2176,7 @@ public sealed class DonHangForm : Form
 
         using var chonFile = new OpenFileDialog
         {
-            Title = "Chọn file hoá đơn Excel cần nhập",
+            Title = "Chọn file hoá đơn bán hoặc hoá đơn hoàn hàng cần nhập",
             Filter = "File Excel (*.xls;*.xlsx)|*.xls;*.xlsx|Tất cả các file (*.*)|*.*",
         };
 
@@ -2191,8 +2191,29 @@ public sealed class DonHangForm : Form
             return;
         }
 
-        NapHoaDon(form.HoaDonDaNhap ?? _hoaDonId);
-        _lblTrangThai.Text = $"Đã nhập {form.SoDongDaNhap} dòng từ Excel. Bấm Ctrl+Z nếu muốn bỏ.";
+        // Tờ hoàn thuộc đúng năm của hoá đơn nó hoàn cho, có thể khác năm đang xem — đổi năm
+        // trước rồi mới chọn, không thì ô hoá đơn không có tờ vừa nhập và nhảy về tờ khác.
+        var daNhap = form.HoaDonDaNhap is { } id ? _kho.TimHoaDon(id) : null;
+        if (daNhap is not null && daNhap.Nam != NamDangChon)
+        {
+            NapNam(daNhap.Nam);
+        }
+
+        NapHoaDon(daNhap?.Id ?? _hoaDonId);
+
+        // Nói rõ vào tờ nào: file hoàn hàng vào tờ HH… chứ không vào hoá đơn bán đang mở, người
+        // dùng nhìn thanh dưới là biết ngay chứ khỏi đi mở ô hoá đơn ra xem.
+        _lblTrangThai.Text = daNhap switch
+        {
+            // Tiền của riêng lần nhập này, không phải tổng cả tờ: nhập thêm vào tờ hoàn đã có
+            // sẵn thì nói tổng của tờ là báo lố số vừa nhập.
+            { LaHoanHang: true } toHoan => $"Đã nhập {form.SoDongDaNhap} dòng từ Excel vào tờ hoàn "
+                + $"{toHoan.MaHoaDon}: hoàn lại {So.Tien(form.TienHoanDaNhap)}, đã trừ vào nợ của khách. "
+                + "Bấm Ctrl+Z nếu muốn bỏ.",
+            { } hoaDon => $"Đã nhập {form.SoDongDaNhap} dòng từ Excel vào hoá đơn {hoaDon.MaHoaDon}. "
+                + "Bấm Ctrl+Z nếu muốn bỏ.",
+            null => $"Đã nhập {form.SoDongDaNhap} dòng từ Excel. Bấm Ctrl+Z nếu muốn bỏ.",
+        };
     }
 
     private void MoFile(string duongDan)
