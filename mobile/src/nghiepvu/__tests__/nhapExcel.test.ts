@@ -17,7 +17,7 @@ import {
   tomTat,
   tomTatDoc,
 } from '../nhapExcel';
-import { cham, dangCham, themTho, themUng } from '../thaoTac';
+import { cham, dangCham, datGhiChuNgay, ghiChuNgay, themTho, themUng } from '../thaoTac';
 import { O, taoFileExcel } from '../xlsx';
 
 /**
@@ -227,14 +227,38 @@ describe('ghi vào sổ', () => {
     expect(ket.themBuoi).toBe(1);
   });
 
-  test('ghi chú của dòng đi theo buổi, ô ghi chú trống thì giữ chữ đã có', () => {
+  test('ghi chú của dòng thành ghi chú của ngày, không chép đôi sang từng buổi', () => {
     const { duLieu, thoId } = khoMotTho();
-    const coSan = cham(duLieu, thoId, '2026-08-03', 'Sang', 1, 'làm trần');
+
+    const doc = docFileNhap(fileVoi([['2026-08-03', '', 1, 0.5, null, 'về sớm đi đám cưới']]));
+    const ket = apDungNhap(duLieu, thoId, doc.dongs);
+
+    expect(ghiChuNgay(ket.duLieu, thoId, '2026-08-03')).toBe('về sớm đi đám cưới');
+    expect(ket.duLieu.ghiChuNgays).toHaveLength(1);
+    expect(ket.duLieu.buoiCongs.every((b) => b.ghiChu === '')).toBe(true);
+  });
+
+  test('ô ghi chú trống thì giữ nguyên chữ đã có, cả của ngày lẫn của buổi', () => {
+    const { duLieu, thoId } = khoMotTho();
+    let coSan = cham(duLieu, thoId, '2026-08-03', 'Sang', 1, 'làm trần');
+    coSan = datGhiChuNgay(coSan, thoId, '2026-08-03', 'mưa cả buổi chiều');
 
     const doc = docFileNhap(fileVoi([['2026-08-03', '', 0.5, 1, null, '']]));
     const ket = apDungNhap(coSan, thoId, doc.dongs);
 
+    expect(ghiChuNgay(ket.duLieu, thoId, '2026-08-03')).toBe('mưa cả buổi chiều');
     expect(dangCham(ket.duLieu, thoId, '2026-08-03', 'Sang')?.ghiChu).toBe('làm trần');
+  });
+
+  test('ngày nghỉ hẳn trong file vẫn nhận được ghi chú', () => {
+    const { duLieu, thoId } = khoMotTho();
+
+    // Cả hai buổi đều 0 công: không có buổi nào để treo chữ, ghi chú ngày vẫn vào.
+    const doc = docFileNhap(fileVoi([['2026-08-03', '', 0, 0, null, 'nghỉ đám cưới em gái']]));
+    const ket = apDungNhap(duLieu, thoId, doc.dongs);
+
+    expect(ket.duLieu.buoiCongs).toEqual([]);
+    expect(ghiChuNgay(ket.duLieu, thoId, '2026-08-03')).toBe('nghỉ đám cưới em gái');
   });
 });
 
@@ -264,6 +288,17 @@ describe('tóm tắt cho người dùng liếc qua', () => {
     expect(tomTat(apDungNhap(duLieu, thoId, doc.dongs))).toBe(
       'Đã chấm mới 2 buổi, thêm 1 lần ứng tiền.',
     );
+  });
+
+  test('kể cả số ngày được ghi chú, và không kể lại ghi chú y như cũ', () => {
+    const { duLieu, thoId } = khoMotTho();
+    const doc = docFileNhap(fileVoi([['2026-08-03', '', 1, 1, null, 'mưa, làm nửa ngày']]));
+
+    const lanDau = apDungNhap(duLieu, thoId, doc.dongs);
+    expect(tomTat(lanDau)).toBe('Đã chấm mới 2 buổi, ghi chú cho 1 ngày.');
+
+    // Nhập lại đúng file ấy thì chẳng có gì đổi — kể cả ghi chú.
+    expect(tomTat(apDungNhap(lanDau.duLieu, thoId, doc.dongs))).toBe('Không có gì thay đổi.');
   });
 });
 

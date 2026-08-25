@@ -3,7 +3,7 @@
  * để React biết là có thay đổi mà vẽ lại màn hình.
  */
 
-import { BuoiCong, BuoiLam, DuLieuChamCong, MocLuong, Tho, UngTien } from './kieu';
+import { BuoiCong, BuoiLam, DuLieuChamCong, GhiChuNgay, MocLuong, Tho, UngTien } from './kieu';
 
 /**
  * Tiền một công của thợ tại một ngày: lấy mốc lương gần nhất có hiệu lực trước hoặc
@@ -173,6 +173,7 @@ export function doiThoId(duLieu: DuLieuChamCong, cu: string, moi: string): DuLie
       : duLieu.thos.map((tho) => (tho.id === cu ? { ...tho, id: moi, suaLuc: bayGio() } : tho)),
     buoiCongs: duLieu.buoiCongs.map((b) => (b.thoId === cu ? { ...b, thoId: moi } : b)),
     ungTiens: duLieu.ungTiens.map((u) => (u.thoId === cu ? { ...u, thoId: moi } : u)),
+    ghiChuNgays: duLieu.ghiChuNgays.map((g) => (g.thoId === cu ? { ...g, thoId: moi } : g)),
     // Kỳ đã chốt là bản chụp của quá khứ, nhưng id trong đó cũng phải trỏ đúng người.
     kyLuongs: duLieu.kyLuongs.map((ky) => ({
       ...ky,
@@ -271,6 +272,42 @@ export function datCong(
   return soCong === null
     ? boCham(duLieu, thoId, ngay, buoi)
     : cham(duLieu, thoId, ngay, buoi, soCong);
+}
+
+/**
+ * Ghi chú của một thợ trong một ngày. Chưa ghi gì thì trả về chuỗi rỗng — chỗ gọi chỉ cần
+ * hỏi "có chữ hay không", không phải phân biệt thêm cái `undefined`.
+ */
+export function ghiChuNgay(duLieu: DuLieuChamCong, thoId: string, ngay: string): string {
+  return duLieu.ghiChuNgays.find((g) => g.thoId === thoId && g.ngay === ngay)?.noiDung ?? '';
+}
+
+/**
+ * Đặt ghi chú cho một ngày của một thợ. Gõ đè lên ghi chú cũ chứ không thêm dòng mới —
+ * mỗi (thợ, ngày) chỉ có một ghi chú.
+ *
+ * **Xoá hết chữ là xoá bản ghi**, không giữ lại một bản ghi rỗng: sổ mang theo mấy trăm
+ * bản ghi trống thì file sao lưu phình ra mà không nói thêm điều gì, và `soTrong` sẽ tưởng
+ * sổ này đã có dữ liệu.
+ *
+ * Không móc vào buổi công: ngày thợ nghỉ hẳn vẫn ghi chú được, và bỏ chấm một buổi không
+ * làm mất chữ người ta đã gõ. Xem [GhiChuNgay](./kieu.ts).
+ */
+export function datGhiChuNgay(
+  duLieu: DuLieuChamCong,
+  thoId: string,
+  ngay: string,
+  noiDung: string,
+): DuLieuChamCong {
+  const chu = noiDung.trim();
+  const conLai = duLieu.ghiChuNgays.filter((g) => !(g.thoId === thoId && g.ngay === ngay));
+
+  if (chu === '') {
+    return { ...duLieu, ghiChuNgays: conLai };
+  }
+
+  const moi: GhiChuNgay = { thoId, ngay, noiDung: chu, suaLuc: bayGio() };
+  return { ...duLieu, ghiChuNgays: [...conLai, moi] };
 }
 
 export function themUng(

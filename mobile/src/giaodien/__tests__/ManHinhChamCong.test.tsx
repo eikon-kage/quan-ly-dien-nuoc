@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import * as Ngay from '../../nghiepvu/ngayViet';
-import { dangCham, themTho } from '../../nghiepvu/thaoTac';
+import { dangCham, datGhiChuNgay, ghiChuNgay, themTho } from '../../nghiepvu/thaoTac';
 import { ManHinhChamCong } from '../ManHinhChamCong';
 
 const HOM_NAY = Ngay.homNay();
@@ -223,6 +223,83 @@ describe('màn hình chấm công', () => {
 
     fireEvent.press(screen.getByText('Ghi'));
     expect(capNhat).not.toHaveBeenCalled();
+  });
+
+  test('ghi chú của ngày hiện ngay trên thẻ thợ, chạm vào là mở ra sửa', () => {
+    const { duLieu, ids } = khoCoTho('Anh Tuấn');
+    const coGhiChu = datGhiChuNgay(duLieu, ids[0], HOM_NAY, 'về sớm đi đám cưới');
+    const { moiNhat } = dung(coGhiChu);
+
+    expect(screen.getByText('về sớm đi đám cưới')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Ghi chú của Anh Tuấn: về sớm đi đám cưới. Chạm để sửa.'));
+    fireEvent.changeText(screen.getByLabelText('Ví dụ: về sớm đi đám cưới'), 'nghỉ nửa ngày');
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(ghiChuNgay(moiNhat(), ids[0], HOM_NAY)).toBe('nghỉ nửa ngày');
+  });
+
+  test('chưa có ghi chú thì thẻ thợ không mọc thêm dòng nào', () => {
+    const { duLieu } = khoCoTho('Anh Tuấn');
+    dung(duLieu);
+
+    expect(screen.queryByText('icon:message-square')).toBeNull();
+  });
+
+  test('ghi chú vào được từ nút Sửa, gắn đúng thợ và đúng ngày đang xem', () => {
+    // Danh sách xếp theo tên, nên Anh Bình đứng trước Anh Tuấn.
+    const { duLieu, ids } = khoCoTho('Anh Bình', 'Anh Tuấn');
+    const { moiNhat } = dung(duLieu);
+
+    chonNgay(NGAY_KHAC);
+    // Nút Sửa của thợ thứ hai — ghi chú phải gắn vào đúng người đó.
+    fireEvent.press(screen.getAllByText('Sửa')[1]);
+    fireEvent.press(screen.getByText('Ghi chú cho ngày này'));
+    fireEvent.changeText(screen.getByLabelText('Ví dụ: về sớm đi đám cưới'), 'mưa, nghỉ cả ngày');
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(ghiChuNgay(moiNhat(), ids[1], NGAY_KHAC)).toBe('mưa, nghỉ cả ngày');
+    expect(ghiChuNgay(moiNhat(), ids[1], HOM_NAY)).toBe('');
+    expect(ghiChuNgay(moiNhat(), ids[0], NGAY_KHAC)).toBe('');
+  });
+
+  test('ghi chú của ngày khác không hiện ở ngày đang xem', () => {
+    const { duLieu, ids } = khoCoTho('Anh Tuấn');
+    const coGhiChu = datGhiChuNgay(duLieu, ids[0], NGAY_KHAC, 'mưa, nghỉ cả ngày');
+    dung(coGhiChu);
+
+    expect(screen.queryByText('mưa, nghỉ cả ngày')).toBeNull();
+
+    chonNgay(NGAY_KHAC);
+    expect(screen.getByText('mưa, nghỉ cả ngày')).toBeTruthy();
+  });
+
+  test('nút Xoá ghi chú bỏ hẳn ghi chú của ngày đó', () => {
+    const { duLieu, ids } = khoCoTho('Anh Tuấn');
+    const coGhiChu = datGhiChuNgay(duLieu, ids[0], HOM_NAY, 'về sớm đi đám cưới');
+    const { moiNhat } = dung(coGhiChu);
+
+    fireEvent.press(screen.getByText('về sớm đi đám cưới'));
+    fireEvent.press(screen.getByText('Xoá ghi chú'));
+
+    expect(ghiChuNgay(moiNhat(), ids[0], HOM_NAY)).toBe('');
+    expect(moiNhat().ghiChuNgays).toEqual([]);
+  });
+
+  test('ghi chú còn nguyên sau khi bỏ chấm cả hai buổi', () => {
+    const { duLieu, ids } = khoCoTho('Anh Tuấn');
+    let hienTai = datGhiChuNgay(duLieu, ids[0], HOM_NAY, 'nghỉ đau chân');
+    hienTai = { ...hienTai };
+
+    const { moiNhat } = dung(hienTai);
+    fireEvent.press(screen.getByText('Cả tổ đi đủ cả ngày'));
+
+    const daCham = moiNhat();
+    const { moiNhat: sauKhiXoa } = dung(daCham);
+    fireEvent.press(screen.getByText('Xoá hết chấm ngày này'));
+
+    expect(sauKhiXoa().buoiCongs).toEqual([]);
+    expect(ghiChuNgay(sauKhiXoa(), ids[0], HOM_NAY)).toBe('nghỉ đau chân');
   });
 
   test('ô đã chấm nói rõ trạng thái cho trình đọc màn hình', () => {

@@ -15,7 +15,7 @@
 import { DuLieuChamCong } from './kieu';
 import { kyHienTai } from './ky';
 import { tach, thu } from './ngayViet';
-import { luongTaiNgay, tatCaTho } from './thaoTac';
+import { ghiChuNgay, luongTaiNgay, tatCaTho } from './thaoTac';
 import { Cot, TrangTinh, taoFileExcel } from './xlsx';
 
 const CHU_BUOI: Record<string, string> = { Sang: 'Sáng', Chieu: 'Chiều' };
@@ -178,7 +178,10 @@ function trangBuoiCong(duLieu: DuLieuChamCong): TrangTinh {
         buoi.soCong,
         motCong,
         Math.round(buoi.soCong * motCong),
-        buoi.ghiChu,
+        // Ghi chú của ngày trước, ghi chú riêng của buổi sau: một trang một cột, mà cột
+        // này là để người đọc hiểu *vì sao hôm ấy chấm thế* — ghi chú ngày trả lời câu
+        // ấy, còn ghi chú buổi là ngoại lệ hiếm, chỉ hiện khi ngày không có chữ nào.
+        ghiChuNgay(duLieu, buoi.thoId, buoi.ngay) || buoi.ghiChu,
       ];
     });
 

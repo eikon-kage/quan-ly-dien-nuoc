@@ -100,6 +100,39 @@ public class SoDiDongTests
     }
 
     [Fact]
+    public void Doc_GhiChuTheoNgay_DocRaDuocDeMaXem()
+    {
+        // Ghi chú là của **cả ngày**, không của một buổi: ngày thợ nghỉ hẳn vẫn có ghi chú, mà
+        // đó lại đúng là ngày cần ghi chú nhất. Máy tính chỉ đọc ra xem, chủ gõ trên điện thoại.
+        var so = Goi.Doc(GoiJson("""
+        {
+          "thos": [{ "id": "t1", "ten": "Anh Tuấn",
+            "mocLuong": [{ "tuNgay": "2026-01-01", "tienMotCong": 300000 }] }],
+          "ghiChuNgays": [
+            { "thoId": "t1", "ngay": "2026-08-20", "noiDung": "nghỉ đám cưới",
+              "suaLuc": "2026-08-20T02:00:00.000Z" }
+          ]
+        }
+        """)).DuLieu;
+
+        var ghi = Assert.Single(so.GhiChuNgays);
+        Assert.Equal("t1", ghi.ThoId);
+        Assert.Equal("2026-08-20", ghi.Ngay);
+        Assert.Equal("nghỉ đám cưới", ghi.NoiDung);
+
+        // Và ngày ấy không có buổi công nào — chính là chỗ ghi chú phải sống được một mình.
+        Assert.Empty(so.BuoiCongs);
+    }
+
+    [Fact]
+    public void Doc_SoCuaBanAppCu_ChuaCoGhiChuNgay_ThiRaDanhSachRong()
+    {
+        var so = Goi.Doc(GoiJson("""{ "thos": [] }""")).DuLieu;
+
+        Assert.Empty(so.GhiChuNgays);
+    }
+
+    [Fact]
     public void KyHienTai_BoQuaBanGhiDaChot_VaCongNoKyTruoc()
     {
         var so = new SoChamCong

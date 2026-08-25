@@ -29,7 +29,7 @@ import { BuoiLam, DuLieuChamCong } from './kieu';
 import { banGhiChuaChot } from './ky';
 import * as Ngay from './ngayViet';
 import { CONG_TOI_DA, docSoCong, docTien } from './nhapSo';
-import { boCham, cham, dangCham, themUng } from './thaoTac';
+import { boCham, cham, dangCham, datGhiChuNgay, ghiChuNgay, themUng } from './thaoTac';
 import { Cot, O, TrangTinh, taoFileExcel } from './xlsx';
 
 /** Tên trang chứa dữ liệu trong file mẫu. */
@@ -352,6 +352,8 @@ export interface KetQuaGhi {
   boChamBuoi: number;
   /** Buổi đã nằm trong kỳ đã chốt: không đụng vào, chỉ báo lại. */
   boQuaDaChot: number;
+  /** Ngày được ghi chú mới, hoặc ghi chú cũ bị file sửa lại. */
+  ghiChuNgays: number;
   themUng: number;
   /** Lần ứng đã có y hệt trong máy (cùng thợ, cùng ngày, cùng số tiền): không cộng đôi. */
   boQuaUngTrung: number;
@@ -384,11 +386,12 @@ export function apDungNhap(
     suaBuoi: 0,
     boChamBuoi: 0,
     boQuaDaChot: 0,
+    ghiChuNgays: 0,
     themUng: 0,
     boQuaUngTrung: 0,
   };
 
-  const ghiBuoi = (ngay: string, buoi: BuoiLam, soCong: number | null, ghiChu: string) => {
+  const ghiBuoi = (ngay: string, buoi: BuoiLam, soCong: number | null) => {
     if (soCong === null) {
       return;
     }
@@ -407,14 +410,13 @@ export function apDungNhap(
       return;
     }
 
-    // Ghi chú của dòng đi theo cả hai buổi: một dòng là một ngày, ghi chú là ghi chú
-    // của ngày ấy. Ô ghi chú để trống thì giữ ghi chú cũ, đừng xoá mất chữ người ta đã gõ.
-    const chuThich = ghiChu !== '' ? ghiChu : (cu?.ghiChu ?? '');
-    if (cu !== undefined && cu.soCong === soCong && cu.ghiChu === chuThich) {
+    if (cu !== undefined && cu.soCong === soCong) {
       return;
     }
 
-    moi = cham(moi, thoId, ngay, buoi, soCong, chuThich);
+    // Giữ nguyên ghi chú riêng của buổi (nếu buổi ấy vốn có): file Excel không có cột nào
+    // nói về từng buổi, nên nhập lại file không được xoá chữ chỉ vì file không nhắc tới.
+    moi = cham(moi, thoId, ngay, buoi, soCong, cu?.ghiChu ?? '');
     if (cu === undefined) {
       ket.themBuoi += 1;
     } else {
@@ -423,8 +425,20 @@ export function apDungNhap(
   };
 
   for (const dong of dongs) {
-    ghiBuoi(dong.ngay, 'Sang', dong.congSang, dong.ghiChu);
-    ghiBuoi(dong.ngay, 'Chieu', dong.congChieu, dong.ghiChu);
+    ghiBuoi(dong.ngay, 'Sang', dong.congSang);
+    ghiBuoi(dong.ngay, 'Chieu', dong.congChieu);
+
+    /*
+      Một dòng của file là một *ngày*, nên ô ghi chú của dòng là ghi chú của ngày ấy — ghi
+      thẳng vào ghi chú ngày, không chép đôi sang cả hai buổi công như bản trước.
+
+      Ô để trống thì giữ chữ cũ, đừng xoá mất ghi chú người ta đã gõ trong app: file Excel
+      thường được xuất ra rồi sửa mấy con số công, mà cột ghi chú thì bỏ trắng.
+    */
+    if (dong.ghiChu !== '' && ghiChuNgay(moi, thoId, dong.ngay) !== dong.ghiChu.trim()) {
+      moi = datGhiChuNgay(moi, thoId, dong.ngay, dong.ghiChu);
+      ket.ghiChuNgays += 1;
+    }
 
     if (dong.ung !== null) {
       const trung = moi.ungTiens.some(
@@ -661,6 +675,9 @@ export function tomTat(ket: KetQuaGhi): string {
   }
   if (ket.boChamBuoi > 0) {
     cau.push(`bỏ chấm ${ket.boChamBuoi} buổi`);
+  }
+  if (ket.ghiChuNgays > 0) {
+    cau.push(`ghi chú cho ${ket.ghiChuNgays} ngày`);
   }
   if (ket.themUng > 0) {
     cau.push(`thêm ${ket.themUng} lần ứng tiền`);

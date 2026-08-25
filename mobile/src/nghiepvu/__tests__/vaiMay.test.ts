@@ -8,7 +8,16 @@
 
 import { duLieuRong } from '../kieu';
 import { quyetToan } from '../ky';
-import { cham, dangCham, doiThoId, themTho, themUng, timTho } from '../thaoTac';
+import {
+  cham,
+  dangCham,
+  datGhiChuNgay,
+  doiThoId,
+  ghiChuNgay,
+  themTho,
+  themUng,
+  timTho,
+} from '../thaoTac';
 import { MAC_DINH, ketNap } from '../vaiMay';
 
 const NGAY_TAO = '2026-07-01';
@@ -26,6 +35,8 @@ describe('ketNap', () => {
     duLieu = cham(duLieu, tuan.tho.id, '2026-08-10', 'Sang');
     duLieu = cham(duLieu, binh.tho.id, '2026-08-10', 'Sang');
     duLieu = themUng(duLieu, tuan.tho.id, '2026-08-10', 500_000);
+    duLieu = datGhiChuNgay(duLieu, tuan.tho.id, '2026-08-10', 'làm trần nhà');
+    duLieu = datGhiChuNgay(duLieu, binh.tho.id, '2026-08-10', 'nghỉ nửa buổi');
     duLieu = quyetToan(duLieu, { denNgay: '2026-08-10' });
 
     return { duLieu, tuan: tuan.tho.id, binh: binh.tho.id };
@@ -63,6 +74,15 @@ describe('ketNap', () => {
     expect(JSON.stringify(sau)).not.toContain('300000');
     expect(JSON.stringify(sau)).not.toContain('500000');
   });
+
+  it('xoá sổ người khác thì cũng bỏ ghi chú ngày của người khác', () => {
+    const { duLieu, tuan, binh } = khoCuaChu();
+    const sau = ketNap(duLieu, tuan, HOM_NAY, true);
+
+    expect(ghiChuNgay(sau, tuan, '2026-08-10')).toBe('làm trần nhà');
+    expect(ghiChuNgay(sau, binh, '2026-08-10')).toBe('');
+    expect(sau.ghiChuNgays).toHaveLength(1);
+  });
 });
 
 /**
@@ -76,6 +96,7 @@ describe('kết nạp sau khi đã tự chấm', () => {
     const idTuTao = duLieu.thos[0].id;
     duLieu = cham(duLieu, idTuTao, '2026-08-12', 'Sang');
     duLieu = cham(duLieu, idTuTao, '2026-08-12', 'Chieu');
+    duLieu = datGhiChuNgay(duLieu, idTuTao, '2026-08-12', 'mưa, làm nửa ngày');
 
     const sau = ketNap(duLieu, 'idThat', HOM_NAY, false, idTuTao);
 
@@ -85,6 +106,8 @@ describe('kết nạp sau khi đã tự chấm', () => {
     expect(sau.buoiCongs.every((b) => b.thoId === 'idThat')).toBe(true);
     // Ngày vào làm giữ nguyên, kẻo buổi cũ rơi ra ngoài mốc lương đầu tiên.
     expect(sau.thos[0].ngayTao).toBe('2026-08-10');
+    // Ghi chú cũng phải sang id thật, kẻo chữ thợ đã gõ treo lại ở id không còn ai dùng.
+    expect(ghiChuNgay(sau, 'idThat', '2026-08-12')).toBe('mưa, làm nửa ngày');
   });
 
   it('không truyền id cũ thì không chuyển gì — mã của nhóm khác không được gộp sổ', () => {

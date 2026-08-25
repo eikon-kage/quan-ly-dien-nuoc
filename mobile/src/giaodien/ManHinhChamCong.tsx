@@ -5,8 +5,15 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BuoiLam, DuLieuChamCong, Tho } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { CONG_TOI_DA, docSoCong } from '../nghiepvu/nhapSo';
-import { dangCham, datCong, thoDangLam } from '../nghiepvu/thaoTac';
+import {
+  dangCham,
+  datCong,
+  datGhiChuNgay,
+  ghiChuNgay,
+  thoDangLam,
+} from '../nghiepvu/thaoTac';
 import { HopChon } from './HopChon';
+import { HopNhapChu } from './HopNhapChu';
 import { HopNhapSo } from './HopNhapSo';
 import { NutChip, theTrang } from './ThanhPhan';
 import { Bong, Co, HeSoChuToiDaLuoi, Mau, PhongChu, Tuoi } from './thietKe';
@@ -26,6 +33,8 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
   const [ngay, datNgay] = useState(Ngay.homNay());
   const [dangSua, datDangSua] = useState<DangSua | null>(null);
   const [goSoCong, datGoSoCong] = useState(false);
+  /** Đang mở hộp ghi chú cho thợ nào, ngày đang xem. */
+  const [dangGhiChu, datDangGhiChu] = useState<Tho | null>(null);
 
   const thos = thoDangLam(duLieu);
   const dangXemNgayKhac = ngay !== Ngay.homNay();
@@ -34,6 +43,7 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
     dangCham(duLieu, tho.id, ngay, buoi)?.soCong ?? null;
   const diDuCaNgay = (tho: Tho) =>
     soCongCua(tho, 'Sang') !== null && soCongCua(tho, 'Chieu') !== null;
+  const ghiChuCua = (tho: Tho) => ghiChuNgay(duLieu, tho.id, ngay);
 
   /** Tổng công cả tổ của từng ngày — dải ngày lấy ở đây ra để hiện ngày nào đã chấm. */
   const congMoiNgay = new Map<string, number>();
@@ -91,6 +101,15 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
     const soCong: Record<string, number | null> = { ca: 1, nua: 0.5, ruoi: 1.5, nghi: null };
     capNhat(datCong(duLieu, dangSua.tho.id, ngay, dangSua.buoi, soCong[ma]));
     datDangSua(null);
+  }
+
+  function ghiGhiChu(chu: string) {
+    if (dangGhiChu === null) {
+      return;
+    }
+
+    capNhat(datGhiChuNgay(duLieu, dangGhiChu.id, ngay, chu));
+    datDangGhiChu(null);
   }
 
   function ghiSoCong(so: number) {
@@ -182,6 +201,19 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
                 onPress={() => bamO(tho, 'Chieu')}
               />
             </View>
+
+            {/*
+              Ghi chú chỉ chiếm chỗ khi thật có chữ. Ngày thường thì mười thẻ thợ trên màn
+              hình phải gọn hết mức, không thêm một dòng "Thêm ghi chú" trống ở mỗi thẻ —
+              đường vào lúc chưa có chữ nằm trong nút *Sửa*.
+            */}
+            {ghiChuCua(tho) !== '' && (
+              <DongGhiChu
+                chu={ghiChuCua(tho)}
+                tenTho={tho.ten}
+                onPress={() => datDangGhiChu(tho)}
+              />
+            )}
           </View>
         )}
       />
@@ -199,12 +231,26 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
       */}
       {dangSua !== null && dangSua.buoi === null && (
         <HopChon
-          tieuDe={`${dangSua.tho.ten} — sửa buổi nào?`}
+          tieuDe={`${dangSua.tho.ten} — sửa gì?`}
           luaChon={[
             { ma: 'Sang', nhan: 'Buổi sáng', icon: 'sunrise' },
             { ma: 'Chieu', nhan: 'Buổi chiều', icon: 'sunset' },
+            {
+              ma: 'ghiChu',
+              nhan: ghiChuCua(dangSua.tho) === '' ? 'Ghi chú cho ngày này' : 'Sửa ghi chú',
+              icon: 'message-square',
+            },
           ]}
-          onChon={(ma) => datDangSua({ tho: dangSua.tho, buoi: ma as BuoiLam })}
+          onChon={(ma) => {
+            if (ma === 'ghiChu') {
+              // Ghi chú là chuyện của cả ngày, không thuộc buổi nào: nhảy hẳn sang hộp
+              // khác chứ không đi tiếp bước chọn số công.
+              datDangGhiChu(dangSua.tho);
+              datDangSua(null);
+              return;
+            }
+            datDangSua({ tho: dangSua.tho, buoi: ma as BuoiLam });
+          }}
           onDong={() => datDangSua(null)}
         />
       )}
@@ -240,7 +286,48 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
           }}
         />
       )}
+
+      {dangGhiChu !== null && (
+        <HopNhapChu
+          tieuDe={`${dangGhiChu.ten} — ${Ngay.thuVaNgay(ngay)}`}
+          moTa="Hôm ấy có gì đáng ghi?"
+          goiY="Ví dụ: về sớm đi đám cưới"
+          giaTriDau={ghiChuCua(dangGhiChu)}
+          onGhi={ghiGhiChu}
+          onDong={() => datDangGhiChu(null)}
+        />
+      )}
     </View>
+  );
+}
+
+/**
+ * Dòng ghi chú dưới hai ô chấm. Chạm vào là mở ra sửa ngay — ghi chú đang đọc chính là
+ * nút sửa nó, không phải đi vòng qua nút *Sửa* rồi chọn lại.
+ *
+ * Hiện đủ ba dòng chứ không cắt còn một: ghi chú viết ra để đọc, mà cắt cụt thì lại phải
+ * mở hộp lên mới biết trong đó viết gì.
+ */
+function DongGhiChu({
+  chu,
+  tenTho,
+  onPress,
+}: {
+  chu: string;
+  tenTho: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={kieu.dongGhiChu}
+      onPress={onPress}
+      accessibilityLabel={`Ghi chú của ${tenTho}: ${chu}. Chạm để sửa.`}
+    >
+      <Feather name="message-square" size={14} color={Mau.chinh} />
+      <Text style={kieu.chuGhiChu} numberOfLines={3}>
+        {chu}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -474,6 +561,26 @@ const kieu = StyleSheet.create({
   oChamBat: { backgroundColor: Mau.xanhLaNhat, borderColor: Tuoi.xanhLa },
   oChamTat: { backgroundColor: Mau.nen, borderColor: Mau.vien },
   chuOCham: { flexShrink: 1, fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
+
+  /*
+    Nền vàng nhạt để ghi chú không bị nhầm với một ô chấm nữa: hai ô ngay trên nó cũng là
+    khối bo góc nền nhạt, mà ô thì bấm được để chấm còn dòng này thì không.
+  */
+  dongGhiChu: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 10,
+    borderRadius: Co.bo,
+    backgroundColor: Mau.chinhNhat,
+  },
+  chuGhiChu: {
+    flex: 1,
+    fontSize: Co.chuPhu,
+    fontFamily: PhongChu.thuong,
+    color: Mau.chu,
+    lineHeight: 18,
+  },
 
   trong: { padding: 24, paddingTop: 56, gap: 10, alignItems: 'center' },
   chuTrongTo: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },

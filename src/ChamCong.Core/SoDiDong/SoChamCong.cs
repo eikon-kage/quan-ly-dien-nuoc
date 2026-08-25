@@ -24,8 +24,37 @@ public sealed class SoChamCong
 
     public List<UngTien> UngTiens { get; set; } = new();
 
+    /// <summary>Ghi chú của từng ngày, mỗi cặp (thợ, ngày) nhiều nhất một bản ghi.</summary>
+    public List<GhiChuNgay> GhiChuNgays { get; set; } = new();
+
     /// <summary>Các kỳ đã quyết toán, xếp theo thứ tự chốt — kỳ mới nhất nằm cuối.</summary>
     public List<KyLuong> KyLuongs { get; set; } = new();
+}
+
+/// <summary>
+/// Ghi chú cho **cả một ngày** của một thợ, không phải cho một buổi. Chủ gõ trên điện thoại lúc
+/// chấm công; máy tính chỉ đọc ra mà xem.
+///
+/// <para>
+/// Không móc vào buổi công, và đó là chủ ý của bên ấy: ngày thợ nghỉ hẳn thì không có buổi nào
+/// để treo ghi chú vào, mà đó lại đúng là ngày cần ghi chú nhất.
+/// </para>
+///
+/// <para>
+/// Không có <c>Id</c>: khoá là cặp (thợ, ngày). Không ai trỏ vào bản ghi này — kỳ lương chỉ nhớ
+/// id của buổi công và ứng tiền — nên thêm id chỉ là thêm một chỗ để trùng.
+/// </para>
+/// </summary>
+public sealed class GhiChuNgay
+{
+    public string ThoId { get; set; } = string.Empty;
+
+    public string Ngay { get; set; } = string.Empty;
+
+    /// <summary>Luôn khác chuỗi rỗng: bên kia xoá hết chữ là xoá luôn bản ghi.</summary>
+    public string NoiDung { get; set; } = string.Empty;
+
+    public string SuaLuc { get; set; } = string.Empty;
 }
 
 /// <summary>Một mốc tiền công: từ ngày này trở đi thợ được trả bằng này một công.</summary>

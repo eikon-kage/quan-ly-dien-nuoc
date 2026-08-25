@@ -4,6 +4,8 @@ import {
   cham,
   dangCham,
   datCong,
+  datGhiChuNgay,
+  ghiChuNgay,
   luuTho,
   tatCaTho,
   themTho,
@@ -177,5 +179,65 @@ describe('ứng tiền', () => {
     const { duLieu, tho } = khoCoTho();
 
     expect(() => themUng(duLieu, tho.id, NGAY_LAM, 0)).toThrow();
+  });
+});
+
+describe('ghi chú cho một ngày của một thợ', () => {
+  test('chưa ghi gì thì là chuỗi rỗng', () => {
+    const { duLieu, tho } = khoCoTho();
+
+    expect(ghiChuNgay(duLieu, tho.id, NGAY_LAM)).toBe('');
+  });
+
+  test('ghi rồi đọc lại được, và chữ hai đầu bị cắt', () => {
+    const { duLieu, tho } = khoCoTho();
+
+    const sau = datGhiChuNgay(duLieu, tho.id, NGAY_LAM, '  về sớm đi đám cưới  ');
+
+    expect(ghiChuNgay(sau, tho.id, NGAY_LAM)).toBe('về sớm đi đám cưới');
+    expect(sau.ghiChuNgays).toHaveLength(1);
+  });
+
+  test('ghi lần nữa là đè lên chữ cũ, không thêm dòng mới', () => {
+    const { duLieu, tho } = khoCoTho();
+
+    const lanDau = datGhiChuNgay(duLieu, tho.id, NGAY_LAM, 'nghỉ đau chân');
+    const lanSau = datGhiChuNgay(lanDau, tho.id, NGAY_LAM, 'đi khám rồi về làm chiều');
+
+    expect(lanSau.ghiChuNgays).toHaveLength(1);
+    expect(ghiChuNgay(lanSau, tho.id, NGAY_LAM)).toBe('đi khám rồi về làm chiều');
+  });
+
+  test('xoá hết chữ là xoá luôn bản ghi, không để lại dòng rỗng', () => {
+    const { duLieu, tho } = khoCoTho();
+
+    const daGhi = datGhiChuNgay(duLieu, tho.id, NGAY_LAM, 'nghỉ đau chân');
+    const daXoa = datGhiChuNgay(daGhi, tho.id, NGAY_LAM, '   ');
+
+    expect(daXoa.ghiChuNgays).toEqual([]);
+    expect(ghiChuNgay(daXoa, tho.id, NGAY_LAM)).toBe('');
+  });
+
+  test('ghi chú của ngày này không lẫn sang ngày khác hay thợ khác', () => {
+    const { duLieu, tho } = khoCoTho();
+    const themNguoi = themTho(duLieu, 'Anh Bình', 300_000, NGAY_LAM);
+
+    const sau = datGhiChuNgay(themNguoi.duLieu, tho.id, NGAY_LAM, 'nghỉ đau chân');
+
+    expect(ghiChuNgay(sau, tho.id, '2026-08-04')).toBe('');
+    expect(ghiChuNgay(sau, themNguoi.tho.id, NGAY_LAM)).toBe('');
+  });
+
+  test('ghi chú được cả ngày nghỉ hẳn, và bỏ chấm không kéo nó đi theo', () => {
+    const { duLieu, tho } = khoCoTho();
+
+    // Đây là chỗ `BuoiCong.ghiChu` không làm được: không có buổi nào để treo chữ vào.
+    const nghiHan = datGhiChuNgay(duLieu, tho.id, NGAY_LAM, 'nghỉ đám cưới em gái');
+    expect(ghiChuNgay(nghiHan, tho.id, NGAY_LAM)).toBe('nghỉ đám cưới em gái');
+
+    const daCham = cham(nghiHan, tho.id, NGAY_LAM, 'Sang');
+    const boRoi = boCham(daCham, tho.id, NGAY_LAM, 'Sang');
+
+    expect(ghiChuNgay(boRoi, tho.id, NGAY_LAM)).toBe('nghỉ đám cưới em gái');
   });
 });

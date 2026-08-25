@@ -51,14 +51,18 @@ cũng gọi được vào project, nên nó đi vào bản dựng qua biến mô
 (`supabase.json` cũng đã nằm trong `.gitignore`). Tuyệt đối không dùng `service_role` key: khoá ấy
 **bỏ qua RLS**, ai moi được là đọc và xoá được cả database.
 
-## Bốn cách xem cùng một sổ
+## Năm cách xem cùng một sổ
 
 | Bảng | Là gì |
 | --- | --- |
 | **Kỳ đang mở** | phần chưa ai trả tiền: mỗi thợ bao nhiêu công, thành bao nhiêu tiền, đã ứng bao nhiêu, nợ kỳ trước mang sang, còn phải trả bao nhiêu |
 | **Buổi công** | từng buổi đã chấm, kèm tiền một công *của đúng ngày đó*, và dấu "đã trả" nếu buổi ấy đã nằm trong kỳ đã chốt |
 | **Ứng tiền** | từng lần thợ ứng, kèm dấu "đã trừ" |
+| **Ghi chú ngày** | ghi chú chủ gõ trên điện thoại lúc chấm công — "nghỉ đám cưới", "về sớm đi khám" |
 | **Kỳ đã chốt** | các kỳ đã quyết toán, kỳ mới nhất lên đầu |
+
+Ghi chú để riêng một bảng chứ không ghép vào *Buổi công*: nó nói về **cả ngày**, mà ngày đáng ghi
+chú nhất lại thường là ngày thợ nghỉ hẳn — ngày ấy không có dòng buổi công nào để mà ghép vào.
 
 Con số ở đây **phải trùng với app điện thoại** — chủ cửa hàng sẽ đặt hai màn hình cạnh nhau mà
 so. Nên phần tính là bản dịch từng dòng của `mobile/src/nghiepvu/bangLuong.ts` và `ky.ts`, nằm ở
@@ -82,7 +86,7 @@ lên là tự chọn bản mới nhất.
 ## Dáng dữ liệu
 
 Cột `goi` trong bảng `sao_luu` mang đúng cái gói mà file sao lưu của app điện thoại mang:
-`{"app":"cham-cong","phienBan":1,"taoLuc":...,"duLieu":{thos,buoiCongs,ungTiens,kyLuongs}}`.
+`{"app":"cham-cong","phienBan":1,"taoLuc":...,"duLieu":{thos,buoiCongs,ungTiens,ghiChuNgays,kyLuongs}}`.
 
 Bộ đọc ở máy tính ([`Goi.cs`](../src/ChamCong.Core/SoDiDong/Goi.cs)) là bản dịch của `docGoi` bên
 điện thoại, và giữ nguyên tinh thần của nó: **dữ liệu từ database cũng là dữ liệu từ ngoài vào**.

@@ -1,7 +1,7 @@
 import { unzipSync, strFromU8 } from 'fflate';
 
 import { BuoiLam, DuLieuChamCong, Tho, duLieuRong } from '../kieu';
-import { taoId } from '../thaoTac';
+import { datGhiChuNgay, taoId } from '../thaoTac';
 import { quyetToan } from '../ky';
 import { cacTrangExcel, tenFileExcel, xuatExcel } from '../xuatExcel';
 import { soNgayExcel, tenCot, tenTrangHopLe } from '../xlsx';
@@ -194,6 +194,22 @@ describe('nội dung các trang', () => {
       ['2026-08-03', 'Anh Bình', 'Sáng'],
       ['2026-08-03', 'Anh Tuấn', 'Sáng'],
       ['2026-08-03', 'Anh Tuấn', 'Chiều'],
+    ]);
+  });
+
+  it('ghi chú của ngày ra cột Ghi chú, đứng trước ghi chú riêng của buổi', () => {
+    const duLieu = duLieuMau();
+    const tuan = duLieu.thos.find((t) => t.ten === 'Anh Tuấn') as Tho;
+    // Buổi chiều 03/08 vốn có ghi chú riêng "về sớm"; ghi chú của ngày phải thắng, vì đó
+    // là câu trả lời cho "vì sao hôm ấy chấm thế".
+    const coGhiChu = datGhiChuNgay(duLieu, tuan.id, '2026-08-03', 'mưa, làm nửa ngày');
+
+    const buoiCong = cacTrangExcel(coGhiChu, '2026-08-05')[2].dongs;
+    expect(buoiCong.map((dong) => [dong[0], dong[2], dong[3], dong[7]])).toEqual([
+      ['2026-07-30', 'Anh Tuấn', 'Sáng', ''],
+      ['2026-08-03', 'Anh Bình', 'Sáng', ''],
+      ['2026-08-03', 'Anh Tuấn', 'Sáng', 'mưa, làm nửa ngày'],
+      ['2026-08-03', 'Anh Tuấn', 'Chiều', 'mưa, làm nửa ngày'],
     ]);
   });
 

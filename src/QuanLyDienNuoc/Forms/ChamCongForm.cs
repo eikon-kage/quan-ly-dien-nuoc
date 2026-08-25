@@ -78,12 +78,13 @@ public sealed class ChamCongForm : Form
         FormClosed += (_, _) => _nguon?.Dispose();
     }
 
-    /// <summary>Bốn cách xem cùng một sổ.</summary>
+    /// <summary>Năm cách xem cùng một sổ.</summary>
     private enum Bang
     {
         KyDangMo,
         BuoiCong,
         UngTien,
+        GhiChu,
         KyDaChot,
     }
 
@@ -213,13 +214,14 @@ public sealed class ChamCongForm : Form
         _phanTrang.Padding = new Padding(0, 8, 0, 0);
         _phanTrang.DoiTrang += (_, _) => _veLaiTrang();
 
-        // Bốn nút chuyển bảng, nút đang xem tô đặc — cùng cách sổ công nợ làm với hai nút lọc.
+        // Năm nút chuyển bảng, nút đang xem tô đặc — cùng cách sổ công nợ làm với hai nút lọc.
         foreach (var (bang, chu, rong) in new[]
                  {
-                     (Bang.KyDangMo, "Kỳ đang mở", 190),
-                     (Bang.BuoiCong, "Buổi công", 170),
-                     (Bang.UngTien, "Ứng tiền", 160),
-                     (Bang.KyDaChot, "Kỳ đã chốt", 180),
+                     (Bang.KyDangMo, "Kỳ đang mở", 175),
+                     (Bang.BuoiCong, "Buổi công", 160),
+                     (Bang.UngTien, "Ứng tiền", 150),
+                     (Bang.GhiChu, "Ghi chú ngày", 180),
+                     (Bang.KyDaChot, "Kỳ đã chốt", 170),
                  })
         {
             var nut = Theme.NutPhu(chu, rong, 40);
@@ -454,6 +456,9 @@ public sealed class ChamCongForm : Form
             case Bang.UngTien:
                 HienUngTien();
                 break;
+            case Bang.GhiChu:
+                HienGhiChu();
+                break;
             case Bang.KyDaChot:
                 HienKyDaChot();
                 break;
@@ -576,6 +581,41 @@ public sealed class ChamCongForm : Form
         _lblTong.Text = $"{dongs.Count} lần ứng   ·   tổng {So.Tien(dongs.Sum(d => d.SoTien))}";
     }
 
+    /// <summary>
+    /// Ghi chú chủ gõ trên điện thoại lúc chấm công — "nghỉ đám cưới", "về sớm đi khám".
+    ///
+    /// <para>
+    /// Để riêng một bảng chứ không ghép vào bảng Buổi công: ghi chú nói về **cả ngày**, mà ngày
+    /// đáng ghi chú nhất lại thường là ngày thợ nghỉ hẳn — ngày ấy không có dòng buổi công nào
+    /// để mà ghép vào.
+    /// </para>
+    /// </summary>
+    private void HienGhiChu()
+    {
+        _luoi.Columns.AddRange(
+            Theme.Cot(nameof(DongGhiChu.Ngay), "NGÀY", 130),
+            Theme.Cot(nameof(DongGhiChu.TenTho), "THỢ", 220),
+            Theme.Cot(nameof(DongGhiChu.NoiDung), "GHI CHÚ", 560));
+
+        var dongs = _so.GhiChuNgays
+            .OrderByDescending(g => g.Ngay, StringComparer.Ordinal)
+            .ThenBy(
+                g => _so.Thos.FirstOrDefault(t => t.Id == g.ThoId)?.Ten ?? string.Empty,
+                StringComparer.CurrentCultureIgnoreCase)
+            .Select(g => new DongGhiChu
+            {
+                Ngay = NgayViet(g.Ngay),
+                TenTho = _so.Thos.FirstOrDefault(t => t.Id == g.ThoId)?.Ten ?? "(thợ đã bị xoá)",
+                NoiDung = g.NoiDung,
+            })
+            .ToList();
+
+        Gan(dongs);
+        _lblTong.Text = dongs.Count == 0
+            ? "Chưa có ghi chú nào. Ghi chú gõ trên điện thoại, ở màn hình chấm công."
+            : $"{dongs.Count} ghi chú";
+    }
+
     private void HienKyDaChot()
     {
         _luoi.Columns.AddRange(
@@ -692,6 +732,15 @@ public sealed class ChamCongForm : Form
         public string DaTra { get; init; } = string.Empty;
 
         public string GhiChu { get; init; } = string.Empty;
+    }
+
+    private sealed class DongGhiChu
+    {
+        public string Ngay { get; init; } = string.Empty;
+
+        public string TenTho { get; init; } = string.Empty;
+
+        public string NoiDung { get; init; } = string.Empty;
     }
 
     private sealed class DongKy

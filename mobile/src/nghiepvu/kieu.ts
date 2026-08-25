@@ -52,6 +52,29 @@ export interface BuoiCong {
   suaLuc: string;
 }
 
+/**
+ * Ghi chú cho **một ngày của một thợ** — chỗ ghi *vì sao* hôm ấy chấm như thế: "về sớm đi
+ * đám cưới", "làm bù hôm mưa", "nghỉ đau chân".
+ *
+ * Để riêng chứ không dùng `BuoiCong.ghiChu` vì hai lý do:
+ *
+ * - Ghi chú nói về **cả ngày**, không phải về một buổi. Nhét vào buổi thì phải chép đôi
+ *   sang cả sáng lẫn chiều, rồi sửa một bên là hai bên nói khác nhau.
+ * - Ngày **nghỉ hẳn** không có buổi công nào để mà treo ghi chú vào, mà đó lại đúng là
+ *   ngày cần ghi chú nhất. Cũng vì thế mà bỏ chấm một buổi không được kéo ghi chú đi theo.
+ *
+ * Không có `id`: khoá là cặp (thợ, ngày), mỗi cặp nhiều nhất một ghi chú. Không có ai trỏ
+ * vào bản ghi này — kỳ lương chỉ nhớ id của buổi công và ứng tiền — nên thêm id chỉ là
+ * thêm một chỗ để trùng.
+ */
+export interface GhiChuNgay {
+  thoId: string;
+  ngay: string;
+  /** Luôn khác chuỗi rỗng: xoá hết chữ là xoá luôn bản ghi, xem `datGhiChuNgay`. */
+  noiDung: string;
+  suaLuc: string;
+}
+
 /** Một lần thợ ứng tiền trước, cuối kỳ trừ vào tiền công. */
 export interface UngTien {
   id: string;
@@ -117,12 +140,14 @@ export interface DuLieuChamCong {
   thos: Tho[];
   buoiCongs: BuoiCong[];
   ungTiens: UngTien[];
+  /** Ghi chú của từng (thợ, ngày). Không có bản ghi nghĩa là ngày ấy không ghi gì. */
+  ghiChuNgays: GhiChuNgay[];
   /** Các kỳ đã quyết toán, xếp theo thứ tự chốt — kỳ mới nhất nằm cuối. */
   kyLuongs: KyLuong[];
 }
 
 export function duLieuRong(): DuLieuChamCong {
-  return { thos: [], buoiCongs: [], ungTiens: [], kyLuongs: [] };
+  return { thos: [], buoiCongs: [], ungTiens: [], ghiChuNgays: [], kyLuongs: [] };
 }
 
 /**
@@ -131,7 +156,7 @@ export function duLieuRong(): DuLieuChamCong {
  * Dùng để phân biệt hai chuyện rất khác nhau: *máy này chưa có sổ* thì bản sao lưu trên tài
  * khoản là thứ đáng lấy về, còn *máy này đã có sổ* thì bản trên tài khoản chỉ là bản cũ của
  * chính nó. Đẩy một sổ trống lên tài khoản là xoá bản đang có ở đó, nên chỗ này phải đếm đủ
- * bốn loại bản ghi, đừng chỉ đếm thợ: sổ có mỗi mấy buổi công mà không có thợ nào vẫn là sổ
+ * mọi loại bản ghi, đừng chỉ đếm thợ: sổ có mỗi mấy buổi công mà không có thợ nào vẫn là sổ
  * có dữ liệu.
  */
 export function soTrong(duLieu: DuLieuChamCong): boolean {
@@ -139,6 +164,7 @@ export function soTrong(duLieu: DuLieuChamCong): boolean {
     duLieu.thos.length === 0 &&
     duLieu.buoiCongs.length === 0 &&
     duLieu.ungTiens.length === 0 &&
+    duLieu.ghiChuNgays.length === 0 &&
     duLieu.kyLuongs.length === 0
   );
 }
@@ -186,6 +212,8 @@ export function chuanHoa(daDoc: unknown): DuLieuChamCong {
     thos: (khoi.thos ?? []).map(chuyenDoiTho),
     buoiCongs: khoi.buoiCongs ?? [],
     ungTiens: khoi.ungTiens ?? [],
+    // Bản trước chưa có ghi chú ngày: sổ cũ không mất gì, chỉ là chưa ai ghi chú.
+    ghiChuNgays: khoi.ghiChuNgays ?? [],
     // Máy đã cài bản trước chưa có quyết toán: coi như chưa chốt kỳ nào, mọi thứ đang
     // nằm trong kỳ đầu tiên. Không mất gì cả.
     kyLuongs: khoi.kyLuongs ?? [],

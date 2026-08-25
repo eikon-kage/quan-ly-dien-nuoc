@@ -121,6 +121,9 @@ export function ketNap(
           // Mốc lương là tiền: về 0 hết. Bảng lương trên máy thợ vốn không hiện ra.
           .map((tho) => ({ ...tho, mocLuong: [{ tuNgay: tho.ngayTao, tienMotCong: 0 }] })),
         buoiCongs: daChuyen.buoiCongs.filter((b) => b.thoId === thoId),
+        // Ghi chú ngày không phải tiền, nhưng ghi chú của người khác thì cũng không phải
+        // chuyện của máy này — giữ lại đúng phần của chính thợ ấy.
+        ghiChuNgays: daChuyen.ghiChuNgays.filter((g) => g.thoId === thoId),
         // Ứng tiền và kỳ đã chốt đều là tiền, và là chuyện của sổ chủ.
         ungTiens: [],
         kyLuongs: [],
