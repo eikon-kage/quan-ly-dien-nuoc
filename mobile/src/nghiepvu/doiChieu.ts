@@ -51,6 +51,11 @@ export interface KetQuaDoiChieu {
    * Khoảng thật sự so được: phần giao của hai khoảng khai, nới ra cho phủ hết những buổi
    * đã so được ngoài khoảng ấy (dòng chấm bù — xem `coYKien`). Nới vì đây là câu đầu trang,
    * mà bên dưới hiện một dòng nằm ngoài khoảng đầu trang ghi là hai câu trái nhau.
+   *
+   * **Chỉ đọc được khi `khongTrungKhoang` là false.** Lúc nó bật thì chưa so được buổi nào
+   * *và* hai khoảng khai không giao nhau, nên hai mốc này là hai đầu chéo nhau — `tuNgay` có
+   * thể đứng sau `denNgay`. Không có khoảng nào để mà nói, và bịa ra một khoảng nghe hợp lý
+   * còn tệ hơn: người dùng đọc thành "đã so khoảng ấy rồi".
    */
   tuNgay: string;
   denNgay: string;
@@ -239,27 +244,37 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
     lechs.push(dongLech(goc, a, b, !b ? 'chiMinhCo' : !a ? 'chiBenKiaCo' : 'lechSoCong'));
   }
 
+  const coGiao = giaoTu <= giaoDen;
+
   /*
-    Chưa so được buổi nào — kể cả buổi tạm gác — thì nói thẳng là hai sổ chưa có ngày nào
-    chung. Xét theo *kết quả* chứ theo hai mốc khai: khoảng giao có thể rộng mà vẫn không
-    buổi nào được chấm, mà cũng có thể hẹp tới mức rỗng trong lúc một buổi chấm bù ngoài
-    khoảng vẫn so được.
+    Chưa so được buổi nào thì nói thẳng là hai sổ chưa có ngày nào chung. Xét theo *kết quả*
+    chứ không theo hai mốc khai: khoảng giao có thể rộng mà vẫn không buổi nào được chấm, mà
+    cũng có thể hẹp tới mức rỗng trong lúc một buổi chấm bù ngoài khoảng vẫn so được.
+
+    Buổi tạm gác **không cứu** được chỗ này, dù trước đây nó cứu: một buổi của hôm nay mới
+    một bên chấm thì vẫn là chưa so được gì cả. Tính nó vào thì gặp cảnh rất thường — chủ
+    chấm theo lô nên sổ chủ mới nhập tới hôm qua, máy thợ vừa nhận vai hôm nay nên chỉ khai
+    đúng hôm nay — hai khoảng khai không giao nhau mà `khongTrungKhoang` vẫn báo là có, rồi
+    đầu trang đọc thành "So từ 20/08 đến 19/08": một khoảng ngược. Vẫn trả `soTamGac` về để
+    màn hình nói được cái lẽ đúng hơn ("hôm nay còn đang trong ngày") thay vì bắt người dùng
+    đợi thêm vài hôm.
 
     Buổi trong `chuaBiets` cũng **không tính là so được** — mới một bên có ý kiến — nhưng vẫn
     trả về, vì đây đúng là lúc chúng cần được nhìn nhất: máy thợ vừa cài, chưa so được gì, mà
     sổ chủ thì đã có mấy hôm công.
   */
-  if (soTu === null && soTamGac === 0) {
+  // Hai mốc luôn được đặt cùng nhau; hỏi cả hai để phần dưới không phải `!` một cái nào.
+  if (soTu === null || soDen === null) {
     return {
       tuNgay: giaoTu,
       denNgay: giaoDen,
-      khongTrungKhoang: giaoTu > giaoDen,
+      khongTrungKhoang: !coGiao,
       soKhop: 0,
       lechs: [],
       chuaBiets: xepTheoNgay(chuaBiets),
       tongCongMinh: 0,
       tongCongBenKia: 0,
-      soTamGac: 0,
+      soTamGac,
     };
   }
 
@@ -267,8 +282,12 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
     // Nới khoảng nói ở đầu trang ra cho phủ hết những buổi thật sự đã so: một dòng chấm bù
     // ngoài khoảng khai vẫn hiện bên dưới, mà đầu trang lại ghi khoảng không chứa nó thì
     // người dùng đọc thành hai điều trái nhau.
-    tuNgay: soTu !== null && soTu < giaoTu ? soTu : giaoTu,
-    denNgay: soDen !== null && soDen > giaoDen ? soDen : giaoDen,
+    //
+    // Hai khoảng khai không giao nhau thì **chỉ nói phần đã so**: nới theo `giaoTu`/`giaoDen`
+    // lúc ấy là nới theo hai mốc chéo nhau, ra một khoảng ngược hoặc một khoảng rộng hơn
+    // những gì thật sự so được.
+    tuNgay: coGiao && giaoTu < soTu ? giaoTu : soTu,
+    denNgay: coGiao && giaoDen > soDen ? giaoDen : soDen,
     khongTrungKhoang: false,
     soKhop,
     lechs: xepTheoNgay(lechs),

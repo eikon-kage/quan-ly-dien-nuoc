@@ -379,8 +379,16 @@ function ChiTiet({
             <View style={kieu.trong}>
               <Feather name="calendar" size={34} color={Mau.xam} />
               <Text style={kieu.chuTrongTo}>Chưa so được</Text>
+              {/*
+                Nói đúng cái lẽ đang giữ hai sổ rời nhau. Cảnh hay gặp nhất không phải là hai
+                sổ cách nhau hàng tháng mà là lệch đúng một hôm: chủ chấm theo lô nên sổ chủ
+                mới tới hôm qua, máy thợ vừa nhận vai nên chỉ khai đúng hôm nay. Bảo người ta
+                "đợi thêm vài ngày" ở đấy là nói quá — mai chủ nhập tới là so được.
+              */}
               <Text style={kieu.chuTrong}>
-                Hai sổ không có ngày nào chung. Đợi thêm vài ngày chấm công rồi đối chiếu lại.
+                {ket.soTamGac > 0
+                  ? `Hai sổ chưa có ngày nào chung: ngoài hôm nay thì chưa hôm nào cả hai bên cùng khai, mà hôm nay lại mới một bên chấm và ngày còn đang chạy. Chấm xong, hoặc đợi sổ ${benKia} nhập tới hôm nay, rồi mở lại đây.`
+                  : 'Hai sổ không có ngày nào chung. Đợi thêm vài ngày chấm công rồi đối chiếu lại.'}
               </Text>
             </View>
           ) : ket.lechs.length === 0 && ket.soKhop === 0 ? (

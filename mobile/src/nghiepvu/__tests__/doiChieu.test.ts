@@ -239,6 +239,77 @@ describe('doiChieu', () => {
     expect(ket.khongTrungKhoang).toBe(true);
     expect(ket.lechs).toEqual([]);
   });
+
+  /**
+   * Khoảng đầu trang đọc lên thành "So từ ... đến ...", nên nó **không được ngược**.
+   *
+   * Chỗ ngược được là khi hai khoảng khai không giao nhau: `giaoTu` với `giaoDen` lúc ấy là
+   * hai mốc chéo nhau, lấy nguyên ra là câu "So từ 20/08 đến 19/08". Hai đường chặn: so được
+   * buổi nào thì khoảng nói theo buổi ấy, còn không so được gì thì `khongTrungKhoang` bật lên
+   * và màn hình ẩn hẳn khoảng đi.
+   */
+  describe('khoảng nói ở đầu trang', () => {
+    /** Chủ chấm theo lô nên sổ mới tới hôm qua; máy thợ vừa nhận vai nên chỉ khai hôm nay. */
+    function lechDungMotHom(): { soTho: SoCong; soChu: SoCong } {
+      const thoId = tuan();
+      return {
+        soTho: soTho(thoId, [{ ngay: '2026-08-20', buoi: 'Sang', soCong: 1 }], '2026-08-20', '2026-08-20'),
+        soChu: {
+          thoId,
+          tenTho: 'Anh Tuấn',
+          nguon: 'chu',
+          tuNgay: '2026-08-01',
+          denNgay: '2026-08-19',
+          dongs: [{ ngay: '2026-08-19', buoi: 'Sang', soCong: 1 }],
+          taoLuc: TAO_LUC,
+        },
+      };
+    }
+
+    it('chỉ có buổi tạm gác của hôm nay thì vẫn là chưa có ngày nào chung', () => {
+      const { soTho: cuaTho, soChu: cuaChu } = lechDungMotHom();
+      const ket = doiChieu(cuaTho, cuaChu, '2026-08-20');
+
+      // Một buổi mới một bên chấm của hôm nay không phải là một buổi đã so được.
+      expect(ket.soKhop).toBe(0);
+      expect(ket.soTamGac).toBe(1);
+      expect(ket.khongTrungKhoang).toBe(true);
+      // `khongTrungKhoang` bật là lời canh cho hai mốc kia: chúng chéo nhau (20 > 19) nên
+      // không được đọc lên thành câu "So từ ... đến ...". Màn hình ẩn cả khối ấy.
+    });
+
+    it('nhìn từ máy chủ cũng vậy — hàm chạy đúng ở cả hai bên', () => {
+      const { soTho: cuaTho, soChu: cuaChu } = lechDungMotHom();
+      const ket = doiChieu(cuaChu, cuaTho, '2026-08-20');
+
+      expect(ket.khongTrungKhoang).toBe(true);
+      expect(ket.chuaBiets.map((l) => [l.ngay, l.loai])).toEqual([['2026-08-19', 'benKiaChuaBiet']]);
+    });
+
+    it('hai khoảng khai không giao nhau mà có buổi so được thì chỉ nói phần đã so', () => {
+      const thoId = tuan();
+      const ket = doiChieu(
+        // Máy thợ khai từ 20, gửi kèm buổi chấm bù ngày 15.
+        soTho(thoId, [{ ngay: '2026-08-15', buoi: 'Sang', soCong: 1 }], '2026-08-20', '2026-08-20'),
+        {
+          thoId,
+          tenTho: 'Anh Tuấn',
+          nguon: 'chu',
+          tuNgay: '2026-08-15',
+          denNgay: '2026-08-19',
+          dongs: [{ ngay: '2026-08-15', buoi: 'Sang', soCong: 1 }],
+          taoLuc: TAO_LUC,
+        },
+        '2026-08-20',
+      );
+
+      // Đúng một buổi được so, nên đầu trang nói đúng một ngày ấy — không nới tới 19 theo
+      // mốc khai của chủ, vì trong khoảng 16–19 hai sổ chưa hề so gì với nhau.
+      expect(ket.soKhop).toBe(1);
+      expect(ket.khongTrungKhoang).toBe(false);
+      expect([ket.tuNgay, ket.denNgay]).toEqual(['2026-08-15', '2026-08-15']);
+    });
+  });
 });
 
 describe('layTheoBenKia', () => {

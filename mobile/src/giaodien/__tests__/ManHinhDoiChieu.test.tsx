@@ -202,6 +202,36 @@ describe('máy thợ', () => {
     expect(screen.getByText(/Hôm nay còn dở: 2 buổi/)).toBeTruthy();
   });
 
+  /**
+   * Chủ chấm cho cả nhóm theo lô nên sổ chủ mới tới hôm qua, còn máy thợ vừa nhận vai hôm nay
+   * nên chỉ khai đúng hôm nay: hai khoảng khai **không giao nhau**, lệch nhau đúng một hôm.
+   *
+   * Chỗ này trước đây đọc thành một khoảng ngược — "So từ 20/08 đến 19/08" — vì một buổi tạm
+   * gác của hôm nay bị tính là đã có ngày chung.
+   */
+  test('thợ mới nhận vai hôm nay, sổ chủ mới tới hôm qua: không hiện khoảng ngược', () => {
+    const { duLieu, thoId } = kho();
+    const cuaToi = cham(duLieu, thoId, HOM_NAY, 'Sang');
+    const soChu: SoCong = {
+      ...catSo(cham(duLieu, thoId, HOM_QUA, 'Sang'), thoId, 'chu', Ngay.congNgay(HOM_NAY, -90), HOM_QUA, ''),
+      tenTho: 'Anh Tuấn',
+    };
+
+    dung(cuaToi, dieuKhienGia([{ so: soChu, suaLuc: '' }]), jest.fn(), {
+      ...CAI_DAT,
+      thoId,
+      batDauTu: HOM_NAY,
+    });
+
+    expect(screen.queryByText(/^So từ/)).toBeNull();
+    expect(screen.getByText('Chưa so được')).toBeTruthy();
+    // Nói đúng lẽ: hôm nay còn đang chạy, không phải "đợi thêm vài ngày".
+    expect(screen.getByText(/ngoài hôm nay thì chưa hôm nào cả hai bên cùng khai/)).toBeTruthy();
+    // Công chủ đã chấm hôm qua vẫn hiện ra bên dưới, không mất hút.
+    expect(screen.getByText('Mới một bên có sổ · 1 buổi')).toBeTruthy();
+    expect(screen.getByText('1 công')).toBeTruthy();
+  });
+
   test('hôm nay hai bên đều chấm mà lệch số công thì vẫn báo', () => {
     const { duLieu, thoId } = kho();
     const cuaToi = cham(duLieu, thoId, HOM_NAY, 'Sang', 0.5);
