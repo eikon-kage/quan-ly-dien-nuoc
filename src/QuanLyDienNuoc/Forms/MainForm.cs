@@ -456,6 +456,25 @@ public sealed class MainForm : Form
         _dangNap = false;
     }
 
+    /// <summary>
+    /// Chuyển sổ sang một năm khác. Năm mới vừa sinh ra (nhập tờ hoá đơn của mấy năm trước) thì
+    /// chưa có trong ô năm, nên nạp lại danh sách năm trước khi chọn.
+    /// </summary>
+    private void ChonNam(int nam)
+    {
+        NapNam();
+
+        var viTri = _cboNam.Items.IndexOf(nam);
+        if (viTri < 0)
+        {
+            return;
+        }
+
+        _dangNap = true;
+        _cboNam.SelectedIndex = viTri;
+        _dangNap = false;
+    }
+
     private void NapDanhSach()
     {
         var dangChon = KhachDangChon?.Id;
@@ -710,8 +729,9 @@ public sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Nhập cả danh sách khách từ file Excel/CSV. Hộp thoại lo phần soát lại từng dòng, ở đây
-    /// chỉ ghi vào sổ một lần cho Ctrl+Z hoàn tác được cả lô chứ không phải bấm từng người.
+    /// Nhập một khách từ tờ hoá đơn Excel của khách đó. Hộp thoại lo phần gom các trang lại và
+    /// soát trước, ở đây chỉ ghi vào sổ: khách và hoá đơn đầu tiên của khách vào cùng một việc
+    /// trong nhật ký, để Ctrl+Z một lần là bỏ hết chứ không để lại khách rỗng.
     /// </summary>
     private void NhapKhachTuFile()
     {
@@ -720,21 +740,35 @@ public sealed class MainForm : Form
             return;
         }
 
-        using var form = new NhapKhachForm(_kho.DuLieu.KhachHangs);
-        if (form.ShowDialog(this) != DialogResult.OK || form.KetQua.Count == 0)
+        using var form = new NhapKhachForm(_kho.DuLieu.KhachHangs, NamDangChon);
+        if (form.ShowDialog(this) != DialogResult.OK
+            || form.KhachMoi is not { } khach
+            || form.HoaDonMoi is not { } hoaDon)
         {
             return;
         }
 
-        var themVao = form.KetQua;
         _kho.ThucHien(
-            $"Nhập {themVao.Count} khách hàng từ file",
-            () => _kho.DuLieu.KhachHangs.AddRange(themVao),
+            $"Nhập khách {khach.Ten} và {hoaDon.ChiTiet.Count} dòng hàng từ file",
+            () =>
+            {
+                _kho.DuLieu.KhachHangs.Add(khach);
+                _kho.DuLieu.HoaDons.Add(hoaDon);
+            },
             phatSuKien: false);
 
+        // Tờ giấy có thể là của năm khác năm đang mở: hoá đơn theo năm của tờ, nên chuyển sổ
+        // sang năm ấy, không thì bấm vào khách mới lại thấy trống trơn.
+        if (hoaDon.Nam != NamDangChon)
+        {
+            ChonNam(hoaDon.Nam);
+        }
+
         NapDanhSach();
-        ChonLaiKhach(themVao[0].Id);
-        _lblTrangThai.Text = $"Đã nhập {themVao.Count} khách hàng từ file. Bấm Ctrl+Z nếu muốn bỏ.";
+        ChonLaiKhach(khach.Id);
+        _lblTrangThai.Text =
+            $"Đã nhập khách {khach.Ten} và hoá đơn {hoaDon.MaHoaDon} ({hoaDon.ChiTiet.Count} dòng) "
+            + "từ file. Bấm Ctrl+Z nếu muốn bỏ.";
     }
 
     private void SuaKhach()

@@ -9,13 +9,13 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 - **Màn hình chính**: danh sách khách hàng lọc theo năm (mặc định là năm hiện tại), kèm
   tổng mua / đã trả / còn nợ của khách trong năm đó. Tìm khách không dấu (gõ `nguyen` ra
   `Nguyễn`). Bấm đúp hoặc Enter để mở đơn hàng của khách.
-- **Thêm khách hàng từ file**: đã có danh sách khách trên Excel thì bấm *Nhập từ file* ở
-  màn hình chính. Chưa có file thì bấm *Tải file mẫu* ngay trong màn ấy — file mẫu có dòng
-  tiêu đề đánh số `1. TÊN KHÁCH HÀNG` · `2. ĐIỆN THOẠI` · `3. ĐỊA CHỈ` · `4. GHI CHÚ` kèm
-  một sheet hướng dẫn. Phần mềm nhận cột theo chữ ở dòng tiêu đề (đổi chỗ cột hay thêm cột
-  lạ vẫn đọc đúng), hiện bảng xem trước đánh số đúng cột đó để soát, tự bỏ tích khách đã có
-  và dòng thiếu tên. Trỏ nhầm vào một tờ hoá đơn thì phần mềm nhận ra, chỉ sang đúng chỗ
-  (*Đơn hàng của khách → Nhập từ Excel*) chứ không đọc bừa thành mấy chục khách rác. Xem
+- **Thêm khách hàng từ file**: một tờ hoá đơn của cửa hàng là của đúng **một** khách, nên
+  bấm *Nhập từ file* ở màn hình chính rồi trỏ vào tờ hoá đơn của khách ấy là vào sổ một
+  khách kèm hoá đơn đầu tiên của khách đó. Tờ dài nằm ở nhiều file thì thêm **file trang 1
+  trước** (trang này mang tên khách), rồi *+ Thêm trang...* cho từng trang sau. Chưa có tờ
+  nào trên máy thì bấm *Tải file mẫu* ngay trong màn ấy — ra hai file đúng mẫu giấy cửa hàng
+  đang dùng, bảng hàng đánh số thứ tự sẵn. Tên và địa chỉ đọc ở đầu trang 1 vẫn sửa được
+  trước khi ghi; trùng tên khách đã có thì phần mềm hỏi lại. Xem
   [docs/nhap-khach-hang-tu-file.md](docs/nhap-khach-hang-tu-file.md).
 - **Đơn hàng của khách**: chọn hoá đơn trong năm ở ô trên cùng, cả màn hình còn lại là chi tiết
   hàng đã lấy theo từng ngày (ngày, tên hàng, đơn vị, đơn giá, số lượng, thành tiền, ghi chú).
@@ -229,7 +229,7 @@ src/
     Forms/VanBanForm.cs         hiện đoạn văn bản soạn sẵn để chép đi (tin nhắc nợ)
     Forms/XemTruocForm.cs       xem trước bản in
     Forms/NhapExcelForm.cs      nhập hoá đơn từ file Excel
-    Forms/NhapKhachForm.cs      nhập cả danh sách khách hàng từ file, có bảng xem trước
+    Forms/NhapKhachForm.cs      nhập một khách hàng từ tờ hoá đơn Excel của khách đó
 tests/
   QuanLyDienNuoc.Tests/         kiểm thử phần nghiệp vụ (xUnit): `dotnet test`
   ChamCong.Tests/               kiểm thử phần chấm công, kể cả bộ đọc Supabase
@@ -239,8 +239,7 @@ docs/
   anh-giao-dien/                ảnh giao diện mới nhất, do workflow tự commit lên
   giao-dien-may-tinh.md         bảng màu, các mảnh dùng chung và quy tắc dựng giao diện
   chamcong-tren-may-tinh.md     cách máy tính đọc sổ chấm công từ Supabase
-  nhap-khach-hang-tu-file.md    cách nhập danh sách khách từ Excel, kèm quy tắc đọc cột
-  mau-danh-sach-khach-hang.xlsx file mẫu danh sách khách (do phần mềm tự sinh ra)
+  nhap-khach-hang-tu-file.md    nhập một khách từ tờ hoá đơn của khách đó, kèm file mẫu
   nhap-hoa-don-nhieu-trang.md   nhập một tờ hoá đơn nằm ở nhiều file, chọn năm, mốc ngày
 ```
 
