@@ -25,7 +25,7 @@ GOC_WEB=/quan-ly-dien-nuoc npm run build:web        # phát từ địa chỉ co
 Đẩy lên thì đã có workflow [ban-web-cham-cong.yml](../.github/workflows/ban-web-cham-cong.yml):
 mỗi lần đổi gì trong `mobile/` là nó soát kiểu, chạy kiểm thử, dựng, rồi đẩy lên Pages. Lần đầu
 phải bật tay một lần: **Settings → Pages → Source: GitHub Actions**. Xong thì địa chỉ là
-`https://vinhnqhe161630.github.io/quan-ly-dien-nuoc/`.
+`https://eikon-kage.github.io/quan-ly-dien-nuoc/`.
 
 Đổi sang Cloudflare Pages, Netlify hay tên miền riêng — chỗ phát từ gốc — thì bỏ biến `GOC_WEB`
 đi là xong, xem [app.config.js](../mobile/app.config.js).
