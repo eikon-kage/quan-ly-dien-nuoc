@@ -228,7 +228,7 @@ describe('máy thợ', () => {
     // Nói đúng lẽ: hôm nay còn đang chạy, không phải "đợi thêm vài ngày".
     expect(screen.getByText(/ngoài hôm nay thì chưa hôm nào cả hai bên cùng khai/)).toBeTruthy();
     // Công chủ đã chấm hôm qua vẫn hiện ra bên dưới, không mất hút.
-    expect(screen.getByText('Mới một bên có sổ · 1 buổi')).toBeTruthy();
+    expect(screen.getByText('Chỉ một bên có sổ · 1 buổi')).toBeTruthy();
     expect(screen.getByText('1 công')).toBeTruthy();
   });
 
@@ -278,8 +278,12 @@ describe('máy thợ', () => {
 
     // Không gọi là lệch — nhưng cũng không được nói trơn "hai sổ khớp nhau".
     expect(screen.getByText('Khớp phần so được')).toBeTruthy();
-    expect(screen.getByText('Mới một bên có sổ · 1 buổi')).toBeTruthy();
-    expect(screen.getByText(/Sổ chủ còn 1 công ở 1 buổi máy tôi chưa có/)).toBeTruthy();
+    // Hai tổng nói đúng cái mỗi sổ ghi: chủ chấm hai buổi thật, dù máy này mới biết một.
+    // Trước đây tổng của chủ bám theo phần so được nên đọc thành "sổ chủ 1 công".
+    expect(screen.getByText('Sổ tôi 1 công')).toBeTruthy();
+    expect(screen.getByText('Sổ chủ 2 công')).toBeTruthy();
+    expect(screen.getByText('Chỉ một bên có sổ · 1 buổi')).toBeTruthy();
+    expect(screen.getByText(/Trong đó, sổ chủ có 1 công ở 1 buổi mà sổ tôi chưa có ngày ấy/)).toBeTruthy();
     // Ô của mình không được viết "Chưa chấm": máy này chưa có sổ ngày ấy chứ không phải đã
     // xem rồi bảo hôm ấy nghỉ.
     expect(screen.getByText('Chưa biết')).toBeTruthy();
@@ -314,7 +318,7 @@ describe('máy thợ', () => {
       batDauTu: Ngay.congNgay(HOM_NAY, -30),
     });
 
-    expect(screen.getByText('Mới một bên có sổ · 1 buổi')).toBeTruthy();
+    expect(screen.getByText('Chỉ một bên có sổ · 1 buổi')).toBeTruthy();
     expect(screen.getByText('Đợi sổ chủ')).toBeTruthy();
     expect(screen.queryByText('Lấy theo sổ chủ')).toBeNull();
     expect(screen.queryByText('Chấm bù theo sổ chủ')).toBeNull();

@@ -84,9 +84,19 @@ Chỉ buổi nào **cả hai bên đều có ý kiến** mới được kết lu
 cùng lúc: dòng chấm bù vẫn được so (chủ có chấm khác là báo lệch ngay), còn ngày trống thì
 chỉ bên nào dám khai mới bị tính.
 
-Buổi bỏ qua vì một bên không biết thì cũng **không cộng vào hai tổng**, cùng lẽ với buổi tạm
-gác dưới đây. Còn khoảng ghi ở đầu trang được nới ra cho phủ hết những buổi thật sự đã so —
-bên dưới hiện một dòng ngày 15 mà đầu trang ghi "so từ ngày 20" là hai câu trái nhau.
+Buổi bỏ qua vì một bên không biết thì **vẫn cộng vào tổng của bên có ghi nó**. Hai tổng đầu
+trang là *mỗi sổ ghi bao nhiêu công*, không phải *hai bên so nhau trên cùng một khoảng*: chủ
+chấm 17 với 18 thì sổ chủ đọc ra 4 công, dù máy thợ mới có sổ từ 18 hay đã chấm bù xuống 17.
+Không cộng vào thì cùng một sổ chủ mà đọc ra hai con số khác nhau tuỳ theo sổ mình có gì —
+thợ chấm bù xong thấy tổng của chủ tự nhảy lên là đúng chỗ nghi ngờ nhau.
+
+Đổi lại, hai tổng ấy **không trừ cho nhau ra được**, nên ngay dưới chúng phải có câu chỉ ra
+phần chưa đối chiếu được: *"Trong đó, sổ chủ có 2 công ở 2 buổi mà sổ tôi chưa có ngày ấy"*.
+Tách theo chiều chứ không gộp một con số: chiều chủ-có-mình-trống thì chấm bù được ngay, chiều
+ngược lại thì chỉ còn cách đợi — hai việc khác hẳn nhau.
+
+Còn khoảng ghi ở đầu trang được nới ra cho phủ hết những buổi thật sự đã so — bên dưới hiện
+một dòng ngày 15 mà đầu trang ghi "so từ ngày 20" là hai câu trái nhau.
 
 Màn hình *Sổ công của tôi* cũng phải theo: nó chặn hai đầu theo `khoangCuaSo` (khoảng khai,
 nới ra cho chứa mọi dòng sổ mang) chứ không theo đúng khoảng khai — nếu không thì màn hình
@@ -107,9 +117,10 @@ Ba điều đi kèm, để chỗ gác lại này không tự sinh ra một câu 
 
 - **Cả hai bên đều đã chấm mà số công khác nhau thì vẫn báo**, kể cả hôm nay. Chỗ ấy hai người
   thật sự nói khác nhau; gác lại là che mất.
-- Buổi tạm gác **không cộng vào hai tổng** ở đầu trang. Tổng phải nói đúng những dòng đang hiện
-  bên dưới, chứ không thì đầu trang bảo lệch 2 công mà không có dòng nào giải thích. Số buổi
-  gác lại được nói thẳng thành một câu ("Hôm nay còn dở: 2 buổi mới một bên chấm").
+- Buổi tạm gác **không cộng vào hai tổng** ở đầu trang — khác hẳn buổi chỉ một bên có sổ ở
+  trên. Ở đấy công đã ghi xong rồi, chỉ là bên kia chưa tới ngày để so; còn ở đây ngày còn
+  đang chạy, cộng vào là đầu trang đổi số mấy tiếng một lần trong lúc chưa ai kết luận được
+  gì. Số buổi gác lại được nói thẳng thành một câu ("Hôm nay còn dở: 2 buổi mới một bên chấm").
 - Không lệch mà cũng **chưa khớp buổi nào** thì đừng nói "hai sổ khớp nhau" — câu ấy là một lời
   bảo đảm, mà ở đây chưa so được gì cả. Màn hình nói *Chưa có gì để so*, và danh sách thợ trên
   máy chủ ghi *Chưa có buổi nào so được* thay vì tô xanh.

@@ -516,13 +516,13 @@ describe('bên không biết ngày ấy thì không tính là lệch', () => {
 });
 
 /**
- * Buổi **mới một bên có sổ** phải hiện ra, không được bỏ đi lặng lẽ.
+ * Buổi **chỉ một bên có sổ** phải hiện ra, không được bỏ đi lặng lẽ.
  *
  * Đây là chỗ sai được kể trong `KetQuaDoiChieu.chuaBiets`: chỉ so từ phía sổ mình ra, nên
  * ngày chủ đã chấm mà máy thợ chưa biết thì rơi mất — hai tổng đầu trang đọc thành "chủ chấm
  * thiếu", rồi thợ chấm bù đúng ngày ấy là hai tổng nhảy số.
  */
-describe('buổi mới một bên có sổ', () => {
+describe('buổi chỉ một bên có sổ', () => {
   /** Chủ chấm 17 với 18, thợ chấm 18 với 19, mỗi ngày hai buổi. Máy thợ khai từ 18. */
   function haiSoLechNgay() {
     const thoId = tuan();
@@ -556,9 +556,10 @@ describe('buổi mới một bên có sổ', () => {
     ]);
     expect(tongChuaBiet(ket.chuaBiets)).toEqual({ minh: 0, benKia: 2 });
 
-    // Hai tổng chính vẫn chỉ nói phần so được — nhưng giờ 2 công kia có chỗ để đọc.
+    // Tổng nói đúng cái mỗi sổ ghi: chủ chấm 17 với 18 là 4 công, thợ chấm 18 với 19 cũng 4.
+    // Hai công của ngày 17 nằm trong tổng của chủ, và có câu riêng chỉ ra chúng chưa so được.
     expect(ket.tongCongMinh).toBe(4);
-    expect(ket.tongCongBenKia).toBe(2);
+    expect(ket.tongCongBenKia).toBe(4);
     expect(ket.lechs.map((l) => [l.ngay, l.buoi, l.loai])).toEqual([
       ['2026-08-19', 'Sang', 'chiMinhCo'],
       ['2026-08-19', 'Chieu', 'chiMinhCo'],
@@ -578,8 +579,8 @@ describe('buổi mới một bên có sổ', () => {
 
     const ket = doiChieu(daChamBu, soChu, '2026-08-20');
 
-    // Trước khi chấm bù, hai công của chủ ở ngày 17 đã được đếm ở `chuaBiets`; sau khi chấm
-    // bù chúng vào hai tổng. Không có chỗ nào công tự sinh ra.
+    // Đây là chỗ hai tổng phải **đứng yên** về phía sổ chủ: chấm bù là việc của sổ thợ, sổ
+    // chủ không đổi một chữ nào. Trước 4, sau vẫn 4; chỉ sổ thợ tăng từ 4 lên 6.
     expect(ket.chuaBiets).toEqual([]);
     expect(ket.soKhop).toBe(4);
     expect(ket.tongCongMinh).toBe(6);
@@ -653,7 +654,7 @@ describe('buổi mới một bên có sổ', () => {
     expect(ket.chuaBiets).toEqual([]);
   });
 
-  it('chưa so được buổi nào vẫn trả về phần mới một bên có sổ', () => {
+  it('chưa so được buổi nào vẫn trả về phần chỉ một bên có sổ', () => {
     const thoId = tuan();
     const ket = doiChieu(
       soTho(thoId, [], '2026-09-01', '2026-09-30'),
@@ -674,5 +675,8 @@ describe('buổi mới một bên có sổ', () => {
     expect(ket.khongTrungKhoang).toBe(true);
     expect(ket.lechs).toEqual([]);
     expect(ket.chuaBiets.map((l) => [l.ngay, l.loai])).toEqual([['2026-08-19', 'minhChuaBiet']]);
+    // Chưa so được gì không có nghĩa là hai sổ trống: sổ chủ vẫn đang giữ một công.
+    expect(ket.tongCongMinh).toBe(0);
+    expect(ket.tongCongBenKia).toBe(1);
   });
 });

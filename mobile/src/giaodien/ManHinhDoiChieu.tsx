@@ -223,9 +223,9 @@ function DanhSachTho({
       {thos.map((tho) => {
         const ket = ketTheoTho.get(tho.id);
         const soLech = ket?.lechs.length ?? 0;
-        /** Buổi mới một bên có sổ: chưa phải lệch, nhưng nói "khớp cả" thì cũng không đúng. */
+        /** Buổi chỉ một bên có sổ: chưa phải lệch, nhưng nói "khớp cả" thì cũng không đúng. */
         const soChuaBiet = ket?.chuaBiets.length ?? 0;
-        const themChuaBiet = soChuaBiet > 0 ? ` · ${soChuaBiet} buổi mới một bên có` : '';
+        const themChuaBiet = soChuaBiet > 0 ? ` · ${soChuaBiet} buổi chỉ một bên có sổ` : '';
 
         // Chưa lệch mà cũng chưa khớp buổi nào thì chưa so được gì, đừng tô xanh — xem ghi
         // chú cùng chuyện ấy ở `ChiTiet`.
@@ -315,10 +315,10 @@ function ChiTiet({
               </Text>
             )}
             {/*
-              Cùng một lẽ: hai tổng ở trên **không có** những buổi mới một bên có sổ, nên phải
-              nói ra ngay cạnh chúng. Không nói thì đầu trang đọc thành "sổ tôi 4, sổ chủ 2" —
-              nghe như chủ chấm thiếu, trong lúc chủ chấm đủ 4 mà 2 công rơi vào ngày máy này
-              chưa có sổ.
+              Hai tổng ở trên là **mỗi sổ ghi bao nhiêu**, đã gồm cả những buổi chỉ một bên có
+              sổ. Nhờ vậy sổ chủ đọc ra cùng một con số dù máy này đã chấm bù hay chưa. Nhưng
+              đúng vì thế mà phải nói ngay cạnh chúng phần nào chưa đối chiếu được: không nói
+              thì "sổ tôi 4, sổ chủ 6" đọc thành chủ chấm khống 2 công.
             */}
             <CauChuaBiet chuaBiets={ket.chuaBiets} benKia={benKia} />
           </>
@@ -420,7 +420,7 @@ function ChiTiet({
               <Text style={kieu.chuTrong}>
                 Cả {ket.soKhop} buổi hai bên ghi giống nhau.
                 {ket.chuaBiets.length > 0
-                  ? ` Còn ${ket.chuaBiets.length} buổi mới một bên có sổ, xem bên dưới.`
+                  ? ` Còn ${ket.chuaBiets.length} buổi chỉ một bên có sổ, xem bên dưới.`
                   : ''}
               </Text>
             </View>
@@ -465,14 +465,14 @@ function CauChuaBiet({ chuaBiets, benKia }: { chuaBiets: DongLech[]; benKia: str
     <>
       {soBenKiaCo > 0 && (
         <Text style={kieu.chuPhu}>
-          Sổ {benKia} còn {Ngay.soCong(tong.benKia)} công ở {soBenKiaCo} buổi máy tôi chưa có
-          sổ ngày ấy — chưa tính vào hai tổng trên.
+          Trong đó, sổ {benKia} có {Ngay.soCong(tong.benKia)} công ở {soBenKiaCo} buổi mà sổ
+          tôi chưa có ngày ấy — chấm bù vào sổ tôi được, xem bên dưới.
         </Text>
       )}
       {soMinhCo > 0 && (
         <Text style={kieu.chuPhu}>
-          Sổ tôi còn {Ngay.soCong(tong.minh)} công ở {soMinhCo} buổi mà sổ {benKia} chưa tới
-          ngày ấy — cũng chưa tính vào hai tổng trên.
+          Trong đó, sổ tôi có {Ngay.soCong(tong.minh)} công ở {soMinhCo} buổi mà sổ {benKia}
+          chưa nhập tới ngày ấy — chờ bên ấy nhập tới thì mới so được.
         </Text>
       )}
     </>
@@ -510,7 +510,7 @@ function PhanChuaBiet({
       <View style={kieu.theDau}>
         <View style={kieu.dongDau}>
           <Text style={kieu.chuTen} numberOfLines={1}>
-            Mới một bên có sổ · {chuaBiets.length} buổi
+            Chỉ một bên có sổ · {chuaBiets.length} buổi
           </Text>
           {chuaBiets.length > NGUONG_GAP && (
             <NutChip
@@ -520,9 +520,18 @@ function PhanChuaBiet({
             />
           )}
         </View>
+        {/*
+          Ba câu, mỗi câu một việc: đây không phải lệch — vì sao — làm gì tiếp. Câu cũ gộp cả
+          ba vào một đoạn nên người đọc phải tự tách ra mới biết mình có phải làm gì không.
+        */}
         <Text style={kieu.chuPhu}>
-          Chưa phải lệch: những ngày này chỉ một bên có sổ nên chưa ai nói trái ai. Buổi nào sổ
-          {' '}{benKia} có mà sổ tôi trống thì chấm bù được ngay tại đây.
+          Đây không phải hai bên ghi khác nhau. Những ngày này chỉ một bên có sổ, bên kia chưa
+          có ngày ấy nên chưa nói gì.
+        </Text>
+        <Text style={kieu.chuPhu}>
+          Buổi nào sổ {benKia} có công mà sổ tôi trống thì bấm{' '}
+          <Text style={kieu.chuManh}>Chấm bù</Text> ở dòng ấy để ghi vào sổ tôi. Buổi ngược lại —
+          sổ tôi có mà sổ {benKia} chưa nhập tới ngày ấy — thì đợi bên ấy, không phải làm gì.
         </Text>
       </View>
 
@@ -562,12 +571,12 @@ function DongLechO({
 
   return (
     <View style={kieu.theLech}>
-      <View style={kieu.dongDau}>
+      <View style={kieu.dongDauLech}>
         <Text style={kieu.chuNgay}>
           {Ngay.thuVaNgay(lech.ngay)} · {TEN_BUOI[lech.buoi]}
         </Text>
         {lech.daChot ? (
-          <View style={kieu.nhanChot}>
+          <View style={[kieu.nhanChot, kieu.dayPhai]}>
             <Text style={kieu.chuNhanChot}>Đã trả tiền</Text>
           </View>
         ) : benKiaChuaBiet ? (
@@ -576,15 +585,17 @@ function DongLechO({
             một buổi công thật của mình theo lời một người chưa nói gì. Chỉ còn cách đợi bên kia
             nhập tới ngày ấy — nói ra để người dùng khỏi đi tìm cái nút.
           */
-          <View style={kieu.nhanChot}>
+          <View style={[kieu.nhanChot, kieu.dayPhai]}>
             <Text style={kieu.chuNhanChot}>Đợi sổ {benKia}</Text>
           </View>
         ) : (
-          <NutChip
-            nhan={minhChuaBiet ? `Chấm bù theo sổ ${benKia}` : `Lấy theo sổ ${benKia}`}
-            icon="download"
-            onPress={onLay}
-          />
+          <View style={kieu.dayPhai}>
+            <NutChip
+              nhan={minhChuaBiet ? `Chấm bù theo sổ ${benKia}` : `Lấy theo sổ ${benKia}`}
+              icon="download"
+              onPress={onLay}
+            />
+          </View>
         )}
       </View>
 
@@ -646,15 +657,28 @@ const kieu = StyleSheet.create({
   giuaTheTho: { flex: 1, gap: 3 },
   chuTen: { flex: 1, fontSize: Co.chuTen, fontFamily: PhongChu.dam, color: Mau.chu },
   chuPhu: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+  /** Tên một cái nút, nhắc trong câu văn — đậm lên để mắt nối được với nút thật bên dưới. */
+  chuManh: { fontFamily: PhongChu.vua, color: Mau.chu },
 
   theDau: { ...theTrang, gap: 8 },
   dongDau: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  /*
+    Hàng đầu của một dòng lệch: ngày giữ nguyên bề ngang nó cần, nút thiếu chỗ thì **xuống
+    dòng**. Trước đây ngày co lại (`flex: 1`) nên "Thứ Hai 24/08 · Chiều" bị bẻ làm đôi ngay
+    giữa — dài hơn nhãn "Sáng" đúng một chữ là đủ gãy. Ngày tháng là chỗ người ta đọc lướt
+    để tìm buổi cần sửa, gãy ở đấy là đọc chậm hẳn.
+
+    `dayPhai` (margin trái tự động) giữ nút áp lề phải ở cả hai nước: cùng dòng với ngày khi
+    còn chỗ, và một mình một dòng khi không.
+  */
+  dongDauLech: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  dayPhai: { marginLeft: 'auto' },
   dongTong: { flexDirection: 'row', gap: 10 },
   chuTong: { flex: 1, fontSize: Co.chuThuong, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuTongSo: { fontFamily: PhongChu.dam, color: Mau.chu },
 
   theLech: { ...theTrang, gap: 10 },
-  chuNgay: { flex: 1, fontSize: Co.chuSo, fontFamily: PhongChu.vua, color: Mau.chu },
+  chuNgay: { flexShrink: 1, fontSize: Co.chuSo, fontFamily: PhongChu.vua, color: Mau.chu },
 
   // Hai ô số nền nhạt đứng cạnh nhau: nhìn một cái là thấy bên nào nhiều hơn.
   oSo: { flex: 1, gap: 4, padding: 10, borderRadius: Co.boNho, borderWidth: 1 },

@@ -77,10 +77,22 @@ export interface KetQuaDoiChieu {
    * công" — hoá ra chủ chấm thiếu. Rồi thợ chấm bù đúng ngày 17 là buổi kia hiện ra, hai tổng
    * nhảy thành 6 với 4: cùng một sổ chủ mà đọc ra hai con số khác nhau tuỳ theo sổ mình có gì.
    *
-   * Không cộng vào hai tổng — giống buổi tạm gác: tổng là để so hai bên trên **cùng** một
-   * khoảng, mà mấy buổi này thì chỉ một bên có khoảng. Cộng riêng bằng `tongChuaBiet`.
+   * **Có** cộng vào hai tổng, và đó chính là chỗ chữa cái sai kể trên: tổng của một sổ phải
+   * là những gì sổ ấy ghi, không đổi theo chuyện sổ bên này có tới ngày ấy hay chưa. Cộng vào
+   * thì sổ chủ đọc ra 4 công cả trước lẫn sau khi thợ chấm bù, chỉ có sổ thợ tăng — đúng như
+   * việc vừa xảy ra. Còn muốn biết riêng phần ấy mấy công thì có `tongChuaBiet`.
    */
   chuaBiets: DongLech[];
+  /**
+   * Tổng công **mỗi sổ tự ghi** trong phần đang xét: buổi so được cộng vào, buổi mới một bên
+   * có sổ (`chuaBiets`) cũng cộng vào bên nào có nó.
+   *
+   * Hai số này **không phải để trừ cho nhau** ra "ai chấm thiếu mấy công" — chúng nói mỗi sổ
+   * ghi bao nhiêu, mà hai sổ có thể phủ hai khoảng ngày khác nhau. Chỗ nào lệch thật thì nằm
+   * ở `lechs`, còn phần chênh do khoảng ngày thì màn hình nói riêng một câu từ `tongChuaBiet`.
+   *
+   * Buổi tạm gác của hôm nay vẫn đứng ngoài — xem `soTamGac`.
+   */
   tongCongMinh: number;
   tongCongBenKia: number;
   /**
@@ -171,9 +183,9 @@ function coYKien(so: SoCong, dong: DongCong | undefined, ngay: string): boolean 
  * Vẫn báo lệch nếu **cả hai bên đều đã chấm** buổi hôm nay mà số công khác nhau — chỗ ấy hai
  * người thật sự nói khác nhau, gác lại là che mất.
  *
- * Buổi tạm gác cũng **không cộng vào hai tổng**: tổng phải nói đúng những dòng đang hiện bên
- * dưới, chứ không thì đầu trang bảo lệch 2 công mà không có dòng nào giải thích. Buổi trong
- * `chuaBiets` cũng vậy — có tổng riêng của nó, và màn hình nói riêng một câu.
+ * Buổi tạm gác **không cộng vào hai tổng**: hôm nay còn đang chạy, cộng vào là đầu trang đổi
+ * số mấy tiếng một lần trong lúc chưa ai kết luận được gì. Buổi trong `chuaBiets` thì ngược
+ * lại — cộng vào, vì đó là công một bên đã ghi thật; xem `KetQuaDoiChieu.tongCongMinh`.
  */
 export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQuaDoiChieu {
   const giaoTu = soMinh.tuNgay > soBenKia.tuNgay ? soMinh.tuNgay : soBenKia.tuNgay;
@@ -217,12 +229,12 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
       chấm thật, nên để riêng một chỗ chứ không bỏ. Vào được tới đây thì đúng một bên có dòng:
       bên nào có dòng là bên ấy có ý kiến, nên bên không có ý kiến chính là bên không có dòng.
     */
-    if (!coYKien(soMinh, a, goc.ngay)) {
-      chuaBiets.push(dongLech(goc, a, b, 'minhChuaBiet'));
-      continue;
-    }
-    if (!coYKien(soBenKia, b, goc.ngay)) {
-      chuaBiets.push(dongLech(goc, a, b, 'benKiaChuaBiet'));
+    if (!coYKien(soMinh, a, goc.ngay) || !coYKien(soBenKia, b, goc.ngay)) {
+      const minhChuaBiet = !coYKien(soMinh, a, goc.ngay);
+      chuaBiets.push(dongLech(goc, a, b, minhChuaBiet ? 'minhChuaBiet' : 'benKiaChuaBiet'));
+      // Vẫn vào tổng của bên có ghi: công ấy có thật, chỉ là bên kia chưa tới ngày để nói.
+      tongCongMinh += a ? a.soCong : 0;
+      tongCongBenKia += b ? b.soCong : 0;
       continue;
     }
 
@@ -272,8 +284,10 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
       soKhop: 0,
       lechs: [],
       chuaBiets: xepTheoNgay(chuaBiets),
-      tongCongMinh: 0,
-      tongCongBenKia: 0,
+      // Không so được buổi nào không có nghĩa là hai sổ trống: sổ bên kia có thể đã đầy công
+      // ở những ngày máy này chưa có sổ. Tổng vẫn nói đúng cái mỗi sổ đang ghi.
+      tongCongMinh,
+      tongCongBenKia,
       soTamGac,
     };
   }
@@ -299,8 +313,9 @@ export function doiChieu(soMinh: SoCong, soBenKia: SoCong, homNay: string): KetQ
 }
 
 /**
- * Cộng riêng những buổi chưa kết luận được, để đầu trang nói được câu "sổ chủ còn 2 công ở
- * những ngày máy tôi chưa biết". Hai tổng chính không có mấy công này — xem `chuaBiets`.
+ * Cộng riêng những buổi chưa kết luận được, để đầu trang nói được câu "trong đó sổ chủ có 2
+ * công ở những ngày máy tôi chưa có sổ". Hai tổng chính **đã** gồm mấy công này; câu riêng ấy
+ * là để chỉ ra phần nào trong tổng chưa được đối chiếu — xem `chuaBiets`.
  *
  * Mỗi dòng chỉ có đúng một bên có số, nên hai tổng này không bao giờ cùng lớn hơn 0 trên cùng
  * một dòng; cộng cả hai vẫn cần vì hai chiều đều xảy ra được trong cùng một lần đối chiếu.
