@@ -45,9 +45,11 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   trước khi ghi.
 - **Sửa trực tiếp trên lưới như Excel**: bấm đúp (hoặc F2) vào ô để sửa, mọi thay đổi tự lưu.
 - **Chèn dòng vào giữa, không phải chỉ thêm vào cuối**: quên một món ở giữa thì chọn dòng
-  muốn chèn cạnh, gõ hàng vào thanh nhập nhanh rồi `Ctrl+Enter` (chèn lên trên) hoặc
-  `Ctrl+Shift+Enter` (chèn xuống dưới) — dòng mới lấy luôn ngày của dòng đang chọn nên nằm
-  yên đúng chỗ. Xếp sai thì `Alt+↑` / `Alt+↓` đổi chỗ hai dòng (trong cùng một ngày). Bấm
+  muốn chèn cạnh rồi `Ctrl+Enter` (lên trên) hoặc `Ctrl+Shift+Enter` (xuống dưới) — một dòng
+  trống mở ra ngay chỗ đó, con trỏ nhảy vào ô TÊN HÀNG, gõ tên hàng với số lượng rồi `Enter`
+  là vào sổ. Dòng trống lấy luôn ngày của dòng đang chọn nên nằm yên đúng chỗ vừa chèn; gõ
+  liền mấy dòng thì dòng trống mới lại mở ra tiếp ngay chỗ đó. Xếp sai thì `Alt+↑` / `Alt+↓`
+  đổi chỗ hai dòng (trong cùng một ngày). Bấm
   chuột phải lên lưới ra đủ các lệnh này. Thứ tự trên lưới cũng chính là thứ tự in ra giấy
   và xuất Excel — trong cùng một ngày phần mềm không tự xếp lại theo vần nữa.
 - **Hoàn tác / Làm lại**: `Ctrl+Z` / `Ctrl+Y` cho mọi thao tác (thêm, sửa, xoá dòng, xoá hoá
@@ -104,8 +106,8 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 | `F2` hoặc bấm đúp | Sửa ô đang chọn trên lưới |
 | `F3` | Nhảy về ô Tên hàng / ô tìm kiếm |
 | `Delete` | Xoá dòng hàng đang chọn |
-| `Ctrl+Enter` | Chèn dòng hàng lên trên dòng đang chọn |
-| `Ctrl+Shift+Enter` | Chèn dòng hàng xuống dưới dòng đang chọn |
+| `Ctrl+Enter` | Mở dòng trống lên trên dòng đang chọn, gõ thẳng trên lưới |
+| `Ctrl+Shift+Enter` | Mở dòng trống xuống dưới dòng đang chọn |
 | `Alt+↑` / `Alt+↓` | Đổi chỗ dòng đang chọn với dòng liền kề |
 | `Ctrl+N` | Thêm khách hàng (ở màn hình chính) |
 | `F5` | Nạp lại dữ liệu từ file (khi máy khác vừa sửa) |

@@ -211,6 +211,65 @@ public class ThuTuDongTests
     }
 
     [Fact]
+    public void ViTriChen_DongTrongDungCanhDongMoc()
+    {
+        // Ctrl+Enter mở một dòng trống ngay cạnh dòng đang chọn. Chỗ đặt nó trên lưới tính theo
+        // thứ tự đang hiện, chính là hàm này.
+        var thuTu = ThuTuDong.TheoThuTu(new List<ChiTietHoaDon>
+        {
+            Dong("Ống 27"), Dong("Co 90"), Dong("Keo"),
+        });
+
+        Assert.Equal(1, ThuTuDong.ViTriChen(thuTu, thuTu[1].Id, chenDuoi: false));
+        Assert.Equal(2, ThuTuDong.ViTriChen(thuTu, thuTu[1].Id, chenDuoi: true));
+    }
+
+    [Fact]
+    public void ViTriChen_KhongCoMocHoacMocDaBiXoa_ThiDongTrongVeCuoiLuoi()
+    {
+        var thuTu = ThuTuDong.TheoThuTu(new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Co 90") });
+
+        // Chưa chèn gì thì dòng trống nằm cuối lưới như thường.
+        Assert.Equal(2, ThuTuDong.ViTriChen(thuTu, mocId: null, chenDuoi: false));
+
+        // Xoá mất dòng mốc (hoặc hoàn tác, đổi hoá đơn) thì cũng về cuối, không treo lơ lửng.
+        Assert.Equal(2, ThuTuDong.ViTriChen(thuTu, Guid.NewGuid(), chenDuoi: true));
+    }
+
+    [Fact]
+    public void Chen_LenTrenNhieuLan_GiuNguyenMoc_ThiRaDungThuTuNguoiDungGo()
+    {
+        var chiTiet = new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Co 90"), Dong("Keo") };
+        var moc = chiTiet[1];
+
+        // Gõ liền hai dòng ở chỗ chèn: chèn lên trên thì cứ giữ nguyên mốc là đã đúng thứ tự gõ.
+        ThuTuDong.Chen(chiTiet, Dong("Van khoá"), moc.Id, chenDuoi: false);
+        ThuTuDong.Chen(chiTiet, Dong("Băng tan"), moc.Id, chenDuoi: false);
+
+        Assert.Equal(
+            new[] { "Ống 27", "Van khoá", "Băng tan", "Co 90", "Keo" },
+            Ten(ThuTuDong.TheoThuTu(chiTiet)));
+    }
+
+    [Fact]
+    public void Chen_XuongDuoiNhieuLan_PhaiDoiMocSangDongVuaGhi()
+    {
+        var chiTiet = new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Co 90"), Dong("Keo") };
+        var moc = chiTiet[1];
+
+        var dongDau = Dong("Van khoá");
+        ThuTuDong.Chen(chiTiet, dongDau, moc.Id, chenDuoi: true);
+
+        // Chèn xuống dưới mà vẫn lấy mốc cũ thì dòng gõ sau chen lên trước dòng gõ trước, gõ mấy
+        // dòng liền nhau là ra thứ tự ngược. Mốc phải chuyển sang dòng vừa ghi.
+        ThuTuDong.Chen(chiTiet, Dong("Băng tan"), dongDau.Id, chenDuoi: true);
+
+        Assert.Equal(
+            new[] { "Ống 27", "Co 90", "Van khoá", "Băng tan", "Keo" },
+            Ten(ThuTuDong.TheoThuTu(chiTiet)));
+    }
+
+    [Fact]
     public void ChiaTrang_InRaGiayDungThuTuDaXepTrenLuoi()
     {
         var chiTiet = new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Keo"), Dong("Co 90") };
