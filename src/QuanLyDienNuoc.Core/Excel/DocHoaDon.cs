@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using NPOI.SS.UserModel;
 using QuanLyDienNuoc.Models;
@@ -6,16 +7,57 @@ using QuanLyDienNuoc.Ui;
 
 namespace QuanLyDienNuoc.Excel;
 
+/// <summary>
+/// Ngày và tháng viết trên giấy, chưa có năm. Mẫu giấy của cửa hàng không có chỗ ghi năm cho
+/// từng dòng nên năm phải lấy từ ô chọn năm lúc nhập file.
+/// </summary>
+public readonly record struct NgayThangGiay(int Ngay, int Thang);
+
+/// <summary>
+/// Trang giấy này là trang đầu của tờ hoá đơn hay một trang nối tiếp. Mẫu của cửa hàng để hai
+/// file riêng: <c>trang-1.xls</c> có phần đầu (tên cửa hàng, tên khách, địa chỉ) rồi mới đến
+/// bảng hàng; <c>trang-sau.xls</c> chỉ có bảng, tiêu đề nằm ngay dòng đầu tiên.
+/// </summary>
+public enum LoaiTrangGiay
+{
+    /// <summary>Trang đầu: có phần đầu phía trên bảng nên đọc được tên khách và địa chỉ.</summary>
+    Trang1,
+
+    /// <summary>Trang thứ hai trở đi: chỉ có bảng hàng, không có tên khách.</summary>
+    TrangSau,
+}
+
 /// <summary>Một bảng hàng đọc được trong file Excel (mỗi sheet là một bảng).</summary>
 public sealed class TrangDoc
 {
     public string TenSheet { get; set; } = string.Empty;
+
+    /// <summary>Tên file đọc ra trang này, để lô nhiều trang nói rõ trang nào ở file nào.</summary>
+    public string TenFile { get; set; } = string.Empty;
+
+    /// <summary>Trang đầu của tờ hay trang nối tiếp — xét theo có phần đầu phía trên bảng hay không.</summary>
+    public LoaiTrangGiay Loai { get; set; }
+
+    /// <summary>Dòng tiêu đề bảng hàng (đánh số từ 0). Bằng 0 là trang nối tiếp.</summary>
+    public int DongTieuDe { get; set; }
 
     public string? TenKhach { get; set; }
 
     public string? DiaChi { get; set; }
 
     public DateTime? NgayTrenHoaDon { get; set; }
+
+    /// <summary>Ngày trong tháng đọc ở dòng "Ngày … tháng … năm …", nếu có.</summary>
+    public int? NgayTrongThang { get; set; }
+
+    /// <summary>Tháng đọc ở dòng "Ngày … tháng … năm …", nếu có.</summary>
+    public int? ThangTrenGiay { get; set; }
+
+    /// <summary>
+    /// Năm ghi trên giấy. Mẫu trắng của cửa hàng chỉ in "năm 20........." nên chỗ này thường
+    /// trống — năm phải lấy từ ô chọn năm lúc nhập file.
+    /// </summary>
+    public int? NamTrenGiay { get; set; }
 
     /// <summary>
     /// Tờ giấy này là hoá đơn hoàn hàng (nhận ra ở tên tờ in phía trên bảng). Số lượng trên
@@ -33,6 +75,13 @@ public sealed class TrangDoc
     public string? LyDoHoan { get; set; }
 
     public List<ChiTietHoaDon> Dong { get; } = new();
+
+    /// <summary>
+    /// Ngày/tháng đọc được cho từng dòng, khoá là vị trí dòng trong <see cref="Dong"/>. Cửa
+    /// hàng hay viết mốc ngày ("1/12", "12\4") vào cột số thứ tự, các dòng từ đó xuống là hàng
+    /// lấy hôm ấy. Giữ riêng ngày/tháng để đổi ô chọn năm là cả lô đổi năm theo.
+    /// </summary>
+    public Dictionary<int, NgayThangGiay> NgayThangCuaDong { get; } = new();
 
     public List<string> CanhBao { get; } = new();
 
@@ -53,6 +102,11 @@ public sealed class KetQuaDocExcel
         .FirstOrDefault(n => n is not null);
 
     public int TongSoDong => Trang.Sum(t => t.Dong.Count);
+
+    /// <summary>Năm ghi trên giấy, lấy ở trang đầu tiên có ghi. Mẫu trắng thì không có.</summary>
+    public int? NamTrenGiay => Trang
+        .Select(t => t.NamTrenGiay)
+        .FirstOrDefault(n => n is not null);
 
     /// <summary>Mã hoá đơn bán mà file này hoàn cho, lấy ở tờ đầu tiên có ghi.</summary>
     public string? MaHoaDonGoc => Trang
@@ -100,8 +154,31 @@ public static class DocHoaDon
     /// <summary>Số nhãn cột tối thiểu phải cùng nằm trên một dòng thì mới coi là tiêu đề bảng.</summary>
     private const int SoNhanToiThieu = 3;
 
-    private static readonly Regex MauNgay = new(
-        @"ng[aà]y\s*\.*\s*(\d{1,2})\D+th[aá]ng\s*\.*\s*(\d{1,2})\D+n[aă]m\s*\.*\s*(\d{4})",
+    /// <summary>
+    /// Bấy nhiêu dòng trống liền nhau thì coi như hết bảng. Mẫu giấy in sẵn số thứ tự cho cả
+    /// trang nên không dừng ở đây thì đọc lố xuống phần chân tờ (dòng tổng, dòng ký tên).
+    /// </summary>
+    private const int SoDongTrongHetBang = 3;
+
+    /// <summary>
+    /// Dòng "Ngày … tháng …" ở chân tờ. Không đòi năm: mẫu giấy của cửa hàng in sẵn
+    /// "năm 20........." nên tờ điền tay thường chỉ có ngày và tháng.
+    /// </summary>
+    private static readonly Regex MauNgayThang = new(
+        @"ng[aà]y[\s.…]*(\d{1,2})\D+?th[aá]ng[\s.…]*(\d{1,2})",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+    /// <summary>
+    /// Mốc ngày viết ở cột số thứ tự: "1/12", "12\4", "5-11". Không nhận dấu chấm để khỏi đọc
+    /// một số lẻ ("1.5") thành ngày, và không nhận chữ nào khác ngoài hai con số với dấu tách.
+    /// </summary>
+    private static readonly Regex MauMocNgay = new(
+        @"^\s*(\d{1,2})\s*[/\\-]\s*(\d{1,2})\s*$",
+        RegexOptions.Singleline);
+
+    /// <summary>Năm ghi trên tờ, nếu người viết có điền đủ bốn chữ số.</summary>
+    private static readonly Regex MauNam = new(
+        @"n[aă]m[\s.…]*(\d{4})",
         RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
     /// <summary>Phần trong ngoặc dưới tên tờ hoàn hàng: "(Hoàn cho hoá đơn HD2026-02 ngày … — lý do)".</summary>
@@ -112,18 +189,25 @@ public static class DocHoaDon
         @"ho[àa]n\s+cho\s+(?:ho[áa]\s*[đd][ơo]n|h[đd])\s*:?\s*([^\s)]+)",
         RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-    public static KetQuaDocExcel Doc(string duongDanFile, DateTime ngayChoDongHang)
+    /// <summary>
+    /// Đọc một file hoá đơn Excel. <paramref name="namChon"/> là năm người dùng chọn lúc nhập
+    /// file: mẫu giấy của cửa hàng chỉ in "năm 20........." nên ngày trên tờ thiếu năm, phải
+    /// ghép năm đã chọn vào mới ra được ngày đầy đủ.
+    /// </summary>
+    public static KetQuaDocExcel Doc(string duongDanFile, DateTime ngayChoDongHang, int? namChon = null)
     {
         var ketQua = new KetQuaDocExcel();
+        var tenFile = Path.GetFileName(duongDanFile);
 
         using var doc = File.OpenRead(duongDanFile);
         using var wb = WorkbookFactory.Create(doc);
 
         for (var i = 0; i < wb.NumberOfSheets; i++)
         {
-            var trang = DocMotSheet(wb.GetSheetAt(i), ngayChoDongHang);
+            var trang = DocMotSheet(wb.GetSheetAt(i), ngayChoDongHang, namChon);
             if (trang is not null)
             {
+                trang.TenFile = tenFile;
                 ketQua.Trang.Add(trang);
             }
         }
@@ -131,7 +215,7 @@ public static class DocHoaDon
         return ketQua;
     }
 
-    private static TrangDoc? DocMotSheet(ISheet sheet, DateTime ngayChoDongHang)
+    private static TrangDoc? DocMotSheet(ISheet sheet, DateTime ngayChoDongHang, int? namChon)
     {
         var (dongTieuDe, cot) = TimTieuDe(sheet);
         if (dongTieuDe < 0 || cot is null)
@@ -139,11 +223,18 @@ public static class DocHoaDon
             return null;
         }
 
-        var trang = new TrangDoc { TenSheet = sheet.SheetName };
+        // Tiêu đề bảng nằm ngay dòng đầu là mẫu trang sau; có dòng nào phía trên thì đó là phần
+        // đầu của trang 1 (tên cửa hàng, "Tên khách hàng:", "Địa chỉ:").
+        var trang = new TrangDoc
+        {
+            TenSheet = sheet.SheetName,
+            DongTieuDe = dongTieuDe,
+            Loai = dongTieuDe == 0 ? LoaiTrangGiay.TrangSau : LoaiTrangGiay.Trang1,
+        };
 
         DocPhanDau(sheet, dongTieuDe, trang);
-        DocPhanBang(sheet, dongTieuDe, cot, trang, ngayChoDongHang);
-        DocNgayThang(sheet, dongTieuDe, trang);
+        DocPhanBang(sheet, dongTieuDe, cot, trang, ngayChoDongHang, namChon);
+        DocNgayThang(sheet, dongTieuDe, trang, namChon);
 
         return trang.Dong.Count > 0 ? trang : null;
     }
@@ -236,18 +327,39 @@ public static class DocHoaDon
         int dongTieuDe,
         CotBang cot,
         TrangDoc trang,
-        DateTime ngayChoDongHang)
+        DateTime ngayChoDongHang,
+        int? namChon)
     {
+        var soDongTrong = 0;
+
+        // Mốc ngày đang có hiệu lực: cửa hàng viết "1/12" vào cột số thứ tự thì từ dòng đó
+        // xuống là hàng lấy hôm ấy, tới khi gặp mốc khác.
+        NgayThangGiay? mocNgay = null;
+        var namChoMoc = namChon ?? ngayChoDongHang.Year;
+
         for (var r = dongTieuDe + 1; r <= sheet.LastRowNum; r++)
         {
             var hang = sheet.GetRow(r);
             if (hang is null)
             {
+                if (++soDongTrong >= SoDongTrongHetBang)
+                {
+                    break;
+                }
+
                 continue;
             }
 
             var tenHang = LayChu(hang, cot.TenHang);
             var khongDau = ChuViet.BoDau(LayChu(hang, cot.TT) + " " + tenHang);
+
+            // Mốc ngày viết ở cột số thứ tự. Đọc trước khi xét dòng trống: cửa hàng có lúc để
+            // mốc ngày đứng riêng một dòng, dòng đó không có hàng nhưng vẫn phải nhớ lấy ngày.
+            if (MocNgayTrongO(hang, cot.TT) is { } moc)
+            {
+                mocNgay = moc;
+                soDongTrong = 0;
+            }
 
             // Chạm dòng tổng là hết bảng.
             if (khongDau.Contains("tong cong") || khongDau.Contains("cong trang") || khongDau.Contains("bang chu"))
@@ -255,14 +367,38 @@ public static class DocHoaDon
                 break;
             }
 
-            if (tenHang.Length == 0)
-            {
-                continue;
-            }
-
             var soLuong = LaySo(hang, cot.SoLuong);
             var donGia = LaySo(hang, cot.DonGia);
             var thanhTien = LaySo(hang, cot.ThanhTien);
+
+            // Dòng tổng không có nhãn: mẫu cũ gộp ô đầu dòng rồi để trống, chỉ còn số tiền ở
+            // cột THÀNH TIỀN. Cũng đúng chỗ mẫu mới ghi tiền cộng sang từ tờ trước — lấy vào
+            // là sinh ra một mặt hàng không tên và cộng tiền của tờ trước thêm một lần nữa.
+            if (tenHang.Length == 0 && soLuong == 0 && donGia == 0 && thanhTien != 0)
+            {
+                break;
+            }
+
+            // Dòng của mẫu in sẵn chưa điền gì: mẫu trang 1 in trước số thứ tự 1..26 và công
+            // thức thành tiền ra 0 cho cả trang, nên có chữ ở cột TT không có nghĩa là có hàng.
+            if (tenHang.Length == 0 && soLuong == 0 && thanhTien == 0)
+            {
+                if (++soDongTrong >= SoDongTrongHetBang)
+                {
+                    break;
+                }
+
+                continue;
+            }
+
+            soDongTrong = 0;
+
+            // Cửa hàng có lúc viết số lượng mà bỏ trống tên hàng. Vẫn lấy dòng đó vào để người
+            // dùng điền tên ngay trên bảng xem trước, chứ bỏ im là mất hàng mà không ai biết.
+            if (tenHang.Length == 0)
+            {
+                trang.CanhBao.Add($"Dòng {r + 1}: có số lượng mà thiếu tên hàng — điền tên trước khi nhập.");
+            }
 
             // Tờ hoàn hàng in số dương; vào sổ thì là hàng trả về nên đổi dấu ngay ở đây, để
             // mọi phép tính bên dưới (kể cả tự tính đơn giá từ thành tiền) làm như dòng trả lại.
@@ -285,9 +421,16 @@ public static class DocHoaDon
                 trang.CanhBao.Add($"\"{tenHang}\": không có số lượng, tạm để 0 — cần sửa lại sau khi nhập.");
             }
 
+            // Dòng nào nằm dưới một mốc ngày thì mang ngày của mốc đó, chứ không phải ngày
+            // người dùng đặt chung cho cả lô — tờ hoá đơn mối gom hàng của nhiều ngày.
+            if (mocNgay is { } ngayGiay)
+            {
+                trang.NgayThangCuaDong[trang.Dong.Count] = ngayGiay;
+            }
+
             trang.Dong.Add(new ChiTietHoaDon
             {
-                Ngay = ngayChoDongHang,
+                Ngay = mocNgay is { } m ? NgayHopLe(namChoMoc, m.Thang, m.Ngay) : ngayChoDongHang,
                 TenHang = tenHang,
                 DonVi = LayChu(hang, cot.DonVi),
                 SoLuong = soLuong,
@@ -296,7 +439,12 @@ public static class DocHoaDon
         }
     }
 
-    private static void DocNgayThang(ISheet sheet, int dongTieuDe, TrangDoc trang)
+    /// <summary>
+    /// Đọc dòng "Ngày … tháng … năm …" ở chân tờ. Năm trên giấy hay bị bỏ trống nên ghép
+    /// <paramref name="namChon"/> — năm người dùng chọn lúc nhập file — vào ngày và tháng đọc
+    /// được. Năm ghi trên giấy vẫn giữ riêng để màn hình nhập nói được là hai bên lệch nhau.
+    /// </summary>
+    private static void DocNgayThang(ISheet sheet, int dongTieuDe, TrangDoc trang, int? namChon)
     {
         for (var r = dongTieuDe; r <= sheet.LastRowNum; r++)
         {
@@ -308,7 +456,8 @@ public static class DocHoaDon
 
             for (var c = hang.FirstCellNum; c < hang.LastCellNum && c >= 0; c++)
             {
-                var khop = MauNgay.Match(LayChu(hang, c));
+                var chu = LayChu(hang, c);
+                var khop = MauNgayThang.Match(chu);
                 if (!khop.Success)
                 {
                     continue;
@@ -316,15 +465,85 @@ public static class DocHoaDon
 
                 var ngay = int.Parse(khop.Groups[1].Value, CultureInfo.InvariantCulture);
                 var thang = int.Parse(khop.Groups[2].Value, CultureInfo.InvariantCulture);
-                var nam = int.Parse(khop.Groups[3].Value, CultureInfo.InvariantCulture);
-
-                if (ngay is >= 1 and <= 31 && thang is >= 1 and <= 12 && nam is >= 2000 and <= 2100)
+                if (ngay is < 1 or > 31 || thang is < 1 or > 12)
                 {
-                    trang.NgayTrenHoaDon = new DateTime(nam, thang, ngay);
-                    return;
+                    continue;
                 }
+
+                trang.NgayTrongThang = ngay;
+                trang.ThangTrenGiay = thang;
+
+                var khopNam = MauNam.Match(chu[khop.Length..]);
+                if (khopNam.Success)
+                {
+                    var nam = int.Parse(khopNam.Groups[1].Value, CultureInfo.InvariantCulture);
+                    if (nam is >= 2000 and <= 2100)
+                    {
+                        trang.NamTrenGiay = nam;
+                    }
+                }
+
+                if ((trang.NamTrenGiay ?? namChon) is { } namDung)
+                {
+                    trang.NgayTrenHoaDon = NgayHopLe(namDung, thang, ngay);
+                }
+
+                return;
             }
         }
+    }
+
+    /// <summary>
+    /// Mốc ngày cửa hàng viết ở cột số thứ tự thay cho con số. Excel có thể đã tự đổi ô đó
+    /// thành ô ngày thật (gõ "1/12" vào ô kiểu ngày) nên đọc cả ô ngày lẫn ô chữ.
+    /// </summary>
+    private static NgayThangGiay? MocNgayTrongO(IRow hang, int cot)
+    {
+        if (cot < 0)
+        {
+            return null;
+        }
+
+        var o = hang.GetCell(cot);
+        if (o is null)
+        {
+            return null;
+        }
+
+        var loai = o.CellType == CellType.Formula ? o.CachedFormulaResultType : o.CellType;
+
+        if (loai == CellType.Numeric)
+        {
+            return DateUtil.IsCellDateFormatted(o)
+                ? new NgayThangGiay(o.DateCellValue.Day, o.DateCellValue.Month)
+                : null;
+        }
+
+        if (loai != CellType.String)
+        {
+            return null;
+        }
+
+        var khop = MauMocNgay.Match(o.StringCellValue);
+        if (!khop.Success)
+        {
+            return null;
+        }
+
+        var ngay = int.Parse(khop.Groups[1].Value, CultureInfo.InvariantCulture);
+        var thang = int.Parse(khop.Groups[2].Value, CultureInfo.InvariantCulture);
+
+        // Viết theo lối Việt Nam là ngày trước tháng sau. Hai con số mà không ra ngày tháng nào
+        // hợp lệ thì để yên, đó chỉ là số thứ tự viết lạ.
+        return ngay is >= 1 and <= 31 && thang is >= 1 and <= 12
+            ? new NgayThangGiay(ngay, thang)
+            : null;
+    }
+
+    /// <summary>Ghép năm, tháng, ngày lại; ngày 31 của tháng chỉ có 30 thì lùi về ngày cuối tháng.</summary>
+    private static DateTime NgayHopLe(int nam, int thang, int ngay)
+    {
+        return new DateTime(nam, thang, Math.Min(ngay, DateTime.DaysInMonth(nam, thang)));
     }
 
     /// <summary>
@@ -423,7 +642,10 @@ public static class DocHoaDon
         var loai = o.CellType == CellType.Formula ? o.CachedFormulaResultType : o.CellType;
         return loai switch
         {
-            CellType.String => o.StringCellValue.Trim(),
+            // Có tờ của cửa hàng lưu chữ Việt ở dạng tổ hợp: "Ngày" là N, g, a rồi dấu huyền
+            // rời ra một ký tự. Trông y hệt chữ thường mà so từng ký tự thì trượt hết, nên dồn
+            // về một dạng ngay lúc đọc — dòng "Ngày … tháng …" ở chân tờ mới đọc ra được.
+            CellType.String => o.StringCellValue.Trim().Normalize(NormalizationForm.FormC),
             CellType.Numeric => o.NumericCellValue.ToString("#,##0.##", CultureInfo.InvariantCulture),
             CellType.Boolean => o.BooleanCellValue.ToString(),
             _ => string.Empty,

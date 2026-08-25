@@ -2246,9 +2246,10 @@ public sealed class DonHangForm : Form
             return;
         }
 
+        List<string> daGhi;
         try
         {
-            XuatHoaDon.Xuat(
+            daGhi = XuatHoaDon.Xuat(
                 hoaDon,
                 khach,
                 hopThoai.FileName,
@@ -2261,11 +2262,27 @@ public sealed class DonHangForm : Form
             return;
         }
 
-        _lblTrangThai.Text = $"Đã xuất: {hopThoai.FileName}";
-
-        if (HopThoai.Hoi(this, $"Đã xuất xong:\n{hopThoai.FileName}\n\nMở file lên xem luôn không?"))
+        if (daGhi.Count == 0)
         {
-            MoFile(hopThoai.FileName);
+            return;
+        }
+
+        // Tờ nhiều trang ra nhiều file, mỗi trang một file. Phải nói rõ mấy file và tên từng
+        // file: người dùng chỉ đặt tên một lần, không nói thì họ cầm đúng file ấy đi in rồi
+        // tưởng mấy trang sau bị mất.
+        _lblTrangThai.Text = daGhi.Count == 1
+            ? $"Đã xuất: {daGhi[0]}"
+            : $"Đã xuất {daGhi.Count} file, mỗi trang một file, trong {Path.GetDirectoryName(daGhi[0])}";
+
+        var loiNhan = daGhi.Count == 1
+            ? $"Đã xuất xong:\n{daGhi[0]}\n\nMở file lên xem luôn không?"
+            : $"Tờ này {daGhi.Count} trang nên ra {daGhi.Count} file, mỗi trang một file:\n"
+                + string.Join("\n", daGhi.Select(f => "• " + Path.GetFileName(f)))
+                + $"\n\nchứa trong {Path.GetDirectoryName(daGhi[0])}\n\nMở trang 1 lên xem luôn không?";
+
+        if (HopThoai.Hoi(this, loiNhan))
+        {
+            MoFile(daGhi[0]);
         }
     }
 

@@ -7,8 +7,17 @@ using QuanLyDienNuoc.Ui;
 namespace QuanLyDienNuoc.Forms;
 
 /// <summary>
-/// Đọc một file hoá đơn Excel rồi nhập các dòng hàng vào phần mềm.
-/// Cho chọn bảng nào trong file, ngày lấy hàng và nhập vào hoá đơn nào.
+/// Đọc hoá đơn Excel rồi nhập các dòng hàng vào phần mềm.
+/// <para>
+/// Mẫu giấy của cửa hàng để trang đầu và các trang sau ở hai file riêng (<c>trang-1.xls</c> có
+/// phần đầu với tên khách, <c>trang-sau.xls</c> chỉ có bảng hàng), nên một tờ hoá đơn dài nằm
+/// ở nhiều file. Màn hình này gom chúng thành một lô: thêm trang 1 trước, rồi thêm tiếp từng
+/// trang sau, thứ tự thêm vào là thứ tự trang. Tên khách của cả tờ đọc ở trang 1.
+/// </para>
+/// <para>
+/// Trên giấy chỉ có "Ngày … tháng …", năm thì mẫu in sẵn "năm 20........." nên hay bỏ trống —
+/// vì vậy có ô chọn NĂM ngay lúc nhập file, ghép với ngày/tháng đọc được thành ngày lấy hàng.
+/// </para>
 /// <para>
 /// Tờ hoàn hàng cũng là một đơn hàng, có file Excel riêng và nhập vào y như hoá đơn bán —
 /// chỉ khác là tiền của nó trừ đi. Đọc thấy tên tờ là hoàn hàng thì màn hình này chuyển sang
@@ -28,17 +37,20 @@ public sealed class NhapExcelForm : Form
     private readonly DataGridView _luoiXem = new();
     private readonly BindingList<ChiTietHoaDon> _nguonXem = new();
 
-    private readonly TextBox _txtFile = Theme.O(560);
+    private readonly TextBox _txtFile = Theme.O(360);
+    private readonly ComboBox _cboNam = new();
     private readonly DateTimePicker _dtNgay = new() { Format = DateTimePickerFormat.Custom, CustomFormat = Theme.DangNgay, Font = Theme.FontNhap };
     private readonly ComboBox _cboDich = new();
     private readonly Label _lblTomTat = new();
     private readonly Label _lblCanhBao = new();
 
-    private KetQuaDocExcel? _ketQua;
     private bool _dangNap;
 
     /// <summary>Loại của các bảng đang tích: tờ bán, tờ hoàn, hay tích lẫn cả hai.</summary>
     private LoaiToNhap _loai = LoaiToNhap.KhongCo;
+
+    /// <summary>Thứ tự trang của lô đang tích: có trang 1 chưa, trang 1 có đứng đầu không.</summary>
+    private XetThuTuTrang _thuTu = XetThuTuTrang.KhongCo;
 
     /// <summary>
     /// Mã hoá đơn gốc ghi trên các bảng hoàn đang tích ("Hoàn cho hoá đơn HD2026-02"). Đọc theo
@@ -59,17 +71,17 @@ public sealed class NhapExcelForm : Form
 
         Text = "Nhập hoá đơn từ Excel";
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(1240, 840);
-        MinimumSize = new Size(1100, 760);
+        ClientSize = new Size(1400, 840);
+        MinimumSize = new Size(1240, 760);
         BackColor = Theme.Nen;
         Font = Theme.FontThuong;
         AutoScaleMode = AutoScaleMode.Dpi;
 
         TaoGiaoDien();
 
-        // Nạp file trước rồi mới dựng ô "NHẬP VÀO": danh sách hoá đơn đích tuỳ vào file này là
+        // Nạp trang đầu rồi mới dựng ô "NHẬP VÀO": danh sách hoá đơn đích tuỳ vào tờ này là
         // tờ bán hay tờ hoàn.
-        NapFile(duongDanFile);
+        ThemTrang(duongDanFile);
     }
 
     /// <summary>Số dòng hàng đã nhập được sau khi bấm Nhập.</summary>
@@ -104,8 +116,8 @@ public sealed class NhapExcelForm : Form
         khung.Controls.Add(
             Theme.ThanhTieuDe(
                 "NHẬP HOÁ ĐƠN TỪ EXCEL",
-                "Chọn bảng cần lấy, đặt ngày lấy hàng rồi nhập vào hoá đơn bán "
-                + "hoặc hoá đơn hoàn hàng của khách"),
+                "Thêm trang 1 trước rồi thêm tiếp các trang sau  ·  chọn năm và ngày lấy hàng  "
+                + "·  nhập vào hoá đơn bán hoặc hoá đơn hoàn hàng của khách"),
             0,
             0);
 
@@ -123,9 +135,40 @@ public sealed class NhapExcelForm : Form
 
         _txtFile.ReadOnly = true;
         _txtFile.BackColor = Color.White;
+        _txtFile.TabStop = false;
 
-        var btnChonFile = Theme.Nut("Chọn file khác", Theme.Chinh, 180, 34);
-        btnChonFile.Click += (_, _) => ChonFileKhac();
+        var btnThemTrang = Theme.Nut("+ Thêm trang...", Theme.Chinh, 170, 34);
+        btnThemTrang.Click += (_, _) => ChonThemTrang();
+
+        var btnBoTrang = Theme.NutPhu("Bỏ trang này", 150, 34);
+        btnBoTrang.Click += (_, _) => BoTrangDangChon();
+
+        // Năm không có trên giấy (mẫu in sẵn "năm 20.........") nên phải chọn ở đây. Bày sẵn
+        // vài năm quanh năm của sổ đang mở: hoá đơn cũ của cửa hàng là giấy của mấy năm trước.
+        _cboNam.DropDownStyle = ComboBoxStyle.DropDownList;
+        _cboNam.Font = Theme.FontNhap;
+        for (var nam = _nam + 1; nam >= _nam - 8; nam--)
+        {
+            _cboNam.Items.Add(nam);
+        }
+
+        _cboNam.SelectedItem = _nam;
+        _cboNam.SelectedIndexChanged += (_, _) =>
+        {
+            if (_dangNap)
+            {
+                return;
+            }
+
+            // Đổi năm là đổi ngày trên giấy của cả lô: ngày/tháng vẫn đọc từ file, chỉ ghép
+            // lại với năm mới.
+            if (NgayTrenGiayCuaLo() is { } ngay)
+            {
+                _dtNgay.Value = ngay;
+            }
+
+            CapNhatXemTruoc();
+        };
 
         _dtNgay.Value = DateTime.Today;
         _dtNgay.ValueChanged += (_, _) =>
@@ -140,14 +183,19 @@ public sealed class NhapExcelForm : Form
         _cboDich.Font = Theme.FontNhap;
 
         var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
-        hang.Controls.Add(Theme.Truong("FILE EXCEL", _txtFile, 460));
-        hang.Controls.Add(Theme.Truong(" ", btnChonFile, 180));
-        hang.Controls.Add(Theme.Truong("NGÀY LẤY HÀNG CHO CÁC DÒNG", _dtNgay, 220));
-        hang.Controls.Add(Theme.Truong("NHẬP VÀO", _cboDich, 300));
+        hang.Controls.Add(Theme.Truong("CÁC FILE TRONG LÔ", _txtFile, 360));
+        hang.Controls.Add(Theme.Truong(" ", btnThemTrang, 170));
+        hang.Controls.Add(Theme.Truong(" ", btnBoTrang, 150));
+        hang.Controls.Add(Theme.Truong("NĂM CỦA TỜ", _cboNam, 110));
+        hang.Controls.Add(Theme.Truong("NGÀY LẤY HÀNG CHO CÁC DÒNG", _dtNgay, 210));
+        hang.Controls.Add(Theme.Truong("NHẬP VÀO", _cboDich, 290));
 
         nen.Controls.Add(hang);
         return nen;
     }
+
+    /// <summary>Năm người dùng chọn cho tờ giấy này.</summary>
+    private int NamChon => _cboNam.SelectedItem is int nam ? nam : _nam;
 
     private Control TaoThanNoiDung()
     {
@@ -159,10 +207,10 @@ public sealed class NhapExcelForm : Form
             BackColor = Theme.Nen,
             Padding = new Padding(20, 8, 20, 0),
         };
-        than.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 400));
+        than.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 660));
         than.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        // Danh sách bảng tìm thấy trong file
+        // Danh sách trang trong lô, theo đúng thứ tự đã thêm vào
         var cotTrai = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -176,7 +224,7 @@ public sealed class NhapExcelForm : Form
         cotTrai.Controls.Add(
             new Label
             {
-                Text = "CÁC BẢNG TÌM THẤY (tích để lấy)",
+                Text = "CÁC TRANG TRONG LÔ (theo thứ tự thêm vào · tích để lấy)",
                 Font = Theme.FontDam,
                 ForeColor = Theme.Xam,
                 Dock = DockStyle.Fill,
@@ -196,10 +244,28 @@ public sealed class NhapExcelForm : Form
         };
         _luoiBang.Columns.Add(cotChon);
         _luoiBang.Columns.AddRange(
-            Theme.Cot(nameof(DongBang.Ten), "BẢNG", 120),
-            Theme.Cot(nameof(DongBang.Loai), "LOẠI", 90),
-            Theme.Cot(nameof(DongBang.SoDong), "DÒNG", 55, canPhai: true),
-            Theme.Cot(nameof(DongBang.Tong), "TIỀN", 105, "#,##0", canPhai: true));
+            Theme.Cot(nameof(DongBang.SoTrang), "TRANG", 45, canPhai: true),
+            Theme.Cot(nameof(DongBang.TenFile), "FILE", 115),
+            Theme.Cot(nameof(DongBang.Ten), "BẢNG", 105),
+            Theme.Cot(nameof(DongBang.LoaiTrang), "MẪU", 70),
+            Theme.Cot(nameof(DongBang.TenKhach), "TÊN KHÁCH", 110),
+            Theme.Cot(nameof(DongBang.Loai), "LOẠI", 70),
+            Theme.Cot(nameof(DongBang.SoDong), "DÒNG", 50, canPhai: true),
+            Theme.Cot(nameof(DongBang.Tong), "TIỀN", 95, "#,##0", canPhai: true));
+
+        // Trang 1 mang tên khách và phải đứng đầu lô, nên tô đậm cho khác các trang nối tiếp.
+        _luoiBang.CellFormatting += (_, e) =>
+        {
+            if (e.RowIndex < 0 || e.RowIndex >= _nguonBang.Count || e.CellStyle is not { } kieu)
+            {
+                return;
+            }
+
+            if (_nguonBang[e.RowIndex].Trang.Loai == LoaiTrangGiay.Trang1)
+            {
+                kieu.Font = Theme.FontLuoiDam;
+            }
+        };
         _luoiBang.DataSource = _nguonBang;
         _luoiBang.CellContentClick += (_, e) =>
         {
@@ -237,7 +303,8 @@ public sealed class NhapExcelForm : Form
         Theme.ApDungLuoi(_luoiXem);
         _luoiXem.ReadOnly = true;
         _luoiXem.Columns.AddRange(
-            Theme.Cot(nameof(ChiTietHoaDon.TenHang), "TÊN HÀNG", 260),
+            Theme.Cot(nameof(ChiTietHoaDon.Ngay), "NGÀY", 90, Theme.DangNgay),
+            Theme.Cot(nameof(ChiTietHoaDon.TenHang), "TÊN HÀNG", 240),
             Theme.Cot(nameof(ChiTietHoaDon.DonVi), "ĐƠN VỊ", 80),
             Theme.Cot(nameof(ChiTietHoaDon.SoLuong), "SỐ LƯỢNG", 100, "#,##0.##", canPhai: true),
             Theme.Cot(nameof(ChiTietHoaDon.DonGia), "ĐƠN GIÁ", 120, "#,##0", canPhai: true),
@@ -359,79 +426,187 @@ public sealed class NhapExcelForm : Form
         _dangNap = dangNapCu;
     }
 
-    private void ChonFileKhac()
+    private void ChonThemTrang()
     {
         using var hopThoai = new OpenFileDialog
         {
-            Title = "Chọn file hoá đơn Excel",
+            Title = _nguonBang.Count == 0
+                ? "Chọn file trang 1 của tờ hoá đơn"
+                : "Chọn file trang tiếp theo của tờ hoá đơn",
             Filter = "File Excel (*.xls;*.xlsx)|*.xls;*.xlsx|Tất cả các file (*.*)|*.*",
         };
 
         if (hopThoai.ShowDialog(this) == DialogResult.OK)
         {
-            NapFile(hopThoai.FileName);
+            ThemTrang(hopThoai.FileName);
         }
     }
 
-    private void NapFile(string duongDan)
+    /// <summary>
+    /// Đọc một file rồi nối các trang trong đó vào cuối lô. Thứ tự thêm vào là thứ tự trang,
+    /// nên một tờ hoá đơn dài thì thêm file trang 1 trước, xong thêm tiếp từng trang sau.
+    /// </summary>
+    private void ThemTrang(string duongDan)
     {
-        _txtFile.Text = duongDan;
+        var tenFile = Path.GetFileName(duongDan);
 
+        // Thêm hai lần cùng một file là hàng vào sổ hai lần mà trên sổ không còn dấu vết nào
+        // để nhận ra, nên hỏi lại trước.
+        if (_nguonBang.Any(b => string.Equals(b.TenFile, tenFile, StringComparison.OrdinalIgnoreCase))
+            && !HopThoai.Hoi(
+                this,
+                $"File \"{tenFile}\" đã có trong lô.\n\nThêm nữa là những dòng đó vào sổ hai lần. "
+                + "Vẫn thêm?"))
+        {
+            return;
+        }
+
+        KetQuaDocExcel ketQua;
         try
         {
-            _ketQua = DocHoaDon.Doc(duongDan, _dtNgay.Value.Date);
+            ketQua = DocHoaDon.Doc(duongDan, _dtNgay.Value.Date, NamChon);
         }
         catch (Exception ex)
         {
             HopThoai.Loi(this, $"Không đọc được file:\n{duongDan}\n\n{ex.Message}");
-            _ketQua = null;
+            return;
+        }
+
+        if (ketQua.Trang.Count == 0)
+        {
+            HopThoai.CanhBao(
+                this,
+                $"Không tìm thấy dòng hàng nào trong file \"{tenFile}\".\n\n" +
+                "File cần có một dòng tiêu đề gồm TÊN HÀNG, ĐVT, SỐ LƯỢNG, ĐƠN GIÁ, THÀNH TIỀN, " +
+                "và ít nhất một dòng đã điền tên hàng hoặc số lượng. File mẫu chưa điền gì thì " +
+                "không có dòng nào để lấy.");
+            return;
         }
 
         _dangNap = true;
         _nguonBang.RaiseListChangedEvents = false;
-        _nguonBang.Clear();
 
-        if (_ketQua is not null)
+        foreach (var trang in ketQua.Trang)
         {
-            foreach (var trang in _ketQua.Trang)
-            {
-                _nguonBang.Add(new DongBang
-                {
-                    Trang = trang,
-                    Chon = true,
-                    Ten = trang.TenSheet,
-                    Loai = trang.LaHoanHang ? "Hoàn hàng" : "Bán hàng",
-                    SoDong = trang.Dong.Count,
-                    Tong = trang.TongTien,
-                });
-            }
+            _nguonBang.Add(TaoDongBang(trang));
         }
 
+        DanhSoLaiTrang();
         _nguonBang.RaiseListChangedEvents = true;
         _nguonBang.ResetBindings();
 
-        // Ngày ghi trên hoá đơn dùng làm gợi ý cho ngày lấy hàng.
-        if (_ketQua?.NgayTrenHoaDon is { } ngay)
+        // Ngày ghi trên giấy dùng làm gợi ý cho ngày lấy hàng của những dòng không có mốc ngày.
+        if (NgayTrenGiayCuaLo() is { } ngay)
         {
             _dtNgay.Value = ngay;
         }
 
+        _txtFile.Text = TenFileTrongLo();
         _dangNap = false;
         CapNhatXemTruoc();
+    }
 
-        if (_ketQua is not null && _ketQua.Trang.Count == 0)
+    private static DongBang TaoDongBang(TrangDoc trang) => new()
+    {
+        Trang = trang,
+        Chon = true,
+        TenFile = trang.TenFile,
+        Ten = trang.TenSheet,
+        LoaiTrang = trang.Loai == LoaiTrangGiay.Trang1 ? "Trang 1" : "Trang sau",
+        TenKhach = trang.TenKhach ?? string.Empty,
+        Loai = trang.LaHoanHang ? "Hoàn hàng" : "Bán hàng",
+        SoDong = trang.Dong.Count,
+        Tong = trang.TongTien,
+    };
+
+    /// <summary>Bỏ trang đang chọn ra khỏi lô — chọn nhầm file thì không phải mở lại màn hình.</summary>
+    private void BoTrangDangChon()
+    {
+        if (_luoiBang.CurrentRow?.DataBoundItem is not DongBang bang)
         {
-            HopThoai.CanhBao(
-                this,
-                "Không tìm thấy bảng hàng nào trong file này.\n\n" +
-                "File cần có một dòng tiêu đề gồm TÊN HÀNG, ĐVT, SỐ LƯỢNG, ĐƠN GIÁ, THÀNH TIỀN.");
+            HopThoai.CanhBao(this, "Hãy chọn một trang trong bảng bên trái rồi bấm bỏ trang.");
+            return;
         }
+
+        _dangNap = true;
+        _nguonBang.Remove(bang);
+        DanhSoLaiTrang();
+        _nguonBang.ResetBindings();
+        _txtFile.Text = TenFileTrongLo();
+        _dangNap = false;
+        CapNhatXemTruoc();
+    }
+
+    /// <summary>
+    /// Đánh lại số trang theo những trang đang tích: bỏ tích một trang giữa lô thì các trang
+    /// dưới lùi số lên, để cột TRANG luôn đúng thứ tự sẽ nhập vào sổ.
+    /// </summary>
+    private void DanhSoLaiTrang()
+    {
+        var so = 0;
+        foreach (var bang in _nguonBang)
+        {
+            bang.SoTrang = bang.Chon ? (++so).ToString() : "—";
+        }
+
+        // DongBang không báo đổi giá trị nên lưới không tự vẽ lại: bỏ tích một trang mà cột
+        // TRANG vẫn giữ số cũ thì người dùng đọc sai thứ tự sắp nhập.
+        _luoiBang.Refresh();
+    }
+
+    /// <summary>Tên các file đang góp trang vào lô, theo thứ tự thêm vào.</summary>
+    private string TenFileTrongLo()
+    {
+        var ten = _nguonBang
+            .Select(b => b.TenFile)
+            .Where(t => t.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return ten.Count == 0 ? "(chưa có trang nào)" : string.Join("  ·  ", ten);
+    }
+
+    /// <summary>
+    /// Ngày đọc được trên giấy của lô: ưu tiên dòng "Ngày … tháng …" ở chân tờ, không có thì
+    /// lấy mốc ngày đầu tiên viết ở cột số thứ tự. Năm luôn lấy từ ô NĂM CỦA TỜ.
+    /// </summary>
+    private DateTime? NgayTrenGiayCuaLo()
+    {
+        foreach (var bang in _nguonBang.Where(b => b.Chon))
+        {
+            var trang = bang.Trang;
+
+            if (trang.NgayTrongThang is { } ngay && trang.ThangTrenGiay is { } thang)
+            {
+                return GhepNamDaChon(ngay, thang);
+            }
+
+            if (trang.NgayThangCuaDong.Count > 0)
+            {
+                var moc = trang.NgayThangCuaDong.OrderBy(m => m.Key).First().Value;
+                return GhepNamDaChon(moc.Ngay, moc.Thang);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Ghép ngày/tháng đọc trên giấy với năm đang chọn ở ô NĂM CỦA TỜ.</summary>
+    private DateTime GhepNamDaChon(int ngay, int thang)
+    {
+        var nam = NamChon;
+        return new DateTime(nam, thang, Math.Min(ngay, DateTime.DaysInMonth(nam, thang)));
     }
 
     private void CapNhatXemTruoc()
     {
         var ngay = _dtNgay.Value.Date;
+        DanhSoLaiTrang();
         var dangTich = _nguonBang.Where(b => b.Chon).ToList();
+
+        // Thứ tự trang xét theo đúng nhóm đang tích: bỏ tích trang 1 là lô mất tên khách, tích
+        // thêm trang 1 của tờ khác là hai tờ dồn vào một hoá đơn.
+        _thuTu = ThuTuTrangGiay.Xet(dangTich.Select(b => b.Trang));
 
         var loaiMoi = LoaiToNhap.Xet(dangTich.Select(b => b.Trang));
 
@@ -459,13 +634,20 @@ public sealed class NhapExcelForm : Form
         var canhBao = new List<string>();
         foreach (var bang in dangTich)
         {
-            foreach (var dong in bang.Trang.Dong)
+            var trang = bang.Trang;
+            for (var i = 0; i < trang.Dong.Count; i++)
             {
-                dong.Ngay = ngay;
+                var dong = trang.Dong[i];
+
+                // Dòng nào nằm dưới một mốc ngày viết ở cột số thứ tự thì giữ đúng ngày đó
+                // (ghép với năm đang chọn); dòng không có mốc mới lấy ngày chung của cả lô.
+                dong.Ngay = trang.NgayThangCuaDong.TryGetValue(i, out var moc)
+                    ? GhepNamDaChon(moc.Ngay, moc.Thang)
+                    : ngay;
                 _nguonXem.Add(dong);
             }
 
-            canhBao.AddRange(bang.Trang.CanhBao);
+            canhBao.AddRange(trang.CanhBao);
         }
 
         _nguonXem.RaiseListChangedEvents = true;
@@ -474,9 +656,13 @@ public sealed class NhapExcelForm : Form
         // Dòng hoàn mang số lượng âm nên tổng của tờ hoàn là số âm; nói "hoàn lại 90.000đ"
         // dễ đọc hơn là bày ra "-90.000đ".
         var tong = _nguonXem.Sum(d => d.ThanhTien);
+        var soNgay = _nguonXem.Select(d => d.Ngay.Date).Distinct().Count();
+        var keTrang = dangTich.Count > 1 ? $"{dangTich.Count} TRANG · " : string.Empty;
+        var keNgay = soNgay > 1 ? $" · {soNgay} NGÀY" : string.Empty;
+
         _lblTomTat.Text = _loai.LaHoanHang
-            ? $"SẼ NHẬP {_nguonXem.Count} DÒNG HOÀN · HOÀN LẠI {So.Tien(-tong)} (TRỪ VÀO NỢ)"
-            : $"SẼ NHẬP {_nguonXem.Count} DÒNG · TỔNG {So.Tien(tong)}";
+            ? $"{keTrang}SẼ NHẬP {_nguonXem.Count} DÒNG HOÀN{keNgay} · HOÀN LẠI {So.Tien(-tong)} (TRỪ VÀO NỢ)"
+            : $"{keTrang}SẼ NHẬP {_nguonXem.Count} DÒNG{keNgay} · TỔNG {So.Tien(tong)}";
 
         if (_loai.LonLoai)
         {
@@ -492,11 +678,71 @@ public sealed class NhapExcelForm : Form
             return;
         }
 
+        if (_thuTu.Chan is { } chanThuTu)
+        {
+            _lblCanhBao.ForeColor = Theme.Do;
+            _lblCanhBao.Text = "⚠ " + chanThuTu;
+            return;
+        }
+
+        // Mấy câu nhắc này không chặn nhập, nhưng phải nói ra: sai chỗ nào thì cũng là hàng vào
+        // sổ của người khác, hoặc vào năm khác, mà trên sổ không còn dấu vết nào để dò lại.
+        var nhac = new List<string>();
+        if (_thuTu.Nhac is { } nhacThuTu)
+        {
+            nhac.Add(nhacThuTu);
+        }
+
+        if (LechTenKhach() is { } lechTen)
+        {
+            nhac.Add(lechTen);
+        }
+
+        if (LechNam() is { } lechNam)
+        {
+            nhac.Add(lechNam);
+        }
+
+        if (canhBao.Count > 0)
+        {
+            nhac.Add($"{canhBao.Count} dòng cần xem lại: {string.Join("  ·  ", canhBao.Take(2))}"
+                + (canhBao.Count > 2 ? "  ·  ..." : string.Empty));
+        }
+
         _lblCanhBao.ForeColor = Theme.Cam;
-        _lblCanhBao.Text = canhBao.Count == 0
-            ? string.Empty
-            : $"⚠ {canhBao.Count} dòng cần xem lại: {string.Join("  ·  ", canhBao.Take(2))}"
-              + (canhBao.Count > 2 ? "  ·  ..." : string.Empty);
+        _lblCanhBao.Text = nhac.Count == 0 ? string.Empty : "⚠ " + string.Join("   ·   ", nhac);
+    }
+
+    /// <summary>
+    /// Tên khách đọc ở trang 1 mà khác khách đang mở thì nói ra. Màn hình này nhập vào sổ của
+    /// khách đang mở chứ không phải khách ghi trên giấy — lấy nhầm tờ là nợ sang tên người khác.
+    /// </summary>
+    private string? LechTenKhach()
+    {
+        if (_thuTu.TenKhach is not { } tenGiay || Khach is not { } khach)
+        {
+            return null;
+        }
+
+        var giay = ChuViet.BoDau(tenGiay).Trim();
+        var so = ChuViet.BoDau(khach.Ten).Trim();
+
+        return string.Equals(giay, so, StringComparison.CurrentCultureIgnoreCase)
+            ? null
+            : $"Giấy ghi khách \"{tenGiay}\" mà đang nhập vào sổ của \"{khach.Ten}\".";
+    }
+
+    /// <summary>Giấy có ghi rõ năm mà khác năm đang chọn: năm chọn thắng, nhưng phải nói ra.</summary>
+    private string? LechNam()
+    {
+        var namGiay = _nguonBang
+            .Where(b => b.Chon)
+            .Select(b => b.Trang.NamTrenGiay)
+            .FirstOrDefault(n => n is not null);
+
+        return namGiay is { } nam && nam != NamChon
+            ? $"Giấy ghi năm {nam} mà ô NĂM CỦA TỜ đang chọn {NamChon}."
+            : null;
     }
 
     /// <summary>
@@ -539,7 +785,13 @@ public sealed class NhapExcelForm : Form
 
         if (_nguonXem.Count == 0)
         {
-            HopThoai.CanhBao(this, "Chưa có dòng nào để nhập. Hãy tích chọn ít nhất một bảng.");
+            HopThoai.CanhBao(this, "Chưa có dòng nào để nhập. Hãy tích chọn ít nhất một trang.");
+            return;
+        }
+
+        if (_thuTu.Chan is { } chanThuTu)
+        {
+            HopThoai.CanhBao(this, chanThuTu);
             return;
         }
 
@@ -562,9 +814,12 @@ public sealed class NhapExcelForm : Form
 
         var laToHoan = _loai.LaHoanHang;
         var ngay = _dtNgay.Value.Date;
+
+        // Ngày của từng dòng đã chấm sẵn ở bảng xem trước: dòng có mốc ngày trên giấy giữ ngày
+        // của nó, dòng không có mới lấy ngày chung — copy lại đây là mất mốc.
         var dongDoc = _nguonXem.Select(d => new ChiTietHoaDon
         {
-            Ngay = ngay,
+            Ngay = d.Ngay.Date,
             TenHang = d.TenHang,
             DonVi = d.DonVi,
             DonGia = d.DonGia,
@@ -656,13 +911,13 @@ public sealed class NhapExcelForm : Form
                 _khachId,
                 goc?.Nam ?? _nam,
                 laToHoan ? LoaiHoaDon.HoanHang : LoaiHoaDon.Ban),
-            NgayMo = ngay,
+            NgayMo = dongDoc.Count > 0 ? dongDoc.Min(d => d.Ngay) : ngay,
 
             // Ghi chú của tờ hoàn in ra giấy thành lý do hoàn, nên lấy đúng lý do đọc được
             // trong file chứ không ghi "nhập từ file nào" lên tờ đưa khách.
             GhiChu = laToHoan
                 ? LyDoTrenGiay()
-                : "Nhập từ " + Path.GetFileName(_txtFile.Text),
+                : "Nhập từ " + TenFileTrongLo(),
         };
 
         var moTaViec = laToHoan
@@ -722,7 +977,18 @@ public sealed class NhapExcelForm : Form
 
         public bool Chon { get; set; }
 
+        /// <summary>Số trang trong lô, đánh lại mỗi lần thêm, bỏ hay đổi tích một trang.</summary>
+        public string SoTrang { get; set; } = string.Empty;
+
+        public string TenFile { get; set; } = string.Empty;
+
         public string Ten { get; set; } = string.Empty;
+
+        /// <summary>"Trang 1" hay "Trang sau" — mẫu giấy nào, xét theo có phần đầu hay không.</summary>
+        public string LoaiTrang { get; set; } = string.Empty;
+
+        /// <summary>Tên khách đọc ở phần đầu. Trang nối tiếp không có phần đầu nên để trống.</summary>
+        public string TenKhach { get; set; } = string.Empty;
 
         /// <summary>Tờ bán hay tờ hoàn — để người dùng thấy vì sao ô "NHẬP VÀO" đổi danh sách.</summary>
         public string Loai { get; set; } = string.Empty;

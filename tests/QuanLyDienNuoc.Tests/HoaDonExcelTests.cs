@@ -25,13 +25,15 @@ public class HoaDonExcelTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    // Hàng của cùng một ngày: mỗi trang mất một dòng cho mốc ngày đứng đầu trang, nên trang 1
+    // chứa 24 dòng hàng (không phải 25) và trang sau chứa 34.
     [Theory]
     [InlineData(0, new[] { 0 })]           // hoá đơn rỗng vẫn in ra một trang
     [InlineData(1, new[] { 1 })]
-    [InlineData(25, new[] { 25 })]         // vừa đủ trang 1
-    [InlineData(26, new[] { 25, 1 })]
-    [InlineData(60, new[] { 25, 35 })]     // vừa đủ hai trang
-    [InlineData(61, new[] { 25, 35, 1 })]
+    [InlineData(24, new[] { 24 })]         // vừa đủ trang 1
+    [InlineData(25, new[] { 24, 1 })]
+    [InlineData(58, new[] { 24, 34 })]     // vừa đủ hai trang
+    [InlineData(59, new[] { 24, 34, 1 })]
     public void ChiaTrang_ChiaDungSucChuaTungTrang(int soDong, int[] mongDoi)
     {
         var chiTiet = Enumerable.Range(1, soDong)
@@ -41,6 +43,32 @@ public class HoaDonExcelTests : IDisposable
         var trang = XuatHoaDon.ChiaTrang(chiTiet);
 
         Assert.Equal(mongDoi, trang.Select(t => t.Count).ToArray());
+    }
+
+    [Fact]
+    public void LenTrang_MoiLanDoiNgayAnThemMotDongCuaTrang()
+    {
+        // Tờ của khách mối gom hàng mỗi ngày một ít: mỗi ngày một dòng mốc, nên trang 25 dòng
+        // chứa được ít dòng hàng hơn. Đếm sai chỗ này là dòng cuối bị đẩy ra ngoài khung kẻ.
+        var chiTiet = Enumerable.Range(0, 12)
+            .Select(i => new ChiTietHoaDon
+            {
+                Ngay = new DateTime(2026, 3, 1).AddDays(i), TenHang = $"Hàng {i + 1}", SoLuong = 1, DonGia = 1000,
+            })
+            .ToList();
+
+        var trang = XuatHoaDon.LenTrang(chiTiet);
+
+        // 12 ngày khác nhau = 12 dòng mốc + 12 dòng hàng = 24 dòng, vừa trong trang 1.
+        Assert.Single(trang);
+        Assert.Equal(24, trang[0].Count);
+        Assert.Equal(12, trang[0].Count(d => d.Moc is not null));
+
+        // Mốc luôn đứng ngay trên dòng hàng của nó, và số thứ tự chạy liên tục qua các dòng mốc.
+        Assert.All(trang[0].Where((d, i) => i % 2 == 0), d => Assert.NotNull(d.Moc));
+        Assert.Equal(
+            Enumerable.Range(1, 12).ToArray(),
+            trang[0].Where(d => d.Hang is not null).Select(d => d.SoThuTu).ToArray());
     }
 
     [Fact]
@@ -113,19 +141,24 @@ public class HoaDonExcelTests : IDisposable
         }
 
         var fileRa = Path.Combine(_thuMucTam, "hoa-don.xls");
-        XuatHoaDon.Xuat(hoaDon, khach, fileRa, ThuMucMau, new DateTime(2026, 8, 3));
+        var daGhi = XuatHoaDon.Xuat(hoaDon, khach, fileRa, ThuMucMau, new DateTime(2026, 8, 3));
 
-        Assert.True(File.Exists(fileRa));
+        Assert.All(daGhi, f => Assert.True(File.Exists(f)));
 
-        var doc = DocHoaDon.Doc(fileRa, new DateTime(2026, 1, 1));
+        // 40 dòng của 40 ngày khác nhau: mỗi dòng kéo theo một dòng mốc nên 40 dòng ấy trải ra
+        // ba trang, mỗi trang một file.
+        Assert.Equal(3, daGhi.Count);
 
-        Assert.Equal(2, doc.Trang.Count);                       // 40 dòng => 2 trang
-        Assert.Equal(40, doc.TongSoDong);
-        Assert.Equal("Ông Mẫu", doc.TenKhach);
-        Assert.Equal(new DateTime(2026, 8, 3), doc.NgayTrenHoaDon);
-        Assert.Equal(hoaDon.TongTien, doc.Trang.Sum(t => t.TongTien));
+        var trang = daGhi
+            .Select(f => DocHoaDon.Doc(f, new DateTime(2026, 1, 1)).Trang.Single())
+            .ToList();
 
-        var dongDau = doc.Trang[0].Dong[0];
+        Assert.Equal(40, trang.Sum(t => t.Dong.Count));
+        Assert.Equal("Ông Mẫu", trang[0].TenKhach);
+        Assert.Equal(new DateTime(2026, 8, 3), trang[^1].NgayTrenHoaDon);
+        Assert.Equal(hoaDon.TongTien, trang.Sum(t => t.TongTien));
+
+        var dongDau = trang[0].Dong[0];
         Assert.Equal("Ống 90 #1", dongDau.TenHang);
         Assert.Equal("m", dongDau.DonVi);
         Assert.Equal(2.5m, dongDau.SoLuong);
@@ -167,18 +200,18 @@ public class HoaDonExcelTests : IDisposable
         }
 
         var fileRa = Path.Combine(_thuMucTam, "tu-file-goc.xls");
-        XuatHoaDon.Xuat(hoaDon, khach, fileRa, thuMucMau);
+        var daGhi = XuatHoaDon.Xuat(hoaDon, khach, fileRa, thuMucMau);
 
-        var doc = DocHoaDon.Doc(fileRa, DateTime.Today);
+        var trang = daGhi.Select(f => DocHoaDon.Doc(f, DateTime.Today).Trang.Single()).ToList();
 
-        // Chỉ còn đúng hai trang, không dính tab mẫu cũ hay tab biểu đồ "Chart1".
-        Assert.Equal(new[] { "Trang 1", "Trang 2" }, doc.Trang.Select(t => t.TenSheet).ToArray());
-        Assert.Equal(35, doc.TongSoDong);
-        Assert.Equal("Chú Hải", doc.TenKhach);
-        Assert.Equal(hoaDon.TongTien, doc.Trang.Sum(t => t.TongTien));
+        // Mỗi file đúng một trang, không dính tab mẫu cũ hay tab biểu đồ "Chart1".
+        Assert.Equal(new[] { "Trang 1", "Trang 2" }, trang.Select(t => t.TenSheet).ToArray());
+        Assert.Equal(35, trang.Sum(t => t.Dong.Count));
+        Assert.Equal("Chú Hải", trang[0].TenKhach);
+        Assert.Equal(hoaDon.TongTien, trang.Sum(t => t.TongTien));
 
         // Dữ liệu cũ trong file mẫu phải bị dọn sạch, không lẫn vào hoá đơn mới.
-        Assert.All(doc.Trang, t => Assert.All(t.Dong, d => Assert.StartsWith("Van khoá", d.TenHang)));
+        Assert.All(trang, t => Assert.All(t.Dong, d => Assert.StartsWith("Van khoá", d.TenHang)));
     }
 
     [Fact]

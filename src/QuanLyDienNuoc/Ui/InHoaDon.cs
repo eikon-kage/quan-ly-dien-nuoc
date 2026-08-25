@@ -26,7 +26,7 @@ public sealed class InHoaDon : PrintDocument
     private readonly Font _fontBang = new("Times New Roman", 10.5F);
     private readonly Font _fontBangDam = new("Times New Roman", 10.5F, FontStyle.Bold);
 
-    private readonly List<List<ChiTietHoaDon>> _trang;
+    private readonly List<List<DongTrenTo>> _trang;
     private readonly HoaDon _hoaDon;
     private readonly HoaDon? _hoaDonGoc;
     private readonly KhachHang _khach;
@@ -50,7 +50,7 @@ public sealed class InHoaDon : PrintDocument
         _khach = khach;
         _cuaHang = cuaHang;
         _ngayIn = ngayIn ?? DateTime.Today;
-        _trang = XuatHoaDon.ChiaTrang(hoaDon.ChiTiet);
+        _trang = XuatHoaDon.LenTrang(hoaDon.ChiTiet);
 
         DocumentName = hoaDon.LaHoanHang
             ? $"Hoá đơn hoàn hàng {hoaDon.MaHoaDon} - {khach.Ten}"
@@ -166,7 +166,7 @@ public sealed class InHoaDon : PrintDocument
         var caoDong = (dayBang - top - CaoTieuDeBang) / soDongToiDa;
         var mocCot = TinhMocCot(khung);
 
-        VeBang(g, mocCot, top, CaoTieuDeBang, caoDong, soDongToiDa, dong, soTrang, but, viet, vietManh);
+        VeBang(g, mocCot, top, CaoTieuDeBang, caoDong, soDongToiDa, dong, but, viet, vietManh);
 
         var yTong = top + CaoTieuDeBang + (caoDong * soDongToiDa);
         VeChanTrang(g, khung, mocCot, yTong, CaoDongTong, CaoBangChu, dong, laTrangCuoi, but, viet);
@@ -259,8 +259,7 @@ public sealed class InHoaDon : PrintDocument
         float caoTieuDe,
         float caoDong,
         int soDongToiDa,
-        List<ChiTietHoaDon> dong,
-        int soTrang,
+        List<DongTrenTo> dong,
         Brush but,
         Pen viet,
         Pen vietManh)
@@ -302,15 +301,23 @@ public sealed class InHoaDon : PrintDocument
 
         // Nội dung
         var dau = _hoaDon.DauInRaGiay;
-        var soThuTu = SoThuTuDauTrang(soTrang);
         for (var i = 0; i < dong.Count; i++)
         {
-            var ct = dong[i];
             var y = top + caoTieuDe + (caoDong * i);
 
             RectangleF O(int cot) => new(mocCot[cot] + 4f, y, mocCot[cot + 1] - mocCot[cot] - 8f, caoDong);
 
-            g.DrawString((soThuTu + i).ToString(), _fontBang, but, O(0), canhGiua);
+            // Mốc ngày chiếm riêng một dòng ở cột TT, y như tờ giấy chủ cửa hàng viết tay và y
+            // như file Excel xuất ra — tờ in với file xuất phải là cùng một tờ.
+            if (dong[i].Moc is { } moc)
+            {
+                g.DrawString($"{moc.Day}/{moc.Month}", _fontBangDam, but, O(0), canhGiua);
+                continue;
+            }
+
+            var ct = dong[i].Hang!;
+
+            g.DrawString(dong[i].SoThuTu.ToString(), _fontBang, but, O(0), canhGiua);
             g.DrawString(ct.TenHang, _fontBang, but, O(1), canhTrai);
             g.DrawString(ct.DonVi, _fontBang, but, O(2), canhGiua);
             g.DrawString(So.Luong(ct.SoLuong * dau), _fontBang, but, O(3), canhPhai);
@@ -324,17 +331,6 @@ public sealed class InHoaDon : PrintDocument
         }
     }
 
-    private int SoThuTuDauTrang(int soTrang)
-    {
-        var soThuTu = 1;
-        for (var i = 0; i < soTrang; i++)
-        {
-            soThuTu += _trang[i].Count;
-        }
-
-        return soThuTu;
-    }
-
     private void VeChanTrang(
         Graphics g,
         Rectangle khung,
@@ -342,7 +338,7 @@ public sealed class InHoaDon : PrintDocument
         float yTong,
         float caoDongTong,
         float caoBangChu,
-        List<ChiTietHoaDon> dong,
+        List<DongTrenTo> dong,
         bool laTrangCuoi,
         Brush but,
         Pen viet)
@@ -359,7 +355,9 @@ public sealed class InHoaDon : PrintDocument
         g.DrawLine(viet, mocCot[5], yTong, mocCot[5], yTong + caoDongTong);
 
         var dau = _hoaDon.DauInRaGiay;
-        var tien = (laTrangCuoi ? _hoaDon.TongTien : dong.Sum(c => c.ThanhTien)) * dau;
+        var tien = (laTrangCuoi
+            ? _hoaDon.TongTien
+            : dong.Where(d => d.Hang is not null).Sum(d => d.Hang!.ThanhTien)) * dau;
         g.DrawString(
             (laTrangCuoi, _hoaDon.LaHoanHang) switch
             {

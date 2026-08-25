@@ -67,6 +67,14 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   Tiền hoàn tự trừ vào nợ của khách; tờ hoàn in và xuất Excel được như hoá đơn thường, đầu
   tờ ghi *HÓA ĐƠN HOÀN HÀNG* và *hoàn cho hoá đơn nào*. Xem thêm
   [docs/hoa-don-hoan-hang.md](docs/hoa-don-hoan-hang.md).
+- **Nhập hoá đơn từ Excel, một tờ nhiều trang**: mẫu giấy để trang đầu và các trang sau ở hai
+  file riêng, nên màn nhập gom chúng thành một lô — thêm trang 1 trước (trang này mang tên
+  khách), rồi bấm *+ Thêm trang...* cho từng trang sau. Trang 1 nằm sai chỗ hay lô có hai
+  trang 1 thì phần mềm chặn lại. Giấy không ghi năm nên có ô *NĂM CỦA TỜ* ngay lúc nhập; ngày
+  của từng dòng đọc ở mốc ngày viết trong cột số thứ tự (`1/12`, `12\4`). Lúc xuất Excel cũng
+  ghi mốc y như vậy để xuất ra rồi nhập lại không mất ngày, nhưng mốc đứng **riêng một dòng**
+  nên cột số thứ tự của dòng hàng vẫn còn đủ số. Xem
+  [docs/nhap-hoa-don-nhieu-trang.md](docs/nhap-hoa-don-nhieu-trang.md).
 - **Thanh toán**: ghi nhiều lần trả tiền cho một hoá đơn, tự tính còn nợ.
 - **Thu tiền của khách (một lần trả cho nhiều hoá đơn)**: khách đưa 5 triệu trả cho 3 hoá đơn
   thì gõ một số tiền, phần mềm chia sẵn từ hoá đơn cũ nhất và cho xem trước hoá đơn nào trừ
@@ -78,7 +86,10 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   có Excel hay WPS. Nhiều hàng thì tự chia trang, trang giữa ghi *Cộng trang này*, trang
   cuối ghi *Tổng cộng* kèm số tiền bằng chữ.
 - **Xuất Excel**: điền dữ liệu vào đúng file mẫu `.xls` của cửa hàng (trang 1 có tiêu đề,
-  các trang sau chỉ có bảng), giữ nguyên khung kẻ và độ rộng cột.
+  các trang sau chỉ có bảng), giữ nguyên khung kẻ và độ rộng cột. Tờ nhiều trang ra **mỗi
+  trang một file riêng** (`... - trang 1.xls`, `... - trang 2.xls`) đúng như mẫu giấy vốn là
+  hai file rời, chứ không gộp mấy tab vào một file; xuất xong phần mềm nói rõ mấy file, tên
+  từng file và thư mục chứa.
 - **Nhập từ Excel**: đọc ngược file hoá đơn Excel — kể cả các file cũ làm bằng WPS — vào
   phần mềm. Cho chọn lấy bảng nào trong file, đặt ngày lấy hàng, xem trước rồi mới nhập.
   File cũ thiếu đơn giá thì tự tính lại từ thành tiền và báo lại để kiểm.
@@ -230,6 +241,7 @@ docs/
   chamcong-tren-may-tinh.md     cách máy tính đọc sổ chấm công từ Supabase
   nhap-khach-hang-tu-file.md    cách nhập danh sách khách từ Excel, kèm quy tắc đọc cột
   mau-danh-sach-khach-hang.xlsx file mẫu danh sách khách (do phần mềm tự sinh ra)
+  nhap-hoa-don-nhieu-trang.md   nhập một tờ hoá đơn nằm ở nhiều file, chọn năm, mốc ngày
 ```
 
 ## Xem giao diện mà không có máy Windows

@@ -5,35 +5,121 @@ using QuanLyDienNuoc.Ui;
 
 namespace QuanLyDienNuoc.Excel;
 
+/// <summary>
+/// Một dòng trên tờ giấy. Chủ cửa hàng viết mốc ngày ("1/12") thành một dòng riêng ở cột số
+/// thứ tự, hàng lấy hôm ấy nằm bên dưới — nên tờ giấy có hai loại dòng, và sức chứa của trang
+/// phải đếm cả dòng mốc chứ không chỉ đếm hàng.
+/// </summary>
+public sealed record DongTrenTo
+{
+    /// <summary>Dòng hàng. Null là dòng mốc ngày.</summary>
+    public ChiTietHoaDon? Hang { get; init; }
+
+    /// <summary>Ngày của mốc, chỉ dòng mốc mới có.</summary>
+    public DateTime? Moc { get; init; }
+
+    /// <summary>Số thứ tự ghi ở cột TT, chỉ dòng hàng mới có. Chạy liên tục qua các trang.</summary>
+    public int SoThuTu { get; init; }
+}
+
 /// <summary>Điền dữ liệu hoá đơn vào mẫu Excel của cửa hàng, tự chia trang khi nhiều dòng.</summary>
 public static class XuatHoaDon
 {
-    /// <summary>Chia các dòng hàng theo sức chứa của từng trang. Luôn trả về ít nhất một trang.</summary>
-    public static List<List<ChiTietHoaDon>> ChiaTrang(IEnumerable<ChiTietHoaDon> chiTiet)
+    /// <summary>
+    /// Xếp các dòng hàng lên từng trang giấy, chèn dòng mốc ngày vào đúng chỗ đổi ngày. Luôn
+    /// trả về ít nhất một trang.
+    /// <para>
+    /// Dòng mốc ăn một dòng của trang y như một dòng hàng — trang 1 chứa 25 dòng thì tờ gom
+    /// hàng của một ngày chỉ còn 24 dòng hàng. Tính đúng chỗ này thì tờ in ra giấy và file
+    /// Excel xuất ra mới ngắt trang giống nhau, và không dòng nào bị đẩy ra ngoài khung kẻ.
+    /// </para>
+    /// </summary>
+    public static List<List<DongTrenTo>> LenTrang(IEnumerable<ChiTietHoaDon> chiTiet)
     {
         var dong = ThuTuDong.TheoThuTu(chiTiet);
 
-        var trang = new List<List<ChiTietHoaDon>>();
+        var trang = new List<List<DongTrenTo>>();
         var daLay = 0;
-        var sucChua = MauHoaDon.Trang1.SoDongMoiTrang;
+        var soThuTu = 1;
 
         do
         {
-            trang.Add(dong.Skip(daLay).Take(sucChua).ToList());
-            daLay += sucChua;
-            sucChua = MauHoaDon.TrangSau.SoDongMoiTrang;
+            var sucChua = (trang.Count == 0 ? MauHoaDon.Trang1 : MauHoaDon.TrangSau).SoDongMoiTrang;
+            var mot = new List<DongTrenTo>();
+
+            // Mỗi trang là một file riêng và nhập vào phần mềm từng lần một, nên trang nào cũng
+            // phải tự mang ngày của nó: dòng đầu trang luôn có mốc, kể cả khi cùng ngày với dòng
+            // cuối trang trước.
+            DateTime? ngayDongTren = null;
+
+            while (daLay < dong.Count)
+            {
+                var ngay = dong[daLay].Ngay.Date;
+                var themMoc = ngayDongTren != ngay;
+
+                // Dòng cuối trang không được là dòng mốc trơ trọi: mốc với dòng hàng đầu tiên của
+                // nó phải cùng ở lại hoặc cùng sang trang sau. Trang trống thì cứ nhận, không thì
+                // mẫu nào chứa nổi ít hơn hai dòng là kẹt vòng lặp.
+                if (mot.Count > 0 && mot.Count + (themMoc ? 2 : 1) > sucChua)
+                {
+                    break;
+                }
+
+                if (themMoc)
+                {
+                    mot.Add(new DongTrenTo { Moc = ngay });
+                }
+
+                mot.Add(new DongTrenTo { Hang = dong[daLay], SoThuTu = soThuTu++ });
+                ngayDongTren = ngay;
+                daLay++;
+            }
+
+            trang.Add(mot);
         }
         while (daLay < dong.Count);
 
         return trang;
     }
 
+    /// <summary>Chia riêng các dòng hàng theo từng trang, bỏ dòng mốc ngày.</summary>
+    public static List<List<ChiTietHoaDon>> ChiaTrang(IEnumerable<ChiTietHoaDon> chiTiet) =>
+        LenTrang(chiTiet)
+            .Select(t => t.Where(d => d.Hang is not null).Select(d => d.Hang!).ToList())
+            .ToList();
+
     /// <summary>
-    /// Xuất hoá đơn ra file Excel theo đúng mẫu giấy của cửa hàng.
+    /// Tên file của từng trang khi xuất. Tờ một trang giữ đúng tên người dùng đặt; tờ nhiều
+    /// trang thì mỗi trang một file, số trang ghi luôn trong tên để xếp trong thư mục đúng thứ
+    /// tự và nhập lại cũng theo thứ tự ấy.
+    /// </summary>
+    public static string TenFileTrang(string fileRa, int soTrang, int tongSoTrang)
+    {
+        if (tongSoTrang <= 1)
+        {
+            return fileRa;
+        }
+
+        var thuMuc = Path.GetDirectoryName(fileRa) ?? string.Empty;
+        var ten = Path.GetFileNameWithoutExtension(fileRa);
+        var duoi = Path.GetExtension(fileRa);
+        return Path.Combine(thuMuc, $"{ten} - trang {soTrang}{duoi}");
+    }
+
+    /// <summary>
+    /// Xuất hoá đơn ra Excel theo đúng mẫu giấy của cửa hàng: <b>mỗi trang một file riêng</b>,
+    /// không gộp mấy trang thành mấy tab trong một file. Mẫu giấy của cửa hàng vốn là hai file
+    /// khác nhau (trang đầu, trang sau) và màn nhập cũng gom từng file trang thành một lô, nên
+    /// xuất ra rời từng trang thì cầm đi in hay nhập lại đều khớp; tab thì máy in bỏ qua và
+    /// người dùng cũng không thấy.
+    /// <para>
+    /// Trả về danh sách file đã ghi, theo thứ tự trang. Tờ nhiều trang thì tên file có thêm
+    /// " - trang N" — xem <see cref="TenFileTrang"/>.
+    /// </para>
     /// <paramref name="hoaDonGoc"/> chỉ dùng khi xuất hoá đơn hoàn hàng, để ghi lên tờ giấy
     /// là hoàn cho hoá đơn nào.
     /// </summary>
-    public static void Xuat(
+    public static List<string> Xuat(
         HoaDon hoaDon,
         KhachHang khach,
         string fileRa,
@@ -50,52 +136,12 @@ public static class XuatHoaDon
             throw new FileNotFoundException($"Không tìm thấy file mẫu:\n{fileTrang1}", fileTrang1);
         }
 
-        var trang = ChiaTrang(hoaDon.ChiTiet);
-        var tongCong = hoaDon.TongTien;
+        var trang = LenTrang(hoaDon.ChiTiet);
 
-        HSSFWorkbook wb;
-        using (var doc = File.OpenRead(fileTrang1))
+        if (trang.Count > 1 && !File.Exists(fileTrangSau))
         {
-            wb = new HSSFWorkbook(doc);
-        }
-
-        // File mẫu có thể còn nhiều tab khác (mẫu cũ, biểu đồ...) — chỉ giữ đúng tab cần dùng.
-        GiuLaiMotTab(wb, MauHoaDon.TimTab(wb, MauHoaDon.TenTabTrang1));
-        wb.SetSheetName(0, "Trang 1");
-
-        if (trang.Count > 1)
-        {
-            if (!File.Exists(fileTrangSau))
-            {
-                throw new FileNotFoundException($"Hoá đơn có {trang.Count} trang nhưng thiếu file mẫu:\n{fileTrangSau}", fileTrangSau);
-            }
-
-            using var docSau = File.OpenRead(fileTrangSau);
-            var wbSau = new HSSFWorkbook(docSau);
-            var mauTrangSau = wbSau.GetSheetAt(MauHoaDon.TimTab(wbSau, MauHoaDon.TenTabTrangSau));
-
-            for (var i = 2; i <= trang.Count; i++)
-            {
-                mauTrangSau.CopyTo(wb, $"Trang {i}", true, true);
-            }
-        }
-
-        var soThuTu = 1;
-        for (var i = 0; i < trang.Count; i++)
-        {
-            var viTri = i == 0 ? MauHoaDon.Trang1 : MauHoaDon.TrangSau;
-            DienMotTrang(
-                wb.GetSheetAt(i),
-                viTri,
-                hoaDon,
-                trang[i],
-                soThuTu,
-                khach,
-                laTrangCuoi: i == trang.Count - 1,
-                tongCong,
-                ngayIn ?? DateTime.Today,
-                hoaDonGoc);
-            soThuTu += trang[i].Count;
+            throw new FileNotFoundException(
+                $"Hoá đơn có {trang.Count} trang nhưng thiếu file mẫu:\n{fileTrangSau}", fileTrangSau);
         }
 
         var thuMucRa = Path.GetDirectoryName(fileRa);
@@ -104,16 +150,52 @@ public static class XuatHoaDon
             Directory.CreateDirectory(thuMucRa);
         }
 
-        using var ghi = new FileStream(fileRa, FileMode.Create, FileAccess.Write);
-        wb.Write(ghi, leaveOpen: false);
+        var daGhi = new List<string>();
+
+        for (var i = 0; i < trang.Count; i++)
+        {
+            var laTrang1 = i == 0;
+
+            HSSFWorkbook wb;
+            using (var doc = File.OpenRead(laTrang1 ? fileTrang1 : fileTrangSau))
+            {
+                wb = new HSSFWorkbook(doc);
+            }
+
+            // File mẫu có thể còn nhiều tab khác (mẫu cũ, biểu đồ...) — chỉ giữ đúng tab cần dùng.
+            GiuLaiMotTab(
+                wb,
+                MauHoaDon.TimTab(wb, laTrang1 ? MauHoaDon.TenTabTrang1 : MauHoaDon.TenTabTrangSau));
+            wb.SetSheetName(0, $"Trang {i + 1}");
+
+            DienMotTrang(
+                wb.GetSheetAt(0),
+                laTrang1 ? MauHoaDon.Trang1 : MauHoaDon.TrangSau,
+                hoaDon,
+                trang[i],
+                khach,
+                laTrangCuoi: i == trang.Count - 1,
+                hoaDon.TongTien,
+                ngayIn ?? DateTime.Today,
+                hoaDonGoc);
+
+            var file = TenFileTrang(fileRa, i + 1, trang.Count);
+            using (var ghi = new FileStream(file, FileMode.Create, FileAccess.Write))
+            {
+                wb.Write(ghi, leaveOpen: false);
+            }
+
+            daGhi.Add(file);
+        }
+
+        return daGhi;
     }
 
     private static void DienMotTrang(
         ISheet sheet,
         ViTriTrang viTri,
         HoaDon hoaDon,
-        List<ChiTietHoaDon> dong,
-        int soThuTuDau,
+        List<DongTrenTo> dong,
         KhachHang khach,
         bool laTrangCuoi,
         decimal tongCong,
@@ -159,10 +241,24 @@ public static class XuatHoaDon
 
         for (var i = 0; i < dong.Count; i++)
         {
-            var ct = dong[i];
             var r = viTri.DongDauDuLieu + i;
 
-            LayO(sheet, r, MauHoaDon.CotTT).SetCellValue((soThuTuDau + i).ToString());
+            // Mốc ngày "1/12" đứng riêng một dòng ở cột số thứ tự, đúng lối chủ cửa hàng viết
+            // tay: hàng lấy hôm ấy nằm bên dưới, tới khi gặp mốc khác. Trên tờ giấy không có
+            // chỗ nào khác ghi ngày cho từng dòng, nên đây là chỗ duy nhất giữ được ngày để
+            // nhập lại file này vào phần mềm.
+            //
+            // Trước đây mốc ghi thẳng vào ô số thứ tự của dòng hàng, nên tờ của khách mối gom
+            // hàng nhiều ngày là gần như cả cột TT thành ngày, không còn số thứ tự nào.
+            if (dong[i].Moc is { } moc)
+            {
+                LayO(sheet, r, MauHoaDon.CotTT).SetCellValue($"{moc.Day}/{moc.Month}");
+                continue;
+            }
+
+            var ct = dong[i].Hang!;
+
+            LayO(sheet, r, MauHoaDon.CotTT).SetCellValue(dong[i].SoThuTu.ToString());
             LayO(sheet, r, MauHoaDon.CotTenHang).SetCellValue(ct.TenHang);
             LayO(sheet, r, MauHoaDon.CotDonVi).SetCellValue(ct.DonVi);
             LayO(sheet, r, MauHoaDon.CotSoLuong).SetCellValue((double)(ct.SoLuong * hoaDon.DauInRaGiay));
@@ -178,7 +274,7 @@ public static class XuatHoaDon
 
         // Dòng tổng: trang cuối là tổng cộng cả hoá đơn, các trang trước là cộng của riêng trang đó.
         var dau = hoaDon.DauInRaGiay;
-        var tienCuaTrang = dong.Sum(c => c.ThanhTien);
+        var tienCuaTrang = dong.Where(d => d.Hang is not null).Sum(d => d.Hang!.ThanhTien);
         var tienDongTong = (laTrangCuoi ? tongCong : tienCuaTrang) * dau;
 
         LayO(sheet, viTri.DongTong, 0).SetCellValue((laTrangCuoi, hoaDon.LaHoanHang) switch
