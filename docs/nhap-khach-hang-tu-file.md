@@ -1,91 +1,96 @@
-# Nhập danh sách khách hàng từ file
+# Nhập một khách hàng từ tờ hoá đơn của khách đó
 
-Cửa hàng nào cũng có sẵn danh sách khách trên Excel (hoặc sổ tay đã ai đó gõ lại). Gõ tay
-lại từng khách vào phần mềm mất cả buổi, nên màn hình chính có nút **Nhập từ file**, ngay
-cạnh nút *+ Thêm khách hàng*.
+Một tờ hoá đơn của cửa hàng là của **đúng một** khách: tên khách ghi ở đầu trang 1, các dòng
+hàng nằm ở cả tờ. Nên nút **Nhập từ file** ở màn hình chính (cạnh *+ Thêm khách hàng*) không
+phải là chỗ nhập cả danh sách khách — nó nhận một tờ hoá đơn và ghi vào sổ **một khách kèm hoá
+đơn đầu tiên của khách ấy**.
+
+Cách nhập danh sách nhiều khách theo file mẫu 4 cột đã bỏ hẳn: thứ cửa hàng thật sự có trên máy
+là mấy tờ hoá đơn Excel, không phải một danh sách khách gõ sẵn.
+
+Khách **đã có trong sổ** thì không đi đường này: mở *Đơn hàng của khách → Nhập từ Excel* để nhập
+tờ vào sổ của người ấy — xem [nhap-hoa-don-nhieu-trang.md](nhap-hoa-don-nhieu-trang.md).
 
 ## Người dùng làm gì
 
 1. Bấm **Nhập từ file** ở góc trên phải màn hình chính.
-2. Chưa có file thì bấm **Tải file mẫu...** ngay trong màn hình vừa mở, chọn chỗ lưu. Phần
-   mềm ghi ra một file `.xlsx` gồm:
-   - sheet **Khách hàng** — chỉ có dòng tiêu đề đánh số:
-     `1. TÊN KHÁCH HÀNG (bắt buộc)` · `2. ĐIỆN THOẠI` · `3. ĐỊA CHỈ` · `4. GHI CHÚ`;
-   - sheet **Hướng dẫn** — 5 bước điền, kèm hai dòng ví dụ.
-3. Điền mỗi khách một dòng vào sheet *Khách hàng*, lưu lại.
-4. Bấm **Chọn file...**, trỏ vào file vừa điền. Bảng xem trước hiện lên ngay.
-5. Soát bảng, sửa thẳng trên bảng nếu cần, rồi bấm **NHẬP … KHÁCH VÀO SỔ**.
+2. Chưa có tờ nào trên máy thì bấm **Tải file mẫu...**, chọn chỗ lưu. Phần mềm ghi ra **hai
+   file** — `Mau-hoa-don-trang-1.xls` và `Mau-hoa-don-trang-sau.xls`. Đây chính là mẫu giấy cửa
+   hàng đang dùng (bảng hàng đánh số thứ tự sẵn), không phải một mẫu khác nghĩ ra: điền vào rồi
+   nhập lại là khớp đúng chỗ.
+3. Bấm **+ Thêm trang...** và chọn **file trang 1 trước** — trang 1 là trang có *"Tên khách
+   hàng"* ở đầu. Tờ dài nằm ở nhiều file thì bấm tiếp *+ Thêm trang...* cho từng trang sau.
+4. Chọn **NĂM CỦA TỜ** — mặc định là năm sổ đang mở, bày sẵn từ năm sau đến 8 năm trước. Mẫu
+   giấy in `năm 20.........` nên tờ điền tay thường không có năm.
+5. Soát ô **TÊN KHÁCH HÀNG** / **ĐỊA CHỈ** đã điền sẵn từ giấy, thêm điện thoại và ghi chú nếu
+   muốn, rồi bấm **NHẬP KHÁCH VÀ HOÁ ĐƠN**.
 
-Bản mẫu để xem trước ở [mau-danh-sach-khach-hang.xlsx](mau-danh-sach-khach-hang.xlsx) —
-chính file phần mềm sinh ra, không phải bản chép tay.
+Lô trang hiện ở bảng *CÁC TRANG TRONG LÔ (theo thứ tự thêm vào · tích để lấy)*: bỏ tích một
+trang là lô tính lại ngay — bỏ tích trang 1 thì mất tên khách, tích thêm trang 1 của tờ khác thì
+bị chặn vì hai tờ khác nhau dồn vào một hoá đơn.
 
-## Làm sao người dùng biết cột nào là cột mấy
+## Tên và địa chỉ: đọc trên giấy nhưng sửa được
 
-Ba chỗ nói cùng một chuyện, không cần đọc tài liệu:
+Tên và địa chỉ lấy ở phần đầu **trang 1** (các trang sau không có phần đầu nên chẳng có gì để
+lấy). Điền sẵn vào ô để soát, và tự tay sửa thì lần tính lại sau không đè lên chữ vừa gõ.
 
-- **Phụ đề màn hình**: *"File theo mẫu, cột xếp đúng thứ tự: 1 tên khách hàng · 2 điện thoại
-  · 3 địa chỉ · 4 ghi chú"*.
-- **Dòng tiêu đề trong file mẫu** có sẵn số thứ tự, người dùng điền ngay dưới nó.
-- **Tên cột trên bảng xem trước** cũng mang số: `1 · TÊN KHÁCH HÀNG`, `2 · ĐIỆN THOẠI`,
-  `3 · ĐỊA CHỈ`, `4 · GHI CHÚ`. Mở bảng ra là thấy cột 1 của file đã vào đúng ô tên khách
-  hay chưa — đây mới là chỗ người dùng thật sự *biết* file đọc đúng, chứ không phải lời hứa
-  ở tài liệu.
+Những ô **không** được nhận là tên khách — ghi vào sổ là một khách rác không ai nhận ra:
 
-Cột **DÒNG** trên bảng là số dòng đúng như Excel hiện ở lề trái, để dò lại tận chỗ trong file.
+- chỗ để trống in sẵn của tờ giấy: `Tên khách hàng: .....`, `.........`;
+- ô có nhãn đầu dòng: `ĐC: ...`, `Kính gửi: ...` (dấu hai chấm nằm trong 25 ký tự đầu);
+- nhãn bảng hàng và dòng chốt tờ: `TT`, `TÊN HÀNG`, `ĐVT`, `SỐ LƯỢNG`, `ĐƠN GIÁ`, `THÀNH TIỀN`,
+  `Tổng cộng`, `Tiền bằng chữ`, `Người mua hàng`, `Người bán hàng` (so sau khi bỏ dấu);
+- chuỗi ngắn hơn 2 ký tự.
 
-## Quy tắc đọc file
+Không đọc được tên thì phần mềm **nói rõ phải gõ tay**, chứ không đoán: *"Trang 1 để trống chỗ
+Tên khách hàng nên không đọc được tên"*, hoặc *"Lô chưa có trang 1 nên không đọc được tên
+khách"*. Chưa có tên thì nút nhập vẫn khoá.
 
-Cài trong [`Excel/NhapKhachHang.cs`](../src/QuanLyDienNuoc.Core/Excel/NhapKhachHang.cs):
+## Chỗ chặn và chỗ nhắc
 
-- **Nhận cột theo chữ ở dòng tiêu đề trước**, so không dấu và bỏ qua số: `Tên khách hàng`,
-  `Họ tên`, `SĐT`, `Số điện thoại`, `Địa chỉ`, `Ghi chú`, cả `Name`/`Phone`/`Address`/`Note`.
-  Nhờ vậy người dùng đổi chỗ cột, hay chèn thêm cột lạ (`STT`, `Nợ cũ`) vẫn đọc đúng.
-- **Chọn nhầm một tờ hoá đơn thì dừng hẳn**, không đọc bừa. Cả hai việc đều mang chữ "nhập
-  từ Excel" nên chuyện này xảy ra thật: chủ cửa hàng trỏ vào `to1.xls` và phần mềm (bản đầu)
-  đọc ra 32 "khách" gồm tên cửa hàng, dòng `ĐC:`, `ĐT:`, `Tên khách hàng: .....` và từng dòng
-  hàng. Nay thấy nhãn bảng hàng (tên hàng · đvt · số lượng · đơn giá · thành tiền) là biết
-  ngay đây là hoá đơn: hiện hộp thoại chỉ sang *Đơn hàng của khách → Nhập từ Excel*, hoặc mời
-  bấm *Tải file mẫu*. Soi **mọi sheet** mới kết luận — file hoá đơn cũ của cửa hàng có sheet
-  biểu đồ trống đứng trước, bảng hàng nằm ở sheet thứ hai.
-- `TÊN HÀNG` **không** được tính là cột tên khách (cùng có chữ "tên"), nếu không thì tờ hoá
-  đơn có thêm cột `GHI CHÚ` là đủ hai nhãn và bị coi là danh sách khách.
-- **File không có tiêu đề** thì mới đọc theo đúng thứ tự cột của file mẫu (1-2-3-4), và màn
-  hình hiện dải cảnh báo màu cam nói rõ là đang đọc theo thứ tự cột — đoán thì phải nói ra.
-- Dò tiêu đề trong 20 dòng đầu, phải có cột tên khách và ít nhất hai cột nhận ra được mới
-  coi là tiêu đề. File nhiều sheet thì lấy sheet đầu tiên có tiêu đề đọc được (nên file mẫu
-  có thêm sheet *Hướng dẫn* nằm cạnh cũng không lẫn).
-- Đọc được cả `.xlsx`, `.xls` và `.csv` (CSV xuất từ Excel bản Việt hay dùng dấu `;` — tự dò
-  dấu tách).
-- **Số điện thoại điền vào ô kiểu số** bị Excel cắt số 0 đầu: thấy đúng 9 chữ số mà không bắt
-  đầu bằng 0 thì trả lại số 0. Cột điện thoại trong file mẫu đã đặt kiểu chữ để không mất.
-- Dòng trống hẳn bị bỏ im, không tính vào câu tổng kết.
+**Chặn** (dải đỏ, không nhập được):
 
-## Chấm từng dòng trước khi ghi vào sổ
+| Chặn | Vì sao |
+| --- | --- |
+| **Trang 1 nằm sau** một trang nối tiếp | thứ tự trang đảo thì hàng vào sổ lệch trang, mà trên sổ không còn dấu vết trang nào để dò lại — xét trong [`Excel/ThuTuTrangGiay.cs`](../src/QuanLyDienNuoc.Core/Excel/ThuTuTrangGiay.cs), dùng chung với màn nhập hoá đơn |
+| Lô có **hai trang 1** (hai tờ của hai lượt mua) | mỗi lượt nhập chỉ ra một khách, dồn cả hai là một hoá đơn sai |
+| Lô có **tờ hoàn hàng** | tờ hoàn là hoàn cho một hoá đơn đã có, nhập cùng lúc với khách mới thì nợ thành số âm mà chẳng có hoá đơn nào để đối chiếu |
 
-Mỗi dòng có một tình trạng, hiện ở cột **TÌNH TRẠNG**:
+**Nhắc** (dải cam, vẫn nhập được — sai chỗ nào cũng là hàng vào sổ người khác hoặc vào năm khác,
+mà trên sổ không còn dấu vết để dò lại):
 
-| Tình trạng | Nghĩa | Tích sẵn |
-| --- | --- | --- |
-| Thêm mới (xanh) | khách chưa có trong phần mềm | có |
-| `Đã có khách "..." — bỏ qua` (cam) | trùng tên (so không dấu) với khách đã có | không |
-| Trùng dòng phía trên — bỏ qua (cam) | hai dòng trong file cùng một tên | không |
-| Không giống tên khách — bỏ qua (xám) | nhãn tờ giấy (`ĐC:`, `Tên khách hàng: .....`), tiêu đề bảng (`TT`, `Tổng cộng`) hay chỉ là số thứ tự | không |
-| Thiếu tên khách (đỏ) | cột 1 để trống, không ghi được | không |
+- lô **chưa có trang 1** (chỉ có trang nối tiếp) nên không đọc được tên — vẫn nhập được, tên gõ
+  tay;
+- trong sổ đã có khách trùng tên (so không dấu) — nhập nữa là một người thành hai khách, công nợ
+  chia đôi; bấm Nhập thì còn hỏi lại một lần nữa;
+- tên đang gõ trông không giống tên khách;
+- giấy ghi rõ năm mà khác **NĂM CỦA TỜ** đang chọn (năm chọn thắng, nhưng phải nói ra);
+- số dòng cần xem lại do bộ đọc chấm (thiếu đơn giá đã tự tính từ thành tiền, thiếu tên hàng…).
 
-- Bốn cột dữ liệu **sửa được ngay trên bảng**: sửa tên xong là tình trạng tự chấm lại.
-- Người dùng tự tay tích/bỏ tích dòng nào thì lần chấm lại sau **không đè lên** ý đó — cố
-  tình thêm một khách trùng tên (hai người thật cùng tên) thì tích tay là được, sửa dòng
-  khác cũng không mất tích vừa đặt.
-- Trong lô sắp nhập còn dòng trùng tên thì bấm Nhập sẽ hỏi lại một lần: thêm nữa là một
-  người thành hai khách, công nợ bị chia đôi.
-- Cả lô ghi vào sổ bằng **một** việc trong nhật ký (`Nhập N khách hàng từ file`), nên
-  `Ctrl+Z` một lần là bỏ hết, không phải xoá lại từng người.
+## Ngày và năm của hoá đơn
+
+Phần đọc file dùng chung [`Excel/DocHoaDon.cs`](../src/QuanLyDienNuoc.Core/Excel/DocHoaDon.cs)
+với màn nhập hoá đơn, nên mốc ngày viết ở cột số thứ tự (`1/12`, `12\4`) có hiệu lực y như ở đó:
+dòng nào nằm dưới mốc thì mang ngày của mốc, dòng không có mốc mới lấy ngày chung của lô.
+
+Ngày chung lấy theo dòng *"Ngày … tháng …"* ở chân tờ, không có thì lấy mốc ngày đầu tiên đọc
+được. Năm luôn lấy từ ô **NĂM CỦA TỜ**, và hoá đơn thuộc năm ấy chứ không phải năm sổ đang mở —
+nhập tờ của năm trước thì màn hình chính tự chuyển sổ sang năm đó, không thì bấm vào khách mới
+lại thấy trống trơn.
+
+## Vào sổ một lượt
+
+Khách và hoá đơn ghi trong **cùng một việc** của nhật ký (`Nhập khách <tên> và N dòng hàng từ
+file`), nên `Ctrl+Z` một lần là bỏ cả hai — không để lại một khách rỗng không có hoá đơn nào.
 
 ## Kiểm thử
 
-[`tests/QuanLyDienNuoc.Tests/NhapKhachTests.cs`](../tests/QuanLyDienNuoc.Tests/NhapKhachTests.cs)
-— xuất file mẫu rồi đọc lại (không ra khách ảo từ mấy dòng ví dụ), đổi chỗ cột, thêm cột lạ,
-file không tiêu đề, trùng tên với khách cũ và trùng trong cùng file, thiếu tên, dòng trống,
-số điện thoại kiểu số, file CSV dấu `;`. Kèm test hồi quy chạy trên **chính hai file hoá đơn
-thật** (bản ẩn danh `to1.xls`, `to2.xls`) và mẫu hoá đơn giấy `trang-1.xls`: cả ba phải bị
-nhận ra là hoá đơn và không sinh dòng khách nào.
+[`tests/QuanLyDienNuoc.Tests/NhapKhachTuToTests.cs`](../tests/QuanLyDienNuoc.Tests/NhapKhachTuToTests.cs)
+— tờ đã điền lấy đúng tên và địa chỉ ở trang 1; tờ dài hai trang vẫn chỉ ra một khách; thứ tự
+trang sai và lô có tờ hoàn thì chặn; lô thiếu trang 1 hoặc trang 1 bỏ trống chỗ tên thì nhắc gõ
+tay; nhãn tờ giấy và chỗ để trống in sẵn không thành tên khách; trùng tên khách đã có thì chỉ ra
+đúng khách cũ; xuất hai file mẫu rồi điền vào và nhập lại ra đúng một khách kèm dòng hàng, còn
+file mẫu chưa điền gì thì không ra khách nào.
+
+Kèm test hồi quy chạy trên **chính file hoá đơn thật** của cửa hàng (bản ẩn danh `to1.xls`): file
+này có hai sheet đều là trang 1, tức hai tờ của hai lượt mua khác nhau, và phải bị chặn.
