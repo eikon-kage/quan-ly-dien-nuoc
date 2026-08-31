@@ -7,9 +7,15 @@ using QuanLyDienNuoc.Ui;
 namespace QuanLyDienNuoc.Forms;
 
 /// <summary>
-/// Lập hoá đơn hoàn hàng cho một hoá đơn bán: bảng trống, gõ tay từng món khách mang trả về.
+/// Lập hoá đơn hoàn hàng cho một hoá đơn bán: bảng trống, nhập từng món khách mang trả về.
 /// Hoá đơn gốc không bị sửa một chữ — tờ hoàn là chứng từ riêng, hoàn cho nó — nên hoá đơn đã
 /// in cho khách hay đã chốt vẫn hoàn được.
+/// <para>
+/// Nhập <b>y như màn đơn hàng</b>: một thanh nhập ở trên (TÊN HÀNG · ĐƠN VỊ · ĐƠN GIÁ · SỐ HOÀN
+/// · TIỀN HOÀN), gõ tên hàng rồi Enter là sang ô số hoàn, Enter nữa là món xuống bảng. Đơn vị
+/// và đơn giá tự điền, ô số nhận cả phép tính. Bảng dưới vẫn sửa được và vẫn còn dòng trống
+/// cuối để gõ thẳng, nên ai quen lối cũ không mất gì.
+/// </para>
 /// <para>
 /// Trước đây màn này bày sẵn từng dòng của hoá đơn gốc và chỉ cho gõ số hoàn vào những dòng
 /// ấy. Nay tờ hoàn nhập riêng: khách trả về món đổi từ lần khác, hay hai bên thoả lại giá lúc
@@ -26,7 +32,17 @@ public sealed class HoanHangForm : Form
     private readonly DataGridView _luoi = new();
     private readonly BindingList<ChiTietHoaDon> _nguon = new();
 
-    // Gõ tên hàng có gợi ý: tên món trên hoá đơn gốc trước, rồi tới cả danh mục vật tư.
+    // Thanh nhập một món hoàn, xếp và bấm y như thanh nhập nhanh của màn đơn hàng.
+    private readonly ComboBox _cboHang = new();
+    private readonly TextBox _txtDonVi = Theme.O(120);
+    private readonly TextBox _txtDonGia = Theme.O(150);
+    private readonly TextBox _txtSoHoan = Theme.O(120);
+    private readonly Label _lblTamTinh = new();
+
+    // Món để gợi ý khi gõ tên: món trên hoá đơn gốc trước, rồi tới cả danh mục vật tư.
+    private readonly List<MonGoiY> _monGoiY = new();
+
+    // Gõ tên hàng thẳng trên lưới thì vẫn có gợi ý, lấy đúng danh sách trên.
     private readonly AutoCompleteStringCollection _goiYTenHang = new();
 
     private readonly OChonNgay _dtNgay = new() { Font = Theme.FontNhap };
@@ -37,6 +53,9 @@ public sealed class HoanHangForm : Form
     // Giữ tham chiếu: ToolTip không được control nào giữ hộ, bị dọn rác là mất lời mách.
     private readonly ToolTip _mach = new() { InitialDelay = 250, AutoPopDelay = 10000 };
     private readonly Label _lblTrangThai = Theme.NhanDaiDong();
+
+    /// <summary>Đang tự điền vào các ô nhập — đừng để sự kiện của chính mình gọi vòng lại.</summary>
+    private bool _dangNap;
 
     public HoanHangForm(Guid hoaDonGocId)
     {
@@ -57,6 +76,20 @@ public sealed class HoanHangForm : Form
     /// <summary>Hoá đơn hoàn hàng vừa lập, để màn đơn hàng nhảy sang xem luôn tờ đó.</summary>
     public Guid? HoaDonHoanDaTao { get; private set; }
 
+    /// <summary>
+    /// Mở cửa sổ ra là con trỏ nằm sẵn ở ô TÊN HÀNG, gõ được ngay — như màn đơn hàng. Đặt ở
+    /// đây chứ không ở lúc nạp dữ liệu: cửa sổ chưa hiện thì gọi Focus() không có tác dụng.
+    /// </summary>
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+
+        if (_cboHang.Enabled)
+        {
+            _cboHang.Focus();
+        }
+    }
+
     private HoaDon? HoaDonGoc => _kho.TimHoaDon(_hoaDonGocId);
 
     /// <summary>Các dòng đã gõ tên hàng — dòng trống ở cuối bảng không tính là món hoàn.</summary>
@@ -71,11 +104,12 @@ public sealed class HoanHangForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 5,
+            RowCount = 6,
             BackColor = Theme.Nen,
         };
         // Dòng nào có chữ thì tự cao theo chữ, chỉ bảng ăn phần còn lại: xem "Chữ bị cắt"
         // trong docs/giao-dien-may-tinh.md.
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khung.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -95,27 +129,90 @@ public sealed class HoanHangForm : Form
             0,
             0);
 
-        khung.Controls.Add(TaoThanhNhap(), 0, 1);
+        khung.Controls.Add(TaoThanhToHoan(), 0, 1);
+        khung.Controls.Add(TaoThanhNhapMon(), 0, 2);
 
         var vienLuoi = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 8, 20, 0), BackColor = Theme.Nen };
         vienLuoi.Controls.Add(Theme.Khung(TaoLuoi()));
-        khung.Controls.Add(vienLuoi, 0, 2);
+        khung.Controls.Add(vienLuoi, 0, 3);
 
-        khung.Controls.Add(TaoThanhDuoi(), 0, 3);
+        khung.Controls.Add(TaoThanhDuoi(), 0, 4);
 
-        khung.Controls.Add(TaoThanhTrangThai(), 0, 4);
+        khung.Controls.Add(TaoThanhTrangThai(), 0, 5);
         Controls.Add(khung);
     }
 
-    private Control TaoThanhNhap()
+    /// <summary>
+    /// Đầu tờ hoàn: ngày và lý do. Hai thứ này thuộc <b>cả tờ</b> nên để riêng một hàng trên,
+    /// không lẫn vào thanh nhập từng món ở dưới.
+    /// </summary>
+    private Control TaoThanhToHoan()
     {
+        // Ô ngày là chỗ bấm nhiều nhất nên cho to hẳn: chữ 14pt, ô cao 40px. Tờ lịch bung ra ăn
+        // theo cỡ chữ này nên cũng to và dễ bấm hơn.
         _dtNgay.Font = Theme.FontNhapTo;
 
-        var btnThemDong = Theme.Nut("+  THÊM DÒNG", Theme.Chinh, 170, 40, noTheoChu: true);
-        btnThemDong.Click += (_, _) => ThemDongTrongVaGo();
+        _mach.SetToolTip(_txtLyDo, "Ví dụ: hàng lỗi, khách lấy thừa, sai chủng loại — sẽ in lên tờ hoàn hàng");
+        _mach.SetToolTip(_dtNgay, "Ngày lập tờ hoàn — cũng là ngày ghi cho từng dòng hàng trên tờ");
+
+        return Theme.HangO(
+            Theme.Nen,
+            Theme.Truong("NGÀY HOÀN", _dtNgay, 190, 40, 12),
+            Theme.Truong("LÝ DO HOÀN", _txtLyDo, 420, 40, 12));
+    }
+
+    /// <summary>
+    /// Thanh nhập một món hoàn — <b>xếp và bấm y như thanh nhập nhanh của màn đơn hàng</b>: gõ
+    /// tên hàng, Enter là sang thẳng ô SỐ HOÀN (đơn vị và đơn giá phần mềm tự điền, gõ tay chỉ
+    /// khi cần sửa), Enter nữa là món xuống bảng và các ô dọn sạch để gõ món tiếp.
+    /// </summary>
+    private Control TaoThanhNhapMon()
+    {
+        _cboHang.DropDownStyle = ComboBoxStyle.DropDown;
+        _cboHang.Font = Theme.FontNhap;
+
+        // Không gợi ý gì trong lúc gõ, giống hệt màn đơn hàng: danh sách vẫn nằm sẵn trong ô,
+        // muốn chọn thì bấm mũi tên mở ra — chứ gõ tới đâu bung tới đó rồi hỏi "ý anh là ...
+        // phải không" thì đang nhập liền tay bị cắt nhịp. Gõ thẳng trên lưới thì vẫn có gợi ý.
+        _cboHang.AutoCompleteMode = AutoCompleteMode.None;
+
+        // Rời ô mới điền đơn vị và đơn giá, và chỉ khi tên **khớp hẳn** một món gợi ý. Không
+        // đoán, không hỏi.
+        _cboHang.Leave += (_, _) => DienTheoMonGoiY();
+        _cboHang.SelectedIndexChanged += (_, _) =>
+        {
+            if (_dangNap || _cboHang.SelectedItem is not MonGoiY mon)
+            {
+                return;
+            }
+
+            _txtDonVi.Text = mon.DonVi;
+            _txtDonGia.Text = So.Tien(mon.DonGia);
+            TinhTamTinh();
+        };
+
+        _txtDonGia.TextChanged += (_, _) => TinhTamTinh();
+        _txtSoHoan.TextChanged += (_, _) => TinhTamTinh();
+        _txtDonGia.Leave += (_, _) => Theme.ChotPhepTinh(_txtDonGia, So.Tien);
+        _txtSoHoan.Leave += (_, _) => Theme.ChotPhepTinh(_txtSoHoan, So.Luong);
+
+        _lblTamTinh.Font = Theme.FontSo;
+        _lblTamTinh.ForeColor = Theme.Do;
+        _lblTamTinh.Text = "0";
+        _lblTamTinh.TextAlign = ContentAlignment.MiddleRight;
+        _lblTamTinh.AutoSize = false;
+
+        var btnThem = Theme.Nut("+  THÊM DÒNG", Theme.Xanh, 180, 40, noTheoChu: true);
+        btnThem.Click += (_, _) => ThemMon();
 
         var btnXoaDong = Theme.NutPhu("Xoá dòng đang chọn", 190, 40, noTheoChu: true);
         btnXoaDong.Click += (_, _) => XoaDongDangChon();
+
+        // Nhãn để đúng một hai chữ cho khỏi cắt, còn cách gõ thì để trong chú thích hiện ra khi
+        // trỏ chuột vào ô.
+        _mach.SetToolTip(_cboHang, "Món trên hoá đơn gốc và cả danh mục vật tư — bấm mũi tên để mở danh sách");
+        _mach.SetToolTip(_txtDonGia, "Gõ được cả phép tính, ví dụ: 3+2*4");
+        _mach.SetToolTip(_txtSoHoan, "Số khách mang trả về — gõ số dương, vào sổ phần mềm tự ghi thành số âm");
 
         // Hai nút ngồi riêng một nhóm `AutoSize` để nở theo chữ, lùi xuống đúng bằng chỗ nhãn
         // của mấy ô bên cạnh nên vẫn ngang hàng.
@@ -126,17 +223,28 @@ public sealed class HoanHangForm : Form
             WrapContents = false,
             Margin = new Padding(0, Theme.DinhOTrongTruong, 12, 0),
         };
-        nhomNut.Controls.Add(btnThemDong);
+        nhomNut.Controls.Add(btnThem);
         nhomNut.Controls.Add(btnXoaDong);
 
-        _mach.SetToolTip(_txtLyDo, "Ví dụ: hàng lỗi, khách lấy thừa, sai chủng loại — sẽ in lên tờ hoàn hàng");
-        _mach.SetToolTip(_dtNgay, "Ngày lập tờ hoàn — cũng là ngày ghi cho từng dòng hàng trên tờ");
-
-        return Theme.HangO(
+        // Bề rộng lấy đúng của màn đơn hàng để hai màn nhìn ra một nhà; hàng ô tự xuống dòng khi
+        // cửa sổ hẹp nên không lo nút bị đẩy ra ngoài mép.
+        const int CaoO = 40;
+        const int Le = 12;
+        var thanh = Theme.HangO(
             Theme.ChinhNhat,
-            Theme.Truong("NGÀY HOÀN", _dtNgay, 190, 40, 12),
-            Theme.Truong("LÝ DO HOÀN", _txtLyDo, 420, 40, 12),
+            Theme.Truong("TÊN HÀNG", _cboHang, 240, CaoO, Le),
+            Theme.Truong("ĐƠN VỊ", _txtDonVi, 95, CaoO, Le),
+            Theme.Truong("ĐƠN GIÁ", _txtDonGia, 125, CaoO, Le),
+            Theme.Truong("SỐ HOÀN", _txtSoHoan, 115, CaoO, Le),
+            Theme.Truong("TIỀN HOÀN", _lblTamTinh, 135, CaoO, Le),
             nhomNut);
+
+        Theme.GanPhimEnter(_cboHang, _txtSoHoan, ThemMon);
+        Theme.GanPhimEnter(_txtDonVi, null, ThemMon);
+        Theme.GanPhimEnter(_txtDonGia, null, ThemMon);
+        Theme.GanPhimEnter(_txtSoHoan, null, ThemMon);
+
+        return thanh;
     }
 
     private Control TaoLuoi()
@@ -315,11 +423,15 @@ public sealed class HoanHangForm : Form
         {
             // Máy khác vừa xoá hoá đơn gốc. Đừng gọi Close() ở đây: cửa sổ còn chưa hiện xong.
             _luoi.Enabled = false;
+            _cboHang.Enabled = false;
+            _txtDonVi.Enabled = false;
+            _txtDonGia.Enabled = false;
+            _txtSoHoan.Enabled = false;
             _lblTrangThai.Text = "Hoá đơn gốc không còn trong sổ nữa nên không hoàn được.";
             return;
         }
 
-        NapGoiYTenHang(goc);
+        NapMonGoiY(goc);
 
         _nguon.RaiseListChangedEvents = false;
         _nguon.Clear();
@@ -330,28 +442,69 @@ public sealed class HoanHangForm : Form
         CapNhatTong();
 
         var daHoan = HoanHang.TienDaHoan(_kho.HoaDonCuaKhach(goc.KhachHangId), goc.Id);
-        _lblTrangThai.Text = "Gõ từng món khách mang trả về: tên hàng, đơn giá, số hoàn. Gõ tên "
-            + "món đã bán cho khách thì đơn vị và giá tự điền theo giá đã bán."
+        _lblTrangThai.Text = "Nhập từng món khách mang trả về ở thanh trên: gõ tên hàng, Enter "
+            + "sang ô SỐ HOÀN, Enter nữa là món xuống bảng. Đơn vị và đơn giá tự điền theo giá "
+            + "đã bán."
             + (daHoan > 0m ? $" Hoá đơn này đã hoàn {So.Tien(daHoan)} ở những lần trước." : string.Empty);
     }
 
     /// <summary>
-    /// Danh sách gợi ý tên hàng: món trên hoá đơn gốc lên trước (hay hoàn nhất), rồi tới cả
-    /// danh mục vật tư cho món khách đổi từ lần khác.
+    /// Danh sách món để gợi ý, kèm đơn vị và giá của từng món: món trên hoá đơn gốc lên trước
+    /// (hay hoàn nhất, và mang đúng <b>giá đã bán</b> cho khách), rồi tới cả danh mục vật tư
+    /// cho món khách đổi từ lần khác — món trong danh mục lấy giá ở bảng giá riêng của khách.
+    /// <para>
+    /// Dựng sẵn một lần lúc mở cửa sổ, để cả ô TÊN HÀNG ở thanh nhập, gợi ý gõ trên lưới và
+    /// việc tự điền đơn vị/đơn giá đều đi qua đúng một danh sách này.
+    /// </para>
     /// </summary>
-    private void NapGoiYTenHang(HoaDon goc)
+    private void NapMonGoiY(HoaDon goc)
     {
-        var ten = goc.ChiTiet
-            .Where(c => c.SoLuong > 0m)
-            .Select(c => c.TenHang)
-            .Concat(_kho.DuLieu.VatTus.Select(v => v.Ten))
-            .Where(t => !string.IsNullOrWhiteSpace(t))
-            .Distinct(StringComparer.CurrentCultureIgnoreCase)
-            .ToArray();
+        var khach = _kho.TimKhach(goc.KhachHangId);
+
+        // Trùng tên thì món đứng trước thắng — so tên đã bỏ dấu, y như lúc tra tên về sau.
+        var daCo = new HashSet<string>(StringComparer.Ordinal);
+        _monGoiY.Clear();
+
+        foreach (var chiTiet in goc.ChiTiet.Where(c => c.SoLuong > 0m))
+        {
+            var ten = chiTiet.TenHang.Trim();
+            if (ten.Length == 0 || !daCo.Add(ChuViet.BoDau(ten).Trim()))
+            {
+                continue;
+            }
+
+            _monGoiY.Add(new MonGoiY(ten, chiTiet.DonVi, chiTiet.DonGia, chiTiet.VatTuId));
+        }
+
+        foreach (var vatTu in _kho.DuLieu.VatTus.OrderBy(v => v.Ten, StringComparer.CurrentCultureIgnoreCase))
+        {
+            var ten = vatTu.Ten.Trim();
+            if (ten.Length == 0 || !daCo.Add(ChuViet.BoDau(ten).Trim()))
+            {
+                continue;
+            }
+
+            var gia = khach is null ? vatTu.DonGiaMacDinh : _kho.GiaCho(khach, vatTu);
+            _monGoiY.Add(new MonGoiY(ten, vatTu.DonVi, gia, vatTu.Id));
+        }
 
         _goiYTenHang.Clear();
-        _goiYTenHang.AddRange(ten);
+        _goiYTenHang.AddRange(_monGoiY.Select(m => m.Ten).ToArray());
+
+        _dangNap = true;
+        _cboHang.Items.Clear();
+        foreach (var mon in _monGoiY)
+        {
+            _cboHang.Items.Add(mon);
+        }
+
+        _dangNap = false;
     }
+
+    /// <summary>Món gợi ý cùng tên với chuỗi vừa gõ. Hoá đơn gốc xếp trước nên khớp trước.</summary>
+    private MonGoiY? TimMon(string? ten) => string.IsNullOrWhiteSpace(ten)
+        ? null
+        : _monGoiY.FirstOrDefault(m => CungTen(m.Ten, ten));
 
     private ChiTietHoaDon DongTrong() => new() { Ngay = _dtNgay.Value.Date };
 
@@ -375,18 +528,125 @@ public sealed class HoanHangForm : Form
         _nguon.Add(DongTrong());
     }
 
-    private void ThemDongTrongVaGo()
+    /// <summary>
+    /// Ghi món đang gõ ở thanh nhập xuống bảng rồi dọn ô để gõ món tiếp — đúng nút "+ THÊM DÒNG"
+    /// của màn đơn hàng. Thiếu ô nào thì nhắc một câu ở thanh dưới và đưa con trỏ về đúng ô ấy:
+    /// nhập cả chục món liền tay mà cứ thiếu một ô là bật hộp thoại chặn giữa thì mất nhịp.
+    /// </summary>
+    private void ThemMon()
     {
-        GiuMotDongTrongCuoiBang();
-
-        var viTri = _nguon.Count - 1;
-        if (viTri < 0 || viTri >= _luoi.Rows.Count)
+        if (HoaDonGoc is null || HopThoai.ChanKhiChiXem(this, _kho))
         {
             return;
         }
 
-        _luoi.CurrentCell = _luoi.Rows[viTri].Cells[0];
-        _luoi.BeginEdit(selectAll: true);
+        var ten = _cboHang.Text.Trim();
+        if (ten.Length == 0)
+        {
+            _lblTrangThai.Text = "Chưa gõ tên món khách trả về nên chưa ghi được dòng nào.";
+            _cboHang.Focus();
+            return;
+        }
+
+        if (!Theme.OSoHopLe(_txtDonGia, "ĐƠN GIÁ", Nhac) || !Theme.OSoHopLe(_txtSoHoan, "SỐ HOÀN", Nhac))
+        {
+            return;
+        }
+
+        // Gõ số âm thì lấy trị tuyệt đối: vào sổ phần mềm đã tự ghi thành số âm, gõ âm nữa là
+        // hoàn ngược. Cùng luật với dòng gõ thẳng trên lưới — xem ChinhLaiSoAm.
+        var soHoan = Math.Abs(So.Tinh(_txtSoHoan.Text));
+        if (soHoan == 0m)
+        {
+            _lblTrangThai.Text = $"\"{ten}\" chưa có số hoàn nên chưa ghi vào bảng. "
+                + "Gõ số khách mang trả về (gõ được cả phép tính: 3+2*4).";
+            _txtSoHoan.Focus();
+            _txtSoHoan.SelectAll();
+            return;
+        }
+
+        var dong = new ChiTietHoaDon
+        {
+            // Cả tờ ghi theo đúng NGÀY HOÀN ở trên, nên dòng nào cũng lấy ngày ấy.
+            Ngay = _dtNgay.Value.Date,
+            VatTuId = TimMon(ten)?.VatTuId,
+            TenHang = ten,
+            DonVi = _txtDonVi.Text.Trim(),
+            DonGia = Math.Abs(So.Tinh(_txtDonGia.Text)),
+            SoLuong = soHoan,
+        };
+
+        ThemVaoBang(dong);
+
+        // Sẵn sàng cho món tiếp theo; ngày và lý do là của cả tờ nên giữ nguyên.
+        _dangNap = true;
+        _cboHang.SelectedIndex = -1;
+        _cboHang.Text = string.Empty;
+        _txtDonVi.Clear();
+        _txtDonGia.Clear();
+        _txtSoHoan.Clear();
+        _dangNap = false;
+        TinhTamTinh();
+        _cboHang.Focus();
+
+        _lblTrangThai.Text = $"Đã ghi \"{dong.TenHang}\": {So.Luong(soHoan)} {dong.DonVi} · "
+            + $"{So.Tien(dong.ThanhTien)}. Gõ tiếp món nữa, hay bấm TẠO HOÁ ĐƠN HOÀN HÀNG.";
+    }
+
+    /// <summary>
+    /// Chèn món vừa nhập vào bảng, <b>ngay trên dòng trống cuối</b> — dòng trống ấy vẫn để đấy
+    /// cho ai muốn gõ thẳng trên lưới, nên món mới không được nhảy xuống dưới nó.
+    /// </summary>
+    private void ThemVaoBang(ChiTietHoaDon dong)
+    {
+        var viTri = _nguon.Count > 0 && string.IsNullOrWhiteSpace(_nguon[^1].TenHang)
+            ? _nguon.Count - 1
+            : _nguon.Count;
+
+        _nguon.Insert(viTri, dong);
+        GiuMotDongTrongCuoiBang();
+        CapNhatTong();
+
+        // Kéo bảng xuống chỗ dòng vừa ghi: nhập vài chục món thì món mới phải nhìn thấy được.
+        // Đặt ô hiện tại thôi, không gọi Focus() — con trỏ phải ở lại thanh nhập để gõ món tiếp.
+        if (viTri < _luoi.Rows.Count)
+        {
+            _luoi.CurrentCell = _luoi.Rows[viTri].Cells[0];
+        }
+    }
+
+    /// <summary>Tiền hoàn của món đang gõ ở thanh nhập, tính lại theo từng chữ số vừa gõ.</summary>
+    private void TinhTamTinh()
+    {
+        var tien = Math.Round(
+            Math.Abs(So.Tinh(_txtDonGia.Text)) * Math.Abs(So.Tinh(_txtSoHoan.Text)),
+            0,
+            MidpointRounding.AwayFromZero);
+        _lblTamTinh.Text = So.Tien(tien);
+    }
+
+    private void Nhac(string chu) => _lblTrangThai.Text = chu;
+
+    /// <summary>
+    /// Tên vừa gõ ở thanh nhập khớp hẳn một món gợi ý thì điền hộ đơn vị và đơn giá. Chỉ điền
+    /// vào ô đang trống — người dùng đã gõ giá riêng thì đừng ghi đè.
+    /// </summary>
+    private void DienTheoMonGoiY()
+    {
+        if (_dangNap || TimMon(_cboHang.Text.Trim()) is not { } mon)
+        {
+            return;
+        }
+
+        if (_txtDonVi.Text.Trim().Length == 0)
+        {
+            _txtDonVi.Text = mon.DonVi;
+        }
+
+        if (So.Tinh(_txtDonGia.Text) <= 0m)
+        {
+            _txtDonGia.Text = So.Tien(mon.DonGia);
+        }
     }
 
     private void XoaDongDangChon()
@@ -409,52 +669,32 @@ public sealed class HoanHangForm : Form
     }
 
     /// <summary>
-    /// Gõ xong tên hàng thì tự điền đơn vị và đơn giá. Giá lấy đúng **giá đã bán** trên hoá đơn
-    /// gốc trước — hoàn theo giá bán thì không bên nào hụt; món không có trên tờ gốc mới tra
-    /// sang bảng giá riêng của khách. Ô nào người dùng đã gõ thì để nguyên, không đè lên.
+    /// Gõ xong tên hàng <b>thẳng trên lưới</b> thì tự điền đơn vị và đơn giá, đi qua đúng danh
+    /// sách món gợi ý mà thanh nhập đang dùng: giá lấy đúng **giá đã bán** trên hoá đơn gốc
+    /// trước — hoàn theo giá bán thì không bên nào hụt; món không có trên tờ gốc mới tra sang
+    /// bảng giá riêng của khách. Ô nào người dùng đã gõ thì để nguyên, không đè lên.
     /// </summary>
     private void DienTheoTenHang(ChiTietHoaDon dong)
     {
         var ten = dong.TenHang.Trim();
         dong.TenHang = ten;
-        if (ten.Length == 0 || HoaDonGoc is not { } goc)
+        if (TimMon(ten) is not { } mon)
         {
-            return;
-        }
-
-        var dongGoc = goc.ChiTiet.FirstOrDefault(c => c.SoLuong > 0m && CungTen(c.TenHang, ten));
-        if (dongGoc is not null)
-        {
-            dong.VatTuId = dongGoc.VatTuId;
-            if (string.IsNullOrWhiteSpace(dong.DonVi))
-            {
-                dong.DonVi = dongGoc.DonVi;
-            }
-
-            if (dong.DonGia == 0m)
-            {
-                dong.DonGia = dongGoc.DonGia;
-            }
-
-            return;
-        }
-
-        if (_kho.TimVatTuTheoTen(ten) is not { } vatTu)
-        {
-            // Món tự gõ, không có trong danh mục: cứ để đấy, tờ hoàn ghi đúng chữ đã gõ.
+            // Món tự gõ, không có trên tờ gốc cũng không có trong danh mục: cứ để đấy, tờ hoàn
+            // ghi đúng chữ đã gõ.
             dong.VatTuId = null;
             return;
         }
 
-        dong.VatTuId = vatTu.Id;
+        dong.VatTuId = mon.VatTuId;
         if (string.IsNullOrWhiteSpace(dong.DonVi))
         {
-            dong.DonVi = vatTu.DonVi;
+            dong.DonVi = mon.DonVi;
         }
 
-        if (dong.DonGia == 0m && _kho.TimKhach(goc.KhachHangId) is { } khach)
+        if (dong.DonGia == 0m)
         {
-            dong.DonGia = _kho.GiaCho(khach, vatTu);
+            dong.DonGia = mon.DonGia;
         }
     }
 
@@ -576,11 +816,27 @@ public sealed class HoanHangForm : Form
 
         switch (keyData)
         {
+            // F3 về ô TÊN HÀNG của thanh nhập, y như màn đơn hàng: đang xem giữa bảng mà muốn
+            // gõ món nữa thì một phím là về chỗ nhập.
+            case Keys.F3:
+                _cboHang.Focus();
+                _cboHang.SelectAll();
+                return true;
             case Keys.Escape when !dangSuaO:
                 Close();
                 return true;
         }
 
         return base.ProcessCmdKey(ref msg, keyData);
+    }
+
+    /// <summary>
+    /// Một món trong danh sách gợi ý của ô TÊN HÀNG: tên, đơn vị, đơn giá và mã vật tư (món tự
+    /// gõ ngoài danh mục thì không có mã). <c>ToString</c> chỉ trả về tên vì ô nhập lấy đúng
+    /// chuỗi này làm chữ trong ô — kèm thêm giá vào đây là giá lọt cả vào tên hàng của tờ hoàn.
+    /// </summary>
+    private sealed record MonGoiY(string Ten, string DonVi, decimal DonGia, Guid? VatTuId)
+    {
+        public override string ToString() => Ten;
     }
 }

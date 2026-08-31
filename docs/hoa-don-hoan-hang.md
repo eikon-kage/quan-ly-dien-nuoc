@@ -16,19 +16,32 @@ hoàn hàng thì không sửa vào tờ cũ một chữ nào.
 ## Lập tờ hoàn
 
 Mở đơn hàng của khách, chọn hoá đơn bán ở ô trên, rồi nút ⋯ → *Hoàn hàng cho hoá đơn này*.
-Tờ hoàn là **một hoá đơn mới, nhập riêng**: bảng bày ra trống, gõ tay từng món khách mang
-trả về chứ không phải chọn trong hàng của hoá đơn gốc.
+Tờ hoàn là **một hoá đơn mới, nhập riêng**: bảng bày ra trống, nhập từng món khách mang trả
+về chứ không phải chọn trong hàng của hoá đơn gốc.
 
-- Mỗi dòng gõ **tên hàng, đơn vị, đơn giá, số hoàn** (và ghi chú nếu cần). Gõ xong tên hàng
-  thì đơn vị và giá **tự điền**: lấy đúng giá đã bán trên hoá đơn gốc trước, món không có
-  trên tờ gốc thì tra sang bảng giá riêng của khách. Ô nào đã gõ tay thì để nguyên.
-- Ô tên hàng có **gợi ý**: món trên hoá đơn gốc và cả danh mục vật tư.
-- Gõ xong một dòng là bảng tự mở thêm dòng trống ở dưới. Còn nút **+ THÊM DÒNG**, nút
-  **Xoá dòng đang chọn** và phím `Delete` cho dòng gõ nhầm.
+Nhập **y như màn đơn hàng**: một thanh nhập ở trên bảng — **TÊN HÀNG · ĐƠN VỊ · ĐƠN GIÁ ·
+SỐ HOÀN · TIỀN HOÀN** — cùng cách bấm, cùng chỗ đặt tay.
+
+- Gõ **tên hàng** rồi `Enter` là sang thẳng ô **SỐ HOÀN**; `Enter` nữa là món xuống bảng và
+  các ô dọn sạch để gõ món tiếp. Không thích phím thì bấm nút **+ THÊM DÒNG**. `F3` đưa con
+  trỏ về ô tên hàng.
+- Đơn vị và đơn giá **tự điền** khi tên khớp hẳn một món: lấy đúng giá đã bán trên hoá đơn
+  gốc trước, món không có trên tờ gốc thì tra sang bảng giá riêng của khách. Ô nào đã gõ tay
+  thì để nguyên.
+- Ô **TÊN HÀNG** có sẵn danh sách món (hoá đơn gốc lên trước, rồi tới cả danh mục vật tư),
+  bấm mũi tên là mở ra. Ô này **không tự đoán chữ trong lúc gõ** — giống màn đơn hàng, đang
+  nhập liền tay thì ô tự đoán là bị cắt nhịp.
+- Ô **ĐƠN GIÁ** và **SỐ HOÀN** nhận cả phép tính (`3+2*4`); rời ô là thay bằng kết quả.
+  **TIỀN HOÀN** hiện luôn theo từng chữ số vừa gõ.
+- Bảng dưới **vẫn sửa được** và vẫn còn dòng trống ở cuối để gõ thẳng trên lưới (ô tên hàng
+  trên lưới thì **có gợi ý**), nên ai quen lối cũ không mất gì. Ghi chú cho từng món gõ ở cột
+  **GHI CHÚ** của bảng.
+- Dòng gõ nhầm: nút **Xoá dòng đang chọn** hoặc phím `Delete`.
 - Số hoàn và đơn giá gõ **số dương**; vào sổ phần mềm tự ghi thành số âm. Gõ số âm thì phần
   mềm lấy lại số dương và nhắc một câu ở thanh dưới.
-- **NGÀY HOÀN** và **LÝ DO HOÀN** (hàng lỗi, khách lấy thừa, sai chủng loại…) đều in lên tờ
-  giấy. Cả tờ ghi theo đúng ngày hoàn, khỏi gõ ngày ở từng dòng.
+- **NGÀY HOÀN** và **LÝ DO HOÀN** (hàng lỗi, khách lấy thừa, sai chủng loại…) nằm riêng một
+  hàng trên cùng vì thuộc **cả tờ**, và đều in lên tờ giấy. Cả tờ ghi theo đúng ngày hoàn,
+  khỏi gõ ngày ở từng dòng.
 - Bấm **TẠO HOÁ ĐƠN HOÀN HÀNG**. Nhầm thì `Ctrl+Z`.
 
 Nhập riêng như vậy vì hàng khách mang trả về không phải lúc nào cũng đúng một dòng trên tờ

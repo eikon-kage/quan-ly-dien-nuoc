@@ -1359,6 +1359,81 @@ public static class Theme
         };
     }
 
+    // ---------- Thanh nhập một món hàng ----------
+
+    /// <summary>
+    /// Enter ở một ô trong thanh nhập: nhảy sang ô kế tiếp, còn ở ô cuối hàng thì làm việc
+    /// chính — ghi dòng vào sổ. Dùng chung cho thanh nhập của màn đơn hàng và màn hoàn hàng:
+    /// nhập liền tay cả chục dòng thì Enter phải đi hết một dòng hàng mà không phải với chuột.
+    /// </summary>
+    /// <param name="tiepTheo">Ô nhận con trỏ sau Enter. Để null là ô cuối hàng.</param>
+    /// <param name="khiHetHang">Việc làm khi Enter ở ô cuối hàng, thường là ghi dòng vào sổ.</param>
+    public static void GanPhimEnter(Control dieuKhien, Control? tiepTheo, Action khiHetHang)
+    {
+        dieuKhien.KeyDown += (s, e) =>
+        {
+            if (e.KeyCode != Keys.Enter)
+            {
+                return;
+            }
+
+            // Danh sách gợi ý đang bung: Enter là để chọn dòng trong đó, đừng cướp phím.
+            if (s is ComboBox cbo && cbo.DroppedDown)
+            {
+                return;
+            }
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+
+            if (tiepTheo is null)
+            {
+                khiHetHang();
+                return;
+            }
+
+            tiepTheo.Focus();
+            if (tiepTheo is TextBox o)
+            {
+                o.SelectAll();
+            }
+        };
+    }
+
+    /// <summary>Sau khi rời ô, thay phép tính bằng kết quả để nhìn là thấy con số thật.</summary>
+    public static void ChotPhepTinh(TextBox o, Func<decimal, string> dinhDang)
+    {
+        var chu = o.Text.Trim();
+        if (chu.Length == 0 || So.TryDoc(chu, out _))
+        {
+            return;
+        }
+
+        if (So.TryTinh(chu, out var giaTri))
+        {
+            o.Text = dinhDang(giaTri);
+        }
+    }
+
+    /// <summary>
+    /// Ô số nhận cả phép tính ("3+2*4"). Gõ chữ vào đó thì <b>xoá trắng luôn</b> rồi nhắc một
+    /// câu qua <paramref name="nhac"/> (thường là ghi vào thanh trạng thái): để nguyên chữ vô
+    /// nghĩa trong ô thì người ta gõ tiếp vào giữa nó, ra một chuỗi sai nữa.
+    /// </summary>
+    public static bool OSoHopLe(TextBox o, string tenO, Action<string> nhac)
+    {
+        var chu = o.Text.Trim();
+        if (chu.Length == 0 || So.TryTinh(chu, out _))
+        {
+            return true;
+        }
+
+        nhac($"Ô {tenO} phải là số — đã xoá \"{chu}\". Gõ số, hoặc phép tính như 3+2*4.");
+        o.Clear();
+        o.Focus();
+        return false;
+    }
+
     // ---------- Thanh tiêu đề của cửa sổ ----------
 
     /// <summary>

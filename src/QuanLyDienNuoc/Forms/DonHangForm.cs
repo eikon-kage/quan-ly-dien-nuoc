@@ -561,8 +561,8 @@ public sealed class DonHangForm : Form
 
         _txtDonGia.TextChanged += (_, _) => TinhTamTinh();
         _txtSoLuong.TextChanged += (_, _) => TinhTamTinh();
-        _txtDonGia.Leave += (_, _) => ChotPhepTinh(_txtDonGia, So.Tien);
-        _txtSoLuong.Leave += (_, _) => ChotPhepTinh(_txtSoLuong, So.Luong);
+        _txtDonGia.Leave += (_, _) => Theme.ChotPhepTinh(_txtDonGia, So.Tien);
+        _txtSoLuong.Leave += (_, _) => Theme.ChotPhepTinh(_txtSoLuong, So.Luong);
 
         _lblTamTinh.Font = Theme.FontSo;
         _lblTamTinh.ForeColor = Theme.Chinh;
@@ -657,38 +657,8 @@ public sealed class DonHangForm : Form
         }
     }
 
-    /// <summary>
-    /// Ô số nhận cả phép tính ("3+2*4"). Gõ chữ vào đó thì **xoá trắng luôn** rồi nhắc một câu:
-    /// để nguyên chữ vô nghĩa trong ô thì người ta gõ tiếp vào giữa nó, ra một chuỗi sai nữa.
-    /// </summary>
-    private bool OSoHopLe(TextBox o, string tenO)
-    {
-        var chu = o.Text.Trim();
-        if (chu.Length == 0 || So.TryTinh(chu, out _))
-        {
-            return true;
-        }
-
-        _lblTrangThai.Text = $"Ô {tenO} phải là số — đã xoá \"{chu}\". Gõ số, hoặc phép tính như 3+2*4.";
-        o.Clear();
-        o.Focus();
-        return false;
-    }
-
-    /// <summary>Sau khi rời ô, thay phép tính bằng kết quả để nhìn là thấy con số thật.</summary>
-    private static void ChotPhepTinh(TextBox o, Func<decimal, string> dinhDang)
-    {
-        var chu = o.Text.Trim();
-        if (chu.Length == 0 || So.TryDoc(chu, out _))
-        {
-            return;
-        }
-
-        if (So.TryTinh(chu, out var giaTri))
-        {
-            o.Text = dinhDang(giaTri);
-        }
-    }
+    private bool OSoHopLe(TextBox o, string tenO) =>
+        Theme.OSoHopLe(o, tenO, chu => _lblTrangThai.Text = chu);
 
     private Control TaoLuoiChiTiet()
     {
@@ -2849,38 +2819,8 @@ public sealed class DonHangForm : Form
     /// <param name="tiepTheo">
     /// Ô nhảy tới khi bấm Enter. Để trống thì Enter ghi luôn dòng hàng.
     /// </param>
-    private void GanPhimEnter(Control dieuKhien, Control? tiepTheo = null)
-    {
-        dieuKhien.KeyDown += (s, e) =>
-        {
-            if (e.KeyCode != Keys.Enter)
-            {
-                return;
-            }
-
-            // Danh sách gợi ý đang bung: Enter là để chọn dòng trong đó, đừng cướp phím.
-            if (s is ComboBox cbo && cbo.DroppedDown)
-            {
-                return;
-            }
-
-            e.Handled = true;
-            e.SuppressKeyPress = true;
-
-            if (tiepTheo is not null)
-            {
-                tiepTheo.Focus();
-                if (tiepTheo is TextBox o)
-                {
-                    o.SelectAll();
-                }
-
-                return;
-            }
-
-            ThemDong();
-        };
-    }
+    private void GanPhimEnter(Control dieuKhien, Control? tiepTheo = null) =>
+        Theme.GanPhimEnter(dieuKhien, tiepTheo, () => ThemDong());
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
