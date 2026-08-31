@@ -51,9 +51,11 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 - **Chèn dòng vào giữa, không phải chỉ thêm vào cuối**: quên một món ở giữa thì chọn dòng
   muốn chèn cạnh rồi `Ctrl+Enter` (lên trên) hoặc `Ctrl+Shift+Enter` (xuống dưới) — một dòng
   trống mở ra ngay chỗ đó, con trỏ nhảy vào ô TÊN HÀNG, gõ tên hàng với số lượng rồi `Enter`
-  là vào sổ. Dòng trống điền sẵn ngày của dòng đang chọn cho đỡ phải gõ lại; gõ liền mấy dòng
-  thì dòng trống mới lại mở ra tiếp ngay chỗ đó. Xếp sai thì `Alt+↑` / `Alt+↓` đổi chỗ hai
-  dòng, đi được khắp bảng. Bấm
+  là vào sổ. **Dòng trống ở cuối bảng vẫn còn nguyên** — chèn giữa bảng là có thêm một chỗ gõ,
+  chứ không phải dời chỗ gõ cũ đi. Dòng trống điền sẵn ngày của dòng đang chọn cho đỡ phải gõ
+  lại; gõ liền mấy dòng thì dòng trống mới lại mở ra tiếp ngay chỗ đó. Không cần nữa thì
+  `Ctrl+Delete` xoá cả dòng trống đang chèn (`Delete` chỉ xoá chữ trong nó). Xếp sai thì
+  `Alt+↑` / `Alt+↓` đổi chỗ hai dòng, đi được khắp bảng. Bấm
   chuột phải lên lưới ra đủ các lệnh này. **Phần mềm không tự xếp lại dòng** — không theo ngày,
   không theo vần: gõ sao nằm vậy, và thứ tự trên lưới cũng chính là thứ tự in ra giấy và xuất
   Excel.
@@ -89,9 +91,11 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   màn đơn hàng và sổ công nợ) mở đúng cửa sổ thu tiền nhưng bày sẵn danh sách các lần đã thu —
   ngày, số tiền, chia cho hoá đơn nào, ghi chú. Ghi nhầm thì chọn dòng rồi xoá cả lần thu ấy.
 - **Chốt hoá đơn**: hoá đơn đã chốt thì khoá không cho sửa, cần thì mở lại.
-- **Danh mục vật tư**: giá chung của cửa hàng, dùng khi khách chưa có giá riêng. Mỗi mặt
-  hàng đặt được **nhóm** (Ống nước, Điện, Đèn…) để lọc danh mục cho gọn; gõ tên nhóm vào
-  ô tìm cũng ra cả nhóm.
+- **Danh mục vật tư**: giá chung của cửa hàng, dùng khi khách chưa có giá riêng.
+- **Nhóm hàng**: tự đặt nhóm (Ống nước, Điện, Đèn…) ở màn *Quản lý nhóm* rồi gắn cho mặt
+  hàng — chọn ở cột NHÓM, hoặc chọn nhiều dòng rồi bấm *Gắn cho hàng đang chọn*. Lọc danh
+  mục theo nhóm, gõ tên nhóm vào ô tìm cũng ra cả nhóm. Đổi tên nhóm là cả nhóm đổi theo,
+  xoá nhóm thì hàng trong nhóm về "chưa đặt nhóm" chứ không mất.
 - **In hoá đơn**: xem trước đúng như tờ giấy sẽ in rồi in thẳng ra máy in. Không cần máy
   có Excel hay WPS. Nhiều hàng thì tự chia trang, trang giữa ghi *Cộng trang này*, trang
   cuối ghi *Tổng cộng* kèm số tiền bằng chữ.
@@ -129,6 +133,7 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 | `Delete` | Xoá dòng hàng đang chọn |
 | `Ctrl+Enter` | Mở dòng trống lên trên dòng đang chọn, gõ thẳng trên lưới |
 | `Ctrl+Shift+Enter` | Mở dòng trống xuống dưới dòng đang chọn |
+| `Ctrl+Delete` | Xoá cả dòng trống đang chèn giữa bảng |
 | `Alt+↑` / `Alt+↓` | Đổi chỗ dòng đang chọn với dòng liền kề |
 | `Ctrl+N` | Thêm khách hàng (ở màn hình chính) |
 | `F5` | Nạp lại dữ liệu từ file (khi máy khác vừa sửa) |
@@ -234,6 +239,7 @@ src/
     Forms/ThuTienForm.cs        thu một cục tiền, chia cho nhiều hoá đơn
     Forms/BangGiaForm.cs        bảng giá riêng theo khách
     Forms/VatTuForm.cs          danh mục vật tư (kèm mã tắt, nhóm hàng)
+    Forms/NhomHangForm.cs       thêm/đổi tên/xoá nhóm hàng
     Forms/NhapNhieuDongForm.cs  gõ một dòng ra nhiều món, có xem trước
     Forms/SaoLuuForm.cs         sao lưu, khôi phục, xuất toàn bộ ra Excel
     Forms/NhatKyForm.cs         xem nhật ký thay đổi

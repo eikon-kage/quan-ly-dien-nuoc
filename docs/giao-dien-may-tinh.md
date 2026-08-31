@@ -161,6 +161,11 @@ chia; chỗ dòng vàng xử lý như sau:
   trang đang xem.
 - Dòng vàng vẫn giữ đúng chỗ của nó trong **cả bảng** (cuối bảng, hoặc cạnh dòng mốc khi bấm
   Ctrl+Enter chèn giữa), rồi mới cắt trang. Nó nằm trang nào là do chỗ chèn quyết định.
+- Lưới có thể có **hai dòng vàng**: một luôn ở cuối bảng, một do Ctrl+Enter chèn giữa. Trước đây
+  chỉ có một, nên chèn giữa bảng là mất luôn chỗ gõ ở cuối — gõ tiếp hàng mới lại phải quay ra.
+  Cắm hai dòng vàng vào một trang thì phải cắm từ chỗ xa nhất về gần, không thì dòng nọ đẩy lệch
+  chỗ dòng kia: phép cắm nằm ở [DongVang.cs](../src/QuanLyDienNuoc.Core/Ui/DongVang.cs), có
+  kiểm thử riêng. Bỏ hẳn dòng vàng đang chèn thì `Ctrl+Delete`.
 - Mọi đường dẫn con trỏ về dòng vàng (Ctrl+Enter, Enter ghi xong một dòng, bấm "Không" ở câu hỏi
   kiểm tra) đều **mở đúng trang có nó** trước khi đặt con trỏ — nếu không thì đặt con trỏ vào một
   hàng không có trên lưới, trượt không trúng gì cả.

@@ -45,6 +45,13 @@ public static class ChupAnhGiaoDien
 
             loi += ChupForm(thuMucRa, "01-trang-chu", () => new MainForm());
             loi += ChupForm(thuMucRa, "02-don-hang-cua-khach", () => new DonHangForm(khach.Id, 2026));
+
+            // Cùng màn ấy nhưng vừa bấm Ctrl+Enter: phải thấy **hai** dòng vàng — dòng trống
+            // chèn giữa bảng và dòng trống ở cuối bảng vẫn còn nguyên chỗ gõ.
+            loi += ChupForm(
+                thuMucRa,
+                "02b-don-hang-chen-dong-trong",
+                () => new DonHangForm(khach.Id, 2026, chenDongDeChupAnh: true));
             loi += ChupForm(thuMucRa, "03-them-khach-hang", () => new KhachHangForm(null));
             loi += ChupForm(thuMucRa, "04-sua-khach-hang", () => new KhachHangForm(khach));
             loi += ChupForm(thuMucRa, "05-bang-gia-rieng", () => new BangGiaForm(khach.Id));
@@ -109,6 +116,7 @@ public static class ChupAnhGiaoDien
                 () => new TongHopNgayForm(khach.Id, ngayNhieuHang, NgayChup));
             loi += ChupAnhBangKe(thuMucRa, kho, khach, ngayNhieuHang, "22b-anh-bang-ke-gui-zalo");
             loi += ChupAnhBangKe(thuMucRa, kho, khach, ngayTraLai, "22c-anh-bang-ke-hang-tra-lai");
+            loi += ChupAnhBangKeDai(thuMucRa, khach, "22d-anh-bang-ke-cat-nhieu-anh");
 
             loi += ChupBanIn(thuMucRa, hoaDon, khach, "10-ban-in-trang");
             var hoaDonGocCuaToHoan = hoanHang.HoaDonGocId is { } gocId ? kho.TimHoaDon(gocId) : null;
@@ -247,16 +255,105 @@ public static class ChupAnhGiaoDien
         DateTime ngay,
         string ten)
     {
+        var bang = BaoCao.TongHopNgay.Lam(khach, kho.HoaDonCuaKhach(khach.Id), ngay, NgayChup);
+        return LuuBoAnhBangKe(thuMucRa, bang, ten);
+    }
+
+    /// <summary>
+    /// Ngày khách lấy thật nhiều hàng ở hai tờ: bảng kê dài quá một tấm nên bị cắt ra nhiều
+    /// ảnh. Dựng dữ liệu ngay tại đây chứ không nhét vào dữ liệu mẫu — mấy chục dòng hàng giả
+    /// sẽ làm rối mọi ảnh giao diện khác.
+    /// </summary>
+    private static int ChupAnhBangKeDai(string thuMucRa, KhachHang khach, string ten)
+    {
+        var ngay = new DateTime(2026, 3, 27);
+        var tenHangs = new[]
+        {
+            ("Ống nhựa PVC 27", "Cây", 45_000m, 12m),
+            ("Ống nhựa PVC 34", "Cây", 62_000m, 8m),
+            ("Co 90 độ phi 27", "Cái", 8_000m, 24m),
+            ("Tê phi 27", "Cái", 9_500m, 16m),
+            ("Măng sông phi 27", "Cái", 6_000m, 20m),
+            ("Van bi tay gạt phi 27 (loại dày, tay nhựa xanh)", "Cái", 78_000m, 6m),
+            ("Keo dán ống 400g", "Hộp", 85_000m, 3m),
+            ("Băng tan lớn", "Cuộn", 3_000m, 30m),
+            ("Dây điện Cadivi 2x1.5", "Mét", 12_500m, 100m),
+            ("Ổ cắm đôi 3 chân", "Cái", 55_000m, 10m),
+            ("Công tắc đơn", "Cái", 32_000m, 12m),
+            ("Aptomat 2P 32A", "Cái", 165_000m, 4m),
+            ("Bóng LED bulb 9W", "Cái", 38_000m, 20m),
+            ("Máng đèn LED 1m2", "Bộ", 145_000m, 6m),
+            ("Vòi rửa bát nóng lạnh", "Cái", 420_000m, 2m),
+        };
+
+        var dong = new List<BaoCao.DongBangKe>();
+        for (var lan = 0; lan < 3; lan++)
+        {
+            // Ba lượt hàng chia làm hai tờ: tờ đầu hai lượt, tờ sau một lượt — để thấy cả chỗ
+            // cắt giữa một tờ (đầu ảnh sau ghi lại mã tờ kèm chữ "tiếp").
+            var to = new HoaDon
+            {
+                MaHoaDon = lan < 2 ? "HD2026-11" : "HD2026-12",
+                Nam = ngay.Year,
+                NgayMo = ngay,
+            };
+
+            foreach (var (tenHang, donVi, donGia, soLuong) in tenHangs)
+            {
+                dong.Add(new BaoCao.DongBangKe(
+                    to,
+                    new ChiTietHoaDon
+                    {
+                        Ngay = ngay,
+                        TenHang = tenHang,
+                        DonVi = donVi,
+                        DonGia = donGia,
+                        SoLuong = soLuong,
+                    }));
+            }
+        }
+
+        var bang = new BaoCao.BangKeNgay(
+            khach,
+            ngay,
+            dong,
+            Array.Empty<ThanhToan>(),
+            ConNo: 0m,
+            MocNo: NgayChup);
+
+        return LuuBoAnhBangKe(thuMucRa, bang, ten);
+    }
+
+    /// <summary>
+    /// Dựng và lưu cả bộ ảnh của một bảng kê. Cắt ra nhiều tấm thì chụp đủ cả bộ, đánh số ngay
+    /// trong tên file: xem lại mà thiếu tấm cuối là không biết chân ảnh có đúng không.
+    /// </summary>
+    private static int LuuBoAnhBangKe(string thuMucRa, BaoCao.BangKeNgay bang, string ten)
+    {
         try
         {
-            var bang = BaoCao.TongHopNgay.Lam(khach, kho.HoaDonCuaKhach(khach.Id), ngay, NgayChup);
-            using var anh = AnhBangKeNgay.Ve(
+            var anhs = AnhBangKeNgay.Ve(
                 bang,
                 ThongTinCuaHang.DocTuMau(),
                 NgayChup.AddHours(17).AddMinutes(20));
 
-            AnhBangKeNgay.LuuPng(anh, Path.Combine(thuMucRa, ten + ".png"));
-            Ghi($"OK  {ten}.png  ({anh.Width}x{anh.Height}, {bang.Dong.Count} dòng hàng)");
+            try
+            {
+                for (var i = 0; i < anhs.Count; i++)
+                {
+                    var tenAnh = anhs.Count > 1 ? $"{ten}-{i + 1}" : ten;
+                    AnhBangKeNgay.LuuPng(anhs[i], Path.Combine(thuMucRa, tenAnh + ".png"));
+                    Ghi($"OK  {tenAnh}.png  ({anhs[i].Width}x{anhs[i].Height}, {bang.Dong.Count} dòng hàng)");
+                }
+            }
+            finally
+            {
+                foreach (var anh in anhs)
+                {
+                    anh.Dispose();
+                }
+            }
+
             return 0;
         }
         catch (Exception ex)
