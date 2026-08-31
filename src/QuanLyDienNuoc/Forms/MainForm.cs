@@ -27,6 +27,9 @@ public sealed class MainForm : Form
     private readonly Label _lblNhacNo = new();
     private readonly Panel _nenNhacNo = new();
 
+    // Giữ tham chiếu: ToolTip không được control nào giữ hộ, bị dọn rác là mất lời mách.
+    private readonly ToolTip _mach = new() { InitialDelay = 250, AutoPopDelay = 10000 };
+
     private ThanhBen _thanhBen = null!;
     private ThanhBen.MucBen _mucTrangChu = null!;
 
@@ -384,22 +387,31 @@ public sealed class MainForm : Form
     /// </summary>
     private Control TaoChanThe()
     {
-        var btnMo = Theme.Nut("Mở đơn hàng", Theme.Chinh, 190, 42, noTheoChu: true);
+        // Chữ trên nút để một hai từ thôi: cả hàng nút này đều làm việc với **khách đang chọn**
+        // ở bảng ngay trên nó, nhắc lại "khách hàng" ở từng nút chỉ tổ đẩy hàng nút dài ra rồi
+        // xuống hàng. Việc đầy đủ của từng nút nằm ở lời mách khi rê chuột.
+        var btnMo = Theme.Nut("Mở", Theme.Chinh, 96, 42, noTheoChu: true);
         btnMo.Click += (_, _) => MoDonHang();
 
-        var btnThuTien = Theme.NutPhu("Thu tiền", 150, 42, noTheoChu: true);
+        var btnThuTien = Theme.NutPhu("Thu tiền", 130, 42, noTheoChu: true);
         btnThuTien.ForeColor = Theme.Xanh;
         btnThuTien.Click += (_, _) => ThuTienCuaKhach();
 
-        var btnLichSu = Theme.NutPhu("Lịch sử thu tiền", 200, 42, noTheoChu: true);
+        var btnLichSu = Theme.NutPhu("Lịch sử", 120, 42, noTheoChu: true);
         btnLichSu.Click += (_, _) => ThuTienCuaKhach(moLichSu: true);
 
-        var btnSua = Theme.NutPhu("Sửa khách hàng", 190, 42, noTheoChu: true);
+        var btnSua = Theme.NutPhu("Sửa", 96, 42, noTheoChu: true);
         btnSua.Click += (_, _) => SuaKhach();
 
-        var btnXoa = Theme.NutPhu("Xoá khách hàng", 190, 42, noTheoChu: true);
+        var btnXoa = Theme.NutPhu("Xoá", 96, 42, noTheoChu: true);
         btnXoa.ForeColor = Theme.Do;
         btnXoa.Click += (_, _) => XoaKhach();
+
+        _mach.SetToolTip(btnMo, "Mở đơn hàng của khách đang chọn");
+        _mach.SetToolTip(btnThuTien, "Ghi một lần khách trả tiền");
+        _mach.SetToolTip(btnLichSu, "Xem lại các lần khách đã trả tiền");
+        _mach.SetToolTip(btnSua, "Sửa tên, địa chỉ, số điện thoại của khách");
+        _mach.SetToolTip(btnXoa, "Xoá khách đang chọn khỏi sổ");
 
         var trai = new FlowLayoutPanel
         {
