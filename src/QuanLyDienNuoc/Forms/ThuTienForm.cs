@@ -31,8 +31,8 @@ public sealed class ThuTienForm : Form
     private readonly DataGridView _luoiLichSu = new();
     private readonly BindingList<DongLanThu> _nguonLichSu = new();
 
-    private readonly Label _lblTomTat = new();
-    private readonly Label _lblTrangThai = new();
+    private readonly Label _lblTomTat = Theme.NhanDaiDong();
+    private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     public ThuTienForm(Guid khachId)
     {
@@ -66,16 +66,19 @@ public sealed class ThuTienForm : Form
             RowCount = 5,
             BackColor = Theme.Nen,
         };
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 96));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ hai bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         goc.Controls.Add(
             Theme.ThanhTieuDe(
                 "THU TIỀN CỦA KHÁCH",
-                "Gõ số tiền khách đưa, phần mềm tự chia cho các hoá đơn còn nợ — hoá đơn cũ nhất trả trước."),
+                "Gõ số tiền khách đưa, phần mềm tự chia cho các hoá đơn còn nợ — cũ nhất trả trước",
+                tuCao: true),
             0,
             0);
         goc.Controls.Add(TaoThanhNhap(), 0, 1);
@@ -88,9 +91,7 @@ public sealed class ThuTienForm : Form
 
     private Control TaoThanhNhap()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat, Padding = new Padding(14, 8, 14, 8) };
-
-        var btnGhi = Theme.Nut("GHI THU TIỀN", Theme.Xanh, 220, 34);
+        var btnGhi = Theme.Nut("GHI THU TIỀN", Theme.Xanh, 220, 34, noTheoChu: true);
         btnGhi.Click += (_, _) => Ghi();
 
         _txtSoTien.TextChanged += (_, _) => CapNhatPhanBo();
@@ -104,14 +105,21 @@ public sealed class ThuTienForm : Form
             }
         };
 
-        var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
-        hang.Controls.Add(Theme.Truong("NGÀY THU", _dtNgay, 160));
-        hang.Controls.Add(Theme.Truong("SỐ TIỀN KHÁCH ĐƯA", _txtSoTien, 220));
-        hang.Controls.Add(Theme.Truong("GHI CHÚ", _txtGhiChu, 300));
-        hang.Controls.Add(Theme.Truong(" ", btnGhi, 220));
+        var nhomNut = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, Theme.DinhOTrongTruong, 18, 0),
+        };
+        nhomNut.Controls.Add(btnGhi);
 
-        nen.Controls.Add(hang);
-        return nen;
+        return Theme.HangO(
+            Theme.ChinhNhat,
+            Theme.Truong("NGÀY THU", _dtNgay, 170),
+            Theme.Truong("SỐ TIỀN KHÁCH ĐƯA", _txtSoTien, 230),
+            Theme.Truong("GHI CHÚ", _txtGhiChu, 300),
+            nhomNut);
     }
 
     private Control TaoThanNoiDung()
@@ -124,10 +132,12 @@ public sealed class ThuTienForm : Form
             BackColor = Theme.Nen,
             Padding = new Padding(20, 8, 20, 0),
         };
-        than.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        // Hai nhãn tự cao theo chữ; bảng dưới cao theo số dòng chữ **của máy này** chứ không
+        // phải 210px cứng — máy cỡ chữ to thì bảng ấy chỉ còn thấy hai ba dòng.
+        than.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         than.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        than.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-        than.RowStyles.Add(new RowStyle(SizeType.Absolute, 210));
+        than.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        than.RowStyles.Add(new RowStyle(SizeType.Absolute, (Theme.FontLuoi.Height * 8) + 60));
 
         than.Controls.Add(Nhan("CHIA CHO CÁC HOÁ ĐƠN"), 0, 0);
         than.Controls.Add(Theme.Khung(TaoLuoiPhanBo()), 0, 1);
@@ -136,14 +146,7 @@ public sealed class ThuTienForm : Form
         return than;
     }
 
-    private static Label Nhan(string chu) => new()
-    {
-        Text = chu,
-        Font = Theme.FontDam,
-        ForeColor = Theme.Xam,
-        Dock = DockStyle.Fill,
-        TextAlign = ContentAlignment.MiddleLeft,
-    };
+    private static Label Nhan(string chu) => Theme.NhanDaiDong(chu, Theme.FontDam, Theme.Xam);
 
     private Control TaoLuoiPhanBo()
     {
@@ -151,11 +154,11 @@ public sealed class ThuTienForm : Form
         _luoiPhanBo.ReadOnly = true;
         _luoiPhanBo.Columns.AddRange(
             Theme.Cot(nameof(DongPhanBo.Ma), "MÃ HĐ", 110),
-            Theme.Cot(nameof(DongPhanBo.NgayMo), "MỞ NGÀY", 110, "dd/MM/yyyy"),
-            Theme.Cot(nameof(DongPhanBo.TongTien), "TỔNG HĐ", 130, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongPhanBo.ConNo), "ĐANG NỢ", 130, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongPhanBo.TraLanNay), "TRẢ LẦN NÀY", 140, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongPhanBo.ConLaiSau), "CÒN LẠI SAU KHI TRẢ", 160, "#,##0", canPhai: true));
+            Theme.Cot(nameof(DongPhanBo.NgayMo), "MỞ NGÀY", 115, "dd/MM/yyyy", toiThieu: 104),
+            Theme.Cot(nameof(DongPhanBo.TongTien), "TỔNG HĐ", 130, "#,##0", canPhai: true, toiThieu: 110),
+            Theme.Cot(nameof(DongPhanBo.ConNo), "ĐANG NỢ", 130, "#,##0", canPhai: true, toiThieu: 110),
+            Theme.Cot(nameof(DongPhanBo.TraLanNay), "TRẢ LẦN NÀY", 140, "#,##0", canPhai: true, toiThieu: 116),
+            Theme.Cot(nameof(DongPhanBo.ConLaiSau), "CÒN LẠI SAU KHI TRẢ", 165, "#,##0", canPhai: true, toiThieu: 130));
 
         _luoiPhanBo.DataSource = _nguonPhanBo;
         _luoiPhanBo.CellFormatting += (_, e) =>
@@ -185,10 +188,10 @@ public sealed class ThuTienForm : Form
         Theme.ApDungLuoi(_luoiLichSu);
         _luoiLichSu.ReadOnly = true;
         _luoiLichSu.Columns.AddRange(
-            Theme.Cot(nameof(DongLanThu.Ngay), "NGÀY THU", 110, "dd/MM/yyyy"),
-            Theme.Cot(nameof(DongLanThu.SoTien), "SỐ TIỀN", 130, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongLanThu.HoaDon), "CHIA CHO HOÁ ĐƠN", 240),
-            Theme.Cot(nameof(DongLanThu.GhiChu), "GHI CHÚ", 220));
+            Theme.Cot(nameof(DongLanThu.Ngay), "NGÀY THU", 115, "dd/MM/yyyy", toiThieu: 104),
+            Theme.Cot(nameof(DongLanThu.SoTien), "SỐ TIỀN", 130, "#,##0", canPhai: true, toiThieu: 110),
+            Theme.Cot(nameof(DongLanThu.HoaDon), "CHIA CHO HOÁ ĐƠN", 240, toiThieu: 150),
+            Theme.Cot(nameof(DongLanThu.GhiChu), "GHI CHÚ", 220, toiThieu: 120));
 
         _luoiLichSu.DataSource = _nguonLichSu;
         return _luoiLichSu;
@@ -196,41 +199,22 @@ public sealed class ThuTienForm : Form
 
     private Control TaoThanhDuoi()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 8, 20, 10) };
-
-        var btnXoa = Theme.NutPhu("Xoá lần thu đã chọn", 240, 46);
+        var btnXoa = Theme.NutPhu("Xoá lần thu đã chọn", 240, 46, noTheoChu: true);
         btnXoa.ForeColor = Theme.Do;
         btnXoa.Click += (_, _) => XoaLanThu();
 
-        var btnDong = Theme.NutPhu("Đóng", 120, 46);
+        var btnDong = Theme.NutPhu("Đóng", 120, 46, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        trai.Controls.Add(btnXoa);
-        trai.Controls.Add(btnDong);
-
-        _lblTomTat.Dock = DockStyle.Right;
-        _lblTomTat.Width = 640;
         _lblTomTat.Font = Theme.FontSo;
-        _lblTomTat.TextAlign = ContentAlignment.MiddleRight;
 
-        nen.Controls.Add(trai);
-        nen.Controls.Add(_lblTomTat);
-        return nen;
+        return Theme.ThanhDuoi(_lblTomTat, btnXoa, btnDong);
     }
 
     private Control TaoThanhTrangThai()
     {
-        _lblTrangThai.Dock = DockStyle.Fill;
-        _lblTrangThai.Font = Theme.FontPhu;
-        _lblTrangThai.ForeColor = Theme.Xam;
-        _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
-        _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
         _lblTrangThai.Text = "Enter để ghi · Esc để đóng · Ctrl+Z hoàn tác";
-
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
-        nen.Controls.Add(_lblTrangThai);
-        return nen;
+        return Theme.ThanhTrangThai(_lblTrangThai);
     }
 
     // ---------------- Nạp dữ liệu ----------------

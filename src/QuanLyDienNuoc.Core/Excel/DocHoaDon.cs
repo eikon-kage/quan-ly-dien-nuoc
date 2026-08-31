@@ -154,6 +154,12 @@ public static class DocHoaDon
     /// <summary>Số nhãn cột tối thiểu phải cùng nằm trên một dòng thì mới coi là tiêu đề bảng.</summary>
     private const int SoNhanToiThieu = 3;
 
+    /// <summary>Tên tab (bỏ dấu) chứa tờ đã điền của khách trong file hoá đơn của cửa hàng.</summary>
+    private const string TenTabMauCu = "mau cu";
+
+    /// <summary>Tên tab (bỏ dấu) chứa mẫu trắng đi kèm, nằm chung file với tab "mẫu cũ".</summary>
+    private const string TenTabMauMoi = "mau moi";
+
     /// <summary>
     /// Bấy nhiêu dòng trống liền nhau thì coi như hết bảng. Mẫu giấy in sẵn số thứ tự cho cả
     /// trang nên không dừng ở đây thì đọc lố xuống phần chân tờ (dòng tổng, dòng ký tên).
@@ -212,7 +218,35 @@ public static class DocHoaDon
             }
         }
 
+        BoTabMauMoi(ketQua);
         return ketQua;
+    }
+
+    /// <summary>
+    /// File hoá đơn của cửa hàng hay để hai tab cạnh nhau: tab "mẫu cũ" là tờ đã điền của
+    /// khách, tab "mẫu mới" là mẫu trắng còn sót mấy dòng ví dụ chép sẵn — file nào cũng y hệt
+    /// file nào. Lấy cả hai là sổ có thêm mấy dòng hàng chẳng ai mua, nên file có đủ cả hai tab
+    /// thì chỉ giữ tab "mẫu cũ".
+    /// <para>
+    /// Chỉ bỏ khi tab "mẫu cũ" thật sự đọc ra dòng hàng: có người điền vào tab kia, bỏ nốt là
+    /// cả file trắng trơn. Cũng chỉ xét đúng hai cái tên ấy — có file cửa hàng đặt tên tab là
+    /// "mẫu hoá đơn cũ" / "mẫu hoá đơn mối" mà tờ đã điền lại nằm ở tab "mối", so lỏng tay là
+    /// vứt đúng tờ của khách.
+    /// </para>
+    /// </summary>
+    private static void BoTabMauMoi(KetQuaDocExcel ketQua)
+    {
+        if (ketQua.Trang.Any(t => LaTab(t.TenSheet, TenTabMauCu)))
+        {
+            ketQua.Trang.RemoveAll(t => LaTab(t.TenSheet, TenTabMauMoi));
+        }
+    }
+
+    /// <summary>Tên tab so sau khi bỏ dấu và gộp khoảng trắng: "mẫu  Mới " cũng là "mau moi".</summary>
+    private static bool LaTab(string tenSheet, string can)
+    {
+        var gon = ChuViet.BoDau(tenSheet);
+        return string.Join(' ', gon.Split(' ', StringSplitOptions.RemoveEmptyEntries)) == can;
     }
 
     private static TrangDoc? DocMotSheet(ISheet sheet, DateTime ngayChoDongHang, int? namChon)

@@ -25,15 +25,15 @@ public class HoaDonExcelTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    // Hàng của cùng một ngày: mỗi trang mất một dòng cho mốc ngày đứng đầu trang, nên trang 1
-    // chứa 24 dòng hàng (không phải 25) và trang sau chứa 34.
+    // Mốc ngày ghi đè lên ô số thứ tự của dòng hàng nên không ăn thêm dòng nào: trang 1 chứa
+    // đủ 25 dòng hàng, trang sau 35, dù tờ gom hàng của bao nhiêu ngày.
     [Theory]
     [InlineData(0, new[] { 0 })]           // hoá đơn rỗng vẫn in ra một trang
     [InlineData(1, new[] { 1 })]
-    [InlineData(24, new[] { 24 })]         // vừa đủ trang 1
-    [InlineData(25, new[] { 24, 1 })]
-    [InlineData(58, new[] { 24, 34 })]     // vừa đủ hai trang
-    [InlineData(59, new[] { 24, 34, 1 })]
+    [InlineData(25, new[] { 25 })]         // vừa đủ trang 1
+    [InlineData(26, new[] { 25, 1 })]
+    [InlineData(60, new[] { 25, 35 })]     // vừa đủ hai trang
+    [InlineData(61, new[] { 25, 35, 1 })]
     public void ChiaTrang_ChiaDungSucChuaTungTrang(int soDong, int[] mongDoi)
     {
         var chiTiet = Enumerable.Range(1, soDong)
@@ -46,29 +46,32 @@ public class HoaDonExcelTests : IDisposable
     }
 
     [Fact]
-    public void LenTrang_MoiLanDoiNgayAnThemMotDongCuaTrang()
+    public void LenTrang_MocNgayNamODongHangDauTienCuaNgayDo()
     {
-        // Tờ của khách mối gom hàng mỗi ngày một ít: mỗi ngày một dòng mốc, nên trang 25 dòng
-        // chứa được ít dòng hàng hơn. Đếm sai chỗ này là dòng cuối bị đẩy ra ngoài khung kẻ.
-        var chiTiet = Enumerable.Range(0, 12)
+        // Tờ của khách mối gom hàng mỗi ngày một ít: mỗi ngày lấy hai món, ngày ghi vào ô số
+        // thứ tự của món đầu tiên hôm ấy chứ không chiếm riêng một dòng.
+        var chiTiet = Enumerable.Range(0, 24)
             .Select(i => new ChiTietHoaDon
             {
-                Ngay = new DateTime(2026, 3, 1).AddDays(i), TenHang = $"Hàng {i + 1}", SoLuong = 1, DonGia = 1000,
+                Ngay = new DateTime(2026, 3, 1).AddDays(i / 2), TenHang = $"Hàng {i + 1}", SoLuong = 1, DonGia = 1000,
             })
             .ToList();
 
         var trang = XuatHoaDon.LenTrang(chiTiet);
 
-        // 12 ngày khác nhau = 12 dòng mốc + 12 dòng hàng = 24 dòng, vừa trong trang 1.
+        // 24 dòng hàng của 12 ngày vẫn là 24 dòng trên giấy, vừa trong trang 1.
         Assert.Single(trang);
         Assert.Equal(24, trang[0].Count);
         Assert.Equal(12, trang[0].Count(d => d.Moc is not null));
 
-        // Mốc luôn đứng ngay trên dòng hàng của nó, và số thứ tự chạy liên tục qua các dòng mốc.
-        Assert.All(trang[0].Where((d, i) => i % 2 == 0), d => Assert.NotNull(d.Moc));
+        // Mốc nằm ở dòng hàng đầu của mỗi ngày, dòng thứ hai cùng ngày thì không.
+        Assert.All(trang[0].Where((_, i) => i % 2 == 0), d => Assert.NotNull(d.Moc));
+        Assert.All(trang[0].Where((_, i) => i % 2 == 1), d => Assert.Null(d.Moc));
+
+        // Số thứ tự vẫn chạy liên tục, kể cả ở dòng có mốc (dòng đó in ngày thay cho số).
         Assert.Equal(
-            Enumerable.Range(1, 12).ToArray(),
-            trang[0].Where(d => d.Hang is not null).Select(d => d.SoThuTu).ToArray());
+            Enumerable.Range(1, 24).ToArray(),
+            trang[0].Select(d => d.SoThuTu).ToArray());
     }
 
     [Fact]
@@ -145,9 +148,9 @@ public class HoaDonExcelTests : IDisposable
 
         Assert.All(daGhi, f => Assert.True(File.Exists(f)));
 
-        // 40 dòng của 40 ngày khác nhau: mỗi dòng kéo theo một dòng mốc nên 40 dòng ấy trải ra
-        // ba trang, mỗi trang một file.
-        Assert.Equal(3, daGhi.Count);
+        // 40 dòng của 40 ngày khác nhau vẫn chỉ là 40 dòng trên giấy: 25 dòng trang 1 và 15
+        // dòng trang 2, mỗi trang một file.
+        Assert.Equal(2, daGhi.Count);
 
         var trang = daGhi
             .Select(f => DocHoaDon.Doc(f, new DateTime(2026, 1, 1)).Trang.Single())
@@ -275,6 +278,76 @@ public class HoaDonExcelTests : IDisposable
 
         Assert.DoesNotContain(doc.Trang, t => t.TenSheet == "Chart1");
         Assert.All(doc.Trang, t => Assert.DoesNotContain(t.Dong, d => d.TenHang is "ĐVT" or "SỐ LƯỢNG" or "Đơn giá"));
+    }
+
+    [Fact]
+    public void Doc_FileCoCaTabMauCuVaMauMoi_ThiChiLayTabMauCu()
+    {
+        // to2.xls là tờ thật của cửa hàng: tab "mau cũ" là tờ đã điền cho khách, tab "mẫu mới"
+        // là mẫu trắng còn sót mấy dòng ví dụ (bóng điện, bệt, công làm — file nào cũng y hệt).
+        // Lấy cả hai là sổ có thêm gần 4 triệu tiền hàng chẳng ai mua.
+        var file = Path.Combine(ThuMucHoaDonCu, "to2.xls");
+        Assert.True(File.Exists(file), $"Thiếu file kiểm thử: {file}");
+
+        var doc = DocHoaDon.Doc(file, DateTime.Today);
+
+        Assert.Equal("mau cũ", Assert.Single(doc.Trang).TenSheet);
+        Assert.DoesNotContain(doc.Trang.SelectMany(t => t.Dong), d => d.TenHang == "Bệt");
+    }
+
+    [Fact]
+    public void Doc_TabMauCuKhongCoDongNao_ThiVanLayTabMauMoi()
+    {
+        // Bỏ tab "mẫu mới" chỉ vì có tab "mẫu cũ" nằm cạnh: người điền vào tab kia thì cả file
+        // trắng trơn, mà trên màn hình nhập chẳng có gì nói vì sao.
+        var doc = DocHaiTabMau(coDongOMauCu: false);
+
+        Assert.Equal("mẫu mới", Assert.Single(doc.Trang).TenSheet);
+    }
+
+    [Fact]
+    public void Doc_TenTabKhongPhaiDungHaiChuMauCuMauMoi_ThiGiuCaHai()
+    {
+        // to1.xls đặt tên tab là "mẫu hoá đơn mối" và "mau hoa don cũ", mà tờ đã điền của khách
+        // lại nằm ở tab "mối" — so lỏng tay là vứt đúng tờ cần lấy.
+        var doc = DocHoaDon.Doc(Path.Combine(ThuMucHoaDonCu, "to1.xls"), DateTime.Today);
+
+        Assert.Equal(2, doc.Trang.Count);
+        Assert.Equal("Ông Mẫu", doc.Trang[0].TenKhach);
+    }
+
+    /// <summary>Một file hai tab "mau cũ" và "mẫu mới", chọn tab nào có dòng hàng.</summary>
+    private KetQuaDocExcel DocHaiTabMau(bool coDongOMauCu)
+    {
+        Directory.CreateDirectory(_thuMucTam);
+        var file = Path.Combine(_thuMucTam, "hai-tab-mau.xls");
+
+        var wb = new HSSFWorkbook();
+        foreach (var ten in new[] { "mau cũ", "mẫu mới" })
+        {
+            var sheet = wb.CreateSheet(ten);
+            var tieuDe = sheet.CreateRow(0);
+            foreach (var (cot, chu) in new[] { (0, "TÊN HÀNG"), (1, "ĐVT"), (2, "SỐ LƯỢNG"), (3, "ĐƠN GIÁ") })
+            {
+                tieuDe.CreateCell(cot).SetCellValue(chu);
+            }
+
+            if (coDongOMauCu == (ten == "mau cũ"))
+            {
+                var hang = sheet.CreateRow(1);
+                hang.CreateCell(0).SetCellValue("Ống 27");
+                hang.CreateCell(1).SetCellValue("Cây");
+                hang.CreateCell(2).SetCellValue(2d);
+                hang.CreateCell(3).SetCellValue(45000d);
+            }
+        }
+
+        using (var ghi = new FileStream(file, FileMode.Create, FileAccess.Write))
+        {
+            wb.Write(ghi, leaveOpen: false);
+        }
+
+        return DocHoaDon.Doc(file, new DateTime(2026, 6, 2));
     }
 
     [Fact]

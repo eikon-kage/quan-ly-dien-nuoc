@@ -366,25 +366,25 @@ public sealed class KhoDuLieu
 
     private void TaoDanhMucMau()
     {
-        void Them(string ten, string donVi, decimal gia) =>
-            DuLieu.VatTus.Add(new VatTu { Ten = ten, DonVi = donVi, DonGiaMacDinh = gia });
+        void Them(string ten, string donVi, decimal gia, string nhom) =>
+            DuLieu.VatTus.Add(new VatTu { Ten = ten, DonVi = donVi, DonGiaMacDinh = gia, Nhom = nhom });
 
-        Them("Ống nhựa PVC D21", "Cây", 32000);
-        Them("Ống nhựa PVC D27", "Cây", 45000);
-        Them("Ống nhựa PVC D34", "Cây", 62000);
-        Them("Co nối PVC D21", "Cái", 4000);
-        Them("Tê PVC D21", "Cái", 5000);
-        Them("Keo dán ống 100g", "Lọ", 25000);
-        Them("Van khoá nước D21", "Cái", 55000);
-        Them("Vòi rửa inox", "Cái", 250000);
-        Them("Dây điện Cadivi 2x1.5", "Mét", 12000);
-        Them("Dây điện Cadivi 2x2.5", "Mét", 18000);
-        Them("Ống ruột gà D20", "Mét", 6000);
-        Them("Ổ cắm đôi 3 chấu", "Cái", 65000);
-        Them("Công tắc đơn", "Cái", 32000);
-        Them("Aptomat 1 pha 20A", "Cái", 95000);
-        Them("Bóng đèn LED bulb 9W", "Bóng", 45000);
-        Them("Máng đèn LED 1m2", "Bộ", 130000);
+        Them("Ống nhựa PVC D21", "Cây", 32000, "Ống nước");
+        Them("Ống nhựa PVC D27", "Cây", 45000, "Ống nước");
+        Them("Ống nhựa PVC D34", "Cây", 62000, "Ống nước");
+        Them("Co nối PVC D21", "Cái", 4000, "Ống nước");
+        Them("Tê PVC D21", "Cái", 5000, "Ống nước");
+        Them("Keo dán ống 100g", "Lọ", 25000, "Ống nước");
+        Them("Van khoá nước D21", "Cái", 55000, "Ống nước");
+        Them("Vòi rửa inox", "Cái", 250000, "Thiết bị nước");
+        Them("Dây điện Cadivi 2x1.5", "Mét", 12000, "Điện");
+        Them("Dây điện Cadivi 2x2.5", "Mét", 18000, "Điện");
+        Them("Ống ruột gà D20", "Mét", 6000, "Điện");
+        Them("Ổ cắm đôi 3 chấu", "Cái", 65000, "Điện");
+        Them("Công tắc đơn", "Cái", 32000, "Điện");
+        Them("Aptomat 1 pha 20A", "Cái", 95000, "Điện");
+        Them("Bóng đèn LED bulb 9W", "Bóng", 45000, "Đèn");
+        Them("Máng đèn LED 1m2", "Bộ", 130000, "Đèn");
     }
 
     private sealed record BuocLichSu(string AnhChup, string MoTa);

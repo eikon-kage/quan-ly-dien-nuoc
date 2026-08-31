@@ -14,7 +14,7 @@ public sealed class BangGiaForm : Form
     private readonly DataGridView _luoi = new();
     private readonly BindingList<DongGia> _nguon = new();
     private readonly TextBox _txtTim = Theme.O(360);
-    private readonly Label _lblTrangThai = new();
+    private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     private string? _anhChupTruocKhiSua;
 
@@ -45,31 +45,32 @@ public sealed class BangGiaForm : Form
             RowCount = 4,
             BackColor = Theme.Nen,
         };
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 86));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khung.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         khung.Controls.Add(
             Theme.ThanhTieuDe(
                 $"BẢNG GIÁ RIÊNG – {Khach?.Ten}",
-                "Bỏ trống hoặc để 0 ở cột GIÁ RIÊNG nghĩa là dùng giá chung của cửa hàng"),
+                "Bỏ trống hoặc để 0 ở cột GIÁ RIÊNG nghĩa là dùng giá chung của cửa hàng",
+                tuCao: true),
             0,
             0);
 
         _txtTim.TextChanged += (_, _) => Nap();
-        var thanhTim = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 10, 20, 0) };
-        var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        trai.Controls.Add(Theme.Truong("TÌM VẬT TƯ", _txtTim, 380));
-        thanhTim.Controls.Add(trai);
+        var thanhTim = Theme.HangO(Theme.Nen, Theme.Truong("TÌM VẬT TƯ", _txtTim, 380));
 
         Theme.ApDungLuoi(_luoi);
         _luoi.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(DongGia.Ten), "TÊN HÀNG", 280),
+            Theme.Cot(nameof(DongGia.Ten), "TÊN HÀNG", 280, toiThieu: 150),
+            Theme.Cot(nameof(DongGia.Nhom), "NHÓM", 130),
             Theme.Cot(nameof(DongGia.DonVi), "ĐƠN VỊ", 90),
-            Theme.Cot(nameof(DongGia.GiaChung), "GIÁ CHUNG", 130, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongGia.GiaRieng), "GIÁ RIÊNG", 130, "#,##0", canPhai: true, chiDoc: false));
+            Theme.Cot(nameof(DongGia.GiaChung), "GIÁ CHUNG", 130, "#,##0", canPhai: true, toiThieu: 116),
+            Theme.Cot(nameof(DongGia.GiaRieng), "GIÁ RIÊNG", 130, "#,##0", canPhai: true, chiDoc: false, toiThieu: 116));
         Theme.ChoPhepGoSo(_luoi, nameof(DongGia.GiaRieng));
 
         _luoi.CellBeginEdit += (_, _) => _anhChupTruocKhiSua = _kho.ChupNhanh();
@@ -101,29 +102,18 @@ public sealed class BangGiaForm : Form
         var vienLuoi = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 6, 20, 0), BackColor = Theme.Nen };
         vienLuoi.Controls.Add(Theme.Khung(_luoi));
 
-        var btnBoGia = Theme.NutPhu("Bỏ giá riêng của dòng này", 280, 46);
+        var btnBoGia = Theme.NutPhu("Bỏ giá riêng của dòng này", 280, 46, noTheoChu: true);
         btnBoGia.Click += (_, _) => BoGiaRieng();
 
-        var btnDong = Theme.NutPhu("Đóng", 140, 46);
+        var btnDong = Theme.NutPhu("Đóng", 140, 46, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var traiDuoi = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        traiDuoi.Controls.Add(btnBoGia);
-        traiDuoi.Controls.Add(btnDong);
-
-        _lblTrangThai.Dock = DockStyle.Right;
-        _lblTrangThai.Width = 480;
         _lblTrangThai.Font = Theme.FontPhu;
         _lblTrangThai.ForeColor = Theme.Xam;
-        _lblTrangThai.TextAlign = ContentAlignment.MiddleRight;
-
-        var nenDuoi = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 12, 20, 10) };
-        nenDuoi.Controls.Add(traiDuoi);
-        nenDuoi.Controls.Add(_lblTrangThai);
 
         khung.Controls.Add(thanhTim, 0, 1);
         khung.Controls.Add(vienLuoi, 0, 2);
-        khung.Controls.Add(nenDuoi, 0, 3);
+        khung.Controls.Add(Theme.ThanhDuoi(_lblTrangThai, btnBoGia, btnDong), 0, 3);
         Controls.Add(khung);
     }
 
@@ -152,6 +142,7 @@ public sealed class BangGiaForm : Form
             {
                 VT = vatTu,
                 Ten = vatTu.Ten,
+                Nhom = vatTu.Nhom,
                 DonVi = vatTu.DonVi,
                 GiaChung = vatTu.DonGiaMacDinh,
                 GiaRieng = giaRieng,
@@ -167,7 +158,7 @@ public sealed class BangGiaForm : Form
             {
                 if (_luoi.Rows[i].DataBoundItem is DongGia dong && dong.VT.Id == id)
                 {
-                    _luoi.CurrentCell = _luoi.Rows[i].Cells[3];
+                    _luoi.CurrentCell = _luoi.Rows[i].Cells["col" + nameof(DongGia.GiaRieng)];
                     break;
                 }
             }
@@ -261,6 +252,8 @@ public sealed class BangGiaForm : Form
         public VatTu VT { get; set; } = null!;
 
         public string Ten { get; set; } = string.Empty;
+
+        public string Nhom { get; set; } = string.Empty;
 
         public string DonVi { get; set; } = string.Empty;
 

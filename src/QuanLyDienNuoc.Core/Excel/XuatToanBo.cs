@@ -208,7 +208,7 @@ public static class XuatToanBo
     private static void TrangVatTu(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)
     {
         var sheet = TaoTrang(wb, kieu, "Vật tư",
-            ("Tên hàng", 34), ("Mã tắt", 14), ("Đơn vị", 12), ("Giá chung", 16));
+            ("Tên hàng", 34), ("Mã tắt", 14), ("Nhóm", 18), ("Đơn vị", 12), ("Giá chung", 16));
 
         var dong = 1;
         foreach (var vatTu in duLieu.VatTus.OrderBy(v => v.Ten, StringComparer.CurrentCultureIgnoreCase))
@@ -216,11 +216,12 @@ public static class XuatToanBo
             var r = sheet.CreateRow(dong++);
             Chu(r, 0, vatTu.Ten, kieu);
             Chu(r, 1, vatTu.MaTat, kieu);
-            Chu(r, 2, vatTu.DonVi, kieu);
-            Tien(r, 3, vatTu.DonGiaMacDinh, kieu);
+            Chu(r, 2, vatTu.Nhom, kieu);
+            Chu(r, 3, vatTu.DonVi, kieu);
+            Tien(r, 4, vatTu.DonGiaMacDinh, kieu);
         }
 
-        ChotDong(sheet, dong, 4);
+        ChotDong(sheet, dong, 5);
     }
 
     private static void TrangBangGiaRieng(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)

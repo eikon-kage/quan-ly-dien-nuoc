@@ -29,6 +29,37 @@ Lô trang hiện ở bảng *CÁC TRANG TRONG LÔ (theo thứ tự thêm vào ·
 trang là lô tính lại ngay — bỏ tích trang 1 thì mất tên khách, tích thêm trang 1 của tờ khác thì
 bị chặn vì hai tờ khác nhau dồn vào một hoá đơn.
 
+## Bảng lô: ô tích đứng cạnh tên file, bảng bên phải bày một file
+
+Cột **LẤY** là ô tích đứng ngay trước cột **FILE**: thêm file vào rồi vẫn bỏ được, không phải
+file nào đã thêm cũng bắt buộc phải nhập. Ô tích có bề ngang thấp nhất cố định — cột chia theo
+tỷ lệ nên bảng chật là nó co lại còn một vạch, người dùng không biết là có chỗ tích.
+
+Bấm vào dòng nào thì **bảng xem trước bên phải bày đúng file của dòng ấy**, kể cả file chưa
+tích — đang cân nhắc có lấy file này không thì phải nhìn thấy nó có gì đã. Thêm file xong là màn
+hình tự chuyển sang đứng ở file vừa thêm. Câu tóm tắt phía trên bảng nói cả hai con số —
+*"ĐANG XEM to2.xls · 35 DÒNG · … — CẢ LÔ: SẼ NHẬP 1 KHÁCH · 65 DÒNG HÀNG · …"* — và nút **Xem cả
+lô** đổi bảng sang bày toàn bộ những gì sắp vào sổ.
+
+Cái vào sổ luôn là **cả lô đang tích**, không phải bảng đang bày: bấm Nhập lúc đang xem một file
+vẫn nhập đủ các file khác.
+
+## File có hai tab "mẫu cũ" và "mẫu mới" thì chỉ lấy tab "mẫu cũ"
+
+File hoá đơn của cửa hàng hay để hai tab cạnh nhau: tab `mau cũ` là tờ đã điền cho khách, tab
+`mẫu mới` là mẫu trắng còn sót mấy dòng ví dụ chép sẵn (bóng điện, bệt, công làm — file nào cũng
+y hệt file nào). Lấy cả hai là sổ có thêm gần 4 triệu tiền hàng chẳng ai mua, nên
+[`Excel/DocHoaDon.cs`](../src/QuanLyDienNuoc.Core/Excel/DocHoaDon.cs) bỏ tab `mẫu mới` khi trong
+file có tab `mau cũ` đọc ra được dòng hàng.
+
+Hai chỗ cố ý làm chặt tay:
+
+- tab `mau cũ` **không ra dòng nào** thì giữ nguyên cả hai — có người điền vào tab kia, bỏ nốt là
+  cả file trắng trơn mà màn hình không nói được vì sao;
+- chỉ xét **đúng hai cái tên ấy** (bỏ dấu, gộp khoảng trắng). Có file cửa hàng đặt tên tab là
+  `mau hoa don cũ` / `mẫu hoá đơn mối` mà tờ đã điền lại nằm ở tab "mối" — so lỏng tay là vứt
+  đúng tờ của khách.
+
 ## Tên và địa chỉ: đọc trên giấy nhưng sửa được
 
 Tên và địa chỉ lấy ở phần đầu **trang 1** (các trang sau không có phần đầu nên chẳng có gì để
@@ -94,3 +125,7 @@ file mẫu chưa điền gì thì không ra khách nào.
 
 Kèm test hồi quy chạy trên **chính file hoá đơn thật** của cửa hàng (bản ẩn danh `to1.xls`): file
 này có hai sheet đều là trang 1, tức hai tờ của hai lượt mua khác nhau, và phải bị chặn.
+
+[`tests/QuanLyDienNuoc.Tests/HoaDonExcelTests.cs`](../tests/QuanLyDienNuoc.Tests/HoaDonExcelTests.cs)
+giữ ba test cho chuyện hai tab mẫu: `to2.xls` chỉ ra tab `mau cũ`; tab `mau cũ` rỗng thì vẫn lấy
+tab `mẫu mới`; tên tab kiểu `mẫu hoá đơn mối` thì giữ nguyên cả hai.

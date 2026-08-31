@@ -6,19 +6,21 @@ using QuanLyDienNuoc.Ui;
 namespace QuanLyDienNuoc.Excel;
 
 /// <summary>
-/// Một dòng trên tờ giấy. Chủ cửa hàng viết mốc ngày ("1/12") thành một dòng riêng ở cột số
-/// thứ tự, hàng lấy hôm ấy nằm bên dưới — nên tờ giấy có hai loại dòng, và sức chứa của trang
-/// phải đếm cả dòng mốc chứ không chỉ đếm hàng.
+/// Một dòng hàng trên tờ giấy. Chủ cửa hàng viết mốc ngày ("1/12") vào ô số thứ tự của dòng
+/// hàng đầu tiên lấy hôm ấy, các dòng dưới mới ghi số thứ tự — nên dòng nào cũng là dòng hàng,
+/// mốc ngày chỉ là chuyện dòng ấy ghi gì ở cột TT.
 /// </summary>
 public sealed record DongTrenTo
 {
-    /// <summary>Dòng hàng. Null là dòng mốc ngày.</summary>
-    public ChiTietHoaDon? Hang { get; init; }
+    /// <summary>Dòng hàng của tờ giấy.</summary>
+    public required ChiTietHoaDon Hang { get; init; }
 
-    /// <summary>Ngày của mốc, chỉ dòng mốc mới có.</summary>
+    /// <summary>
+    /// Ngày ghi đè lên ô số thứ tự, chỉ dòng hàng đầu tiên của mỗi ngày mới có.
+    /// </summary>
     public DateTime? Moc { get; init; }
 
-    /// <summary>Số thứ tự ghi ở cột TT, chỉ dòng hàng mới có. Chạy liên tục qua các trang.</summary>
+    /// <summary>Số thứ tự của dòng hàng, chạy liên tục qua các trang. Dòng có mốc thì không in ra.</summary>
     public int SoThuTu { get; init; }
 }
 
@@ -26,12 +28,11 @@ public sealed record DongTrenTo
 public static class XuatHoaDon
 {
     /// <summary>
-    /// Xếp các dòng hàng lên từng trang giấy, chèn dòng mốc ngày vào đúng chỗ đổi ngày. Luôn
-    /// trả về ít nhất một trang.
+    /// Xếp các dòng hàng lên từng trang giấy, đánh dấu mốc ngày vào dòng hàng đầu tiên của mỗi
+    /// ngày. Luôn trả về ít nhất một trang.
     /// <para>
-    /// Dòng mốc ăn một dòng của trang y như một dòng hàng — trang 1 chứa 25 dòng thì tờ gom
-    /// hàng của một ngày chỉ còn 24 dòng hàng. Tính đúng chỗ này thì tờ in ra giấy và file
-    /// Excel xuất ra mới ngắt trang giống nhau, và không dòng nào bị đẩy ra ngoài khung kẻ.
+    /// Mốc không ăn thêm dòng nào của trang — nó chỉ thay con số ở cột TT — nên trang 1 chứa
+    /// đủ 25 dòng hàng dù tờ gom hàng của bao nhiêu ngày.
     /// </para>
     /// </summary>
     public static List<List<DongTrenTo>> LenTrang(IEnumerable<ChiTietHoaDon> chiTiet)
@@ -52,25 +53,17 @@ public static class XuatHoaDon
             // cuối trang trước.
             DateTime? ngayDongTren = null;
 
-            while (daLay < dong.Count)
+            while (daLay < dong.Count && mot.Count < sucChua)
             {
                 var ngay = dong[daLay].Ngay.Date;
-                var themMoc = ngayDongTren != ngay;
 
-                // Dòng cuối trang không được là dòng mốc trơ trọi: mốc với dòng hàng đầu tiên của
-                // nó phải cùng ở lại hoặc cùng sang trang sau. Trang trống thì cứ nhận, không thì
-                // mẫu nào chứa nổi ít hơn hai dòng là kẹt vòng lặp.
-                if (mot.Count > 0 && mot.Count + (themMoc ? 2 : 1) > sucChua)
+                mot.Add(new DongTrenTo
                 {
-                    break;
-                }
+                    Hang = dong[daLay],
+                    Moc = ngayDongTren == ngay ? null : ngay,
+                    SoThuTu = soThuTu++,
+                });
 
-                if (themMoc)
-                {
-                    mot.Add(new DongTrenTo { Moc = ngay });
-                }
-
-                mot.Add(new DongTrenTo { Hang = dong[daLay], SoThuTu = soThuTu++ });
                 ngayDongTren = ngay;
                 daLay++;
             }
@@ -82,10 +75,10 @@ public static class XuatHoaDon
         return trang;
     }
 
-    /// <summary>Chia riêng các dòng hàng theo từng trang, bỏ dòng mốc ngày.</summary>
+    /// <summary>Chia riêng các dòng hàng theo từng trang.</summary>
     public static List<List<ChiTietHoaDon>> ChiaTrang(IEnumerable<ChiTietHoaDon> chiTiet) =>
         LenTrang(chiTiet)
-            .Select(t => t.Where(d => d.Hang is not null).Select(d => d.Hang!).ToList())
+            .Select(t => t.Select(d => d.Hang).ToList())
             .ToList();
 
     /// <summary>
@@ -243,22 +236,15 @@ public static class XuatHoaDon
         {
             var r = viTri.DongDauDuLieu + i;
 
-            // Mốc ngày "1/12" đứng riêng một dòng ở cột số thứ tự, đúng lối chủ cửa hàng viết
-            // tay: hàng lấy hôm ấy nằm bên dưới, tới khi gặp mốc khác. Trên tờ giấy không có
-            // chỗ nào khác ghi ngày cho từng dòng, nên đây là chỗ duy nhất giữ được ngày để
-            // nhập lại file này vào phần mềm.
-            //
-            // Trước đây mốc ghi thẳng vào ô số thứ tự của dòng hàng, nên tờ của khách mối gom
-            // hàng nhiều ngày là gần như cả cột TT thành ngày, không còn số thứ tự nào.
-            if (dong[i].Moc is { } moc)
-            {
-                LayO(sheet, r, MauHoaDon.CotTT).SetCellValue($"{moc.Day}/{moc.Month}");
-                continue;
-            }
+            var ct = dong[i].Hang;
 
-            var ct = dong[i].Hang!;
+            // Mốc ngày "1/12" ghi vào ô số thứ tự của dòng hàng đầu tiên lấy hôm ấy, đúng lối
+            // chủ cửa hàng viết tay: các dòng dưới ghi số thứ tự, tới khi gặp mốc khác. Trên tờ
+            // giấy không có chỗ nào khác ghi ngày cho từng dòng, nên đây là chỗ duy nhất giữ
+            // được ngày để nhập lại file này vào phần mềm.
+            LayO(sheet, r, MauHoaDon.CotTT).SetCellValue(
+                dong[i].Moc is { } moc ? $"{moc.Day}/{moc.Month}" : dong[i].SoThuTu.ToString());
 
-            LayO(sheet, r, MauHoaDon.CotTT).SetCellValue(dong[i].SoThuTu.ToString());
             LayO(sheet, r, MauHoaDon.CotTenHang).SetCellValue(ct.TenHang);
             LayO(sheet, r, MauHoaDon.CotDonVi).SetCellValue(ct.DonVi);
             LayO(sheet, r, MauHoaDon.CotSoLuong).SetCellValue((double)(ct.SoLuong * hoaDon.DauInRaGiay));
@@ -274,7 +260,7 @@ public static class XuatHoaDon
 
         // Dòng tổng: trang cuối là tổng cộng cả hoá đơn, các trang trước là cộng của riêng trang đó.
         var dau = hoaDon.DauInRaGiay;
-        var tienCuaTrang = dong.Where(d => d.Hang is not null).Sum(d => d.Hang!.ThanhTien);
+        var tienCuaTrang = dong.Sum(d => d.Hang.ThanhTien);
         var tienDongTong = (laTrangCuoi ? tongCong : tienCuaTrang) * dau;
 
         LayO(sheet, viTri.DongTong, 0).SetCellValue((laTrangCuoi, hoaDon.LaHoanHang) switch

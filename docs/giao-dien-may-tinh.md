@@ -59,9 +59,9 @@ Mười lăm cửa sổ con không phải sửa gì: chúng dựng bằng đúng
 │ Sổ điện nước │  [ô tìm khách]              Năm [2026] [+ Thêm khách]│
 │              ├──────────────────────────────────────────────────────┤
 │ Trang chủ    │  ┌ ⚠ 2 khách nợ quá 60 ngày …    [Mở sổ công nợ] ──┐│
-│ Sổ công nợ   │  └─────────────────────────────────────────────────┘│
-│ Danh mục vật │  ┌ Khách hàng        ☐ Chỉ hiện khách có đơn ───────┐│
-│ Bộ hàng      │  │ bảng khách hàng                                  ││
+│ Danh mục vật │  └─────────────────────────────────────────────────┘│
+│ Bộ hàng      │  ┌ Khách hàng        ☐ Chỉ hiện khách có đơn ───────┐│
+│              │  │ bảng khách hàng                                  ││
 │              │  │                                                  ││
 │ Sao lưu      │  │                                                  ││
 │ Nhật ký      │  │                                                  ││
@@ -254,6 +254,37 @@ Màn **Nhập nhiều dòng** là chỗ đầu tiên làm theo quy tắc ấy ch
 (`Theme.FontNhap.Height * 3`) thay vì 150px cứng, `Theme.ThanhTieuDe(..., tuCao: true)` cho thanh
 tiêu đề tự cao, và ba dòng chỉ cách gõ thay cho một dòng dài 110 ký tự — dòng ấy vừa bị cắt mất
 đuôi, mà đọc được đủ cũng không ai đọc hết ba luật nhồi một dòng.
+
+### Nay cả app đi theo quy tắc ấy — bằng năm món dùng chung của `Theme`
+
+Sửa từng màn hình một thì lần sau vẫn có người chép lại kiểu cũ, nên phần xếp hình đã gom vào
+`Theme` để mọi màn hình cùng đi qua một chỗ:
+
+| Món | Thay cho | Được gì |
+| --- | --- | --- |
+| `Theme.HangO(mauNen, ...ô)` | `Panel` + `FlowLayoutPanel` chép tay ở mỗi màn | Dải ô nhập tự cao theo chữ, **ô tự xuống hàng dưới** khi cửa sổ hẹp hay cỡ chữ to |
+| `Theme.ThanhDuoi(ghiChu, ...nút)` | `Panel` cao cứng 84px + nhãn `Dock = Right` rộng cứng | Hàng nút cuối cửa sổ tự cao, câu ghi chú neo phải tự xuống dòng |
+| `Theme.ThanhTrangThai(nhãn)` | tám bản chép y hệt nhau trong tám form | Dải trạng thái đáy cửa sổ tự cao, câu dài tự xuống dòng |
+| `Theme.NhanDaiDong(chữ)` | `Label` một dòng trong ô cao cứng | Nhãn chứa **câu** thì tự xuống dòng theo bề ngang thật, tự cao theo số dòng |
+| `Theme.TruongNhieuDong(nhãn, ô, rộng, sốDòng)` | nhãn + ô ghi chú đặt toạ độ tay | Ô nhiều dòng cao đúng số dòng chữ *của máy đó* |
+
+Kèm theo là hai chỗ chặn ở tầng dưới, khỏi phải nhớ:
+
+- `Theme.Truong` lấy bề cao nhãn theo `Theme.FontNhan.Height` (24px chỉ còn là mức thấp nhất), và
+  mở ra hai số dùng chung `Theme.CaoNhanTrongTruong` / `Theme.DinhOTrongTruong` — nút đứng cùng
+  hàng với ô nhập lùi xuống đúng bằng chỗ cái nhãn, khỏi đoán 22 hay 26 px.
+- `Theme.ApDungLuoi` chặn **bề ngang thấp nhất của mỗi cột theo từ dài nhất trong tên cột**. Cột
+  chia theo tỷ lệ nên bảng chật là mọi cột co lại, co quá thì "SỐ LƯỢNG" chỉ còn thấy "SỐ" mà
+  "TRANG" còn thấy "G". Chặn theo *từ* chứ không cả tên: tên hai chữ vẫn được xuống hai dòng như
+  cũ, chỉ cấm cắt ngang một chữ. Cột có nội dung dài sẵn (ngày `25/02/2026`, tiền triệu) thì thêm
+  `Theme.Cot(..., toiThieu: 104)`.
+
+Nút thì hầu hết đã bật `noTheoChu` — kể cả nút phụ (`Theme.NutPhu(..., noTheoChu: true)`).
+
+Hai chỗ nữa cùng bệnh, đã chữa cùng đợt: bảng chỉ đủ chỗ cho vài cột thì **bớt cột** chứ đừng
+nhồi (bảng các trang trong lô ở hai màn nhập từ file bỏ cột BẢNG và TÊN KHÁCH, đưa vào lời mách
+của dòng), và nhãn dài hơn ô của nó thì **rút gọn nhãn**, câu đầy đủ để vào lời mách
+("NGÀY LẤY HÀNG CHO CÁC DÒNG" → "NGÀY LẤY HÀNG").
 
 Chữa gốc thì phải đặt `AutoScaleDimensions = new SizeF(96F, 96F)` cho từng form để WinForms phóng
 mọi cỡ đặt tay theo cỡ hiển thị. Chưa làm: nó phóng lại **toàn bộ** bố cục của mọi cửa sổ một

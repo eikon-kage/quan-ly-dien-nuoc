@@ -35,12 +35,16 @@ public sealed class XemTruocForm : Form
             RowCount = 3,
             BackColor = Theme.Nen,
         };
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
+        // Dòng có chữ thì tự cao theo chữ: xem "Chữ bị cắt" trong docs/giao-dien-may-tinh.md.
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khung.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         khung.Controls.Add(
-            Theme.ThanhTieuDe("XEM TRƯỚC HOÁ ĐƠN", $"{_taiLieu.DocumentName} · {_taiLieu.SoTrang} trang"),
+            Theme.ThanhTieuDe(
+                "XEM TRƯỚC HOÁ ĐƠN",
+                $"{_taiLieu.DocumentName} · {_taiLieu.SoTrang} trang",
+                tuCao: true),
             0,
             0);
 
@@ -54,13 +58,13 @@ public sealed class XemTruocForm : Form
         var vienXem = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 10, 20, 0), BackColor = Theme.Nen };
         vienXem.Controls.Add(_xem);
 
-        var btnIn = Theme.Nut("IN HOÁ ĐƠN", Theme.Chinh, 220, 52);
+        var btnIn = Theme.Nut("IN HOÁ ĐƠN", Theme.Chinh, 220, 52, noTheoChu: true);
         btnIn.Click += (_, _) => In();
 
-        var btnTruoc = Theme.NutPhu("◀ Trang trước", 170, 52);
+        var btnTruoc = Theme.NutPhu("◀ Trang trước", 170, 52, noTheoChu: true);
         btnTruoc.Click += (_, _) => DoiTrang(-1);
 
-        var btnSau = Theme.NutPhu("Trang sau ▶", 170, 52);
+        var btnSau = Theme.NutPhu("Trang sau ▶", 170, 52, noTheoChu: true);
         btnSau.Click += (_, _) => DoiTrang(1);
 
         // Ba nút phóng to / thu nhỏ / vừa màn hình gom vào nút ba chấm: chỉ dùng khi muốn
@@ -75,27 +79,16 @@ public sealed class XemTruocForm : Form
                 _xem.Invalidate();
             });
 
-        var btnDong = Theme.NutPhu("Đóng", 130, 52);
+        var btnDong = Theme.NutPhu("Đóng", 130, 52, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        trai.Controls.Add(btnIn);
-        trai.Controls.Add(btnTruoc);
-        trai.Controls.Add(btnSau);
-        trai.Controls.Add(viecPhong.Nut);
-        trai.Controls.Add(btnDong);
-
-        _lblTrang.Dock = DockStyle.Right;
-        _lblTrang.Width = 220;
         _lblTrang.Font = Theme.FontSo;
-        _lblTrang.TextAlign = ContentAlignment.MiddleRight;
-
-        var duoi = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 12, 20, 10) };
-        duoi.Controls.Add(trai);
-        duoi.Controls.Add(_lblTrang);
 
         khung.Controls.Add(vienXem, 0, 1);
-        khung.Controls.Add(duoi, 0, 2);
+        khung.Controls.Add(
+            Theme.ThanhDuoi(_lblTrang, btnIn, btnTruoc, btnSau, viecPhong.Nut, btnDong),
+            0,
+            2);
         Controls.Add(khung);
 
         CapNhatNhanTrang();

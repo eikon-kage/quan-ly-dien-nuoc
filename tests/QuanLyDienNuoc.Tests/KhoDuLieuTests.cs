@@ -49,6 +49,55 @@ public sealed class KhoDuLieuTests : IDisposable
     }
 
     [Fact]
+    public void Nap_DanhMucMauCoSanNhomHang()
+    {
+        _kho.Nap();
+
+        Assert.All(_kho.DuLieu.VatTus, v => Assert.NotEqual(string.Empty, v.Nhom));
+        Assert.Contains(_kho.DuLieu.VatTus, v => v.Ten == "Ống nhựa PVC D27" && v.Nhom == "Ống nước");
+        Assert.Contains(_kho.DuLieu.VatTus, v => v.Ten == "Aptomat 1 pha 20A" && v.Nhom == "Điện");
+    }
+
+    [Fact]
+    public void Nap_DocLaiDungNhomVatTuDaLuu()
+    {
+        _kho.Nap();
+        var vatTu = new VatTu { Ten = "Bồn nước inox 1000L", DonVi = "Cái", Nhom = "Bồn nước" };
+        _kho.DuLieu.VatTus.Add(vatTu);
+        _kho.Luu();
+
+        var khoMoi = new KhoDuLieu(_kho.DuongDanFile);
+        khoMoi.Nap();
+
+        var docLai = Assert.Single(khoMoi.DuLieu.VatTus, v => v.Id == vatTu.Id);
+        Assert.Equal("Bồn nước", docLai.Nhom);
+    }
+
+    /// <summary>Sổ của bản cũ không có trường nhóm: đọc lên phải để trống, không được ném lỗi.</summary>
+    [Fact]
+    public void Nap_SoCuKhongCoTruongNhomThiDeTrong()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(_kho.DuongDanFile)!);
+        File.WriteAllText(
+            _kho.DuongDanFile,
+            """
+            {
+              "KhachHangs": [],
+              "VatTus": [ { "Ten": "Ống nhựa PVC D21", "DonVi": "Cây", "DonGiaMacDinh": 32000 } ],
+              "HoaDons": [],
+              "BoHangs": []
+            }
+            """,
+            System.Text.Encoding.UTF8);
+
+        _kho.Nap();
+
+        var vatTu = Assert.Single(_kho.DuLieu.VatTus);
+        Assert.Equal("Ống nhựa PVC D21", vatTu.Ten);
+        Assert.Equal(string.Empty, vatTu.Nhom);
+    }
+
+    [Fact]
     public void Nap_DocLaiDungDuLieuDaLuu()
     {
         _kho.Nap();

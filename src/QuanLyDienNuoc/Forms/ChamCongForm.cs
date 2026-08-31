@@ -28,14 +28,17 @@ public sealed class ChamCongForm : Form
     private readonly TextBox _txtKhoa = Theme.O(260);
     private readonly TextBox _txtEmail = Theme.O(220);
     private readonly TextBox _txtMatKhau = Theme.O(160);
-    private readonly Button _btnDangNhap = Theme.Nut("ĐĂNG NHẬP VÀ TẢI SỔ", Theme.Chinh, 240, 40);
+    private readonly Button _btnDangNhap = Theme.Nut("ĐĂNG NHẬP VÀ TẢI SỔ", Theme.Chinh, 240, 40, noTheoChu: true);
 
     private readonly ComboBox _cboBan = new();
-    private readonly Button _btnTaiLai = Theme.NutPhu("Tải lại", 120, 40);
+    private readonly Button _btnTaiLai = Theme.NutPhu("Tải lại", 120, 40, noTheoChu: true);
 
     private readonly DataGridView _luoi = new();
-    private readonly Label _lblTong = new();
-    private readonly Label _lblTrangThai = new();
+    private readonly Label _lblTong = Theme.NhanDaiDong();
+
+    // Giữ tham chiếu: ToolTip không được control nào giữ hộ, bị dọn rác là mất lời mách.
+    private readonly ToolTip _mach = new() { InitialDelay = 250, AutoPopDelay = 12000 };
+    private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     private readonly List<(Button Nut, Bang Bang)> _nutBang = new();
     private readonly ThanhPhanTrang _phanTrang = new();
@@ -99,17 +102,20 @@ public sealed class ChamCongForm : Form
             RowCount = 6,
             BackColor = Theme.Nen,
         };
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 96));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         goc.Controls.Add(
             Theme.ThanhTieuDe(
                 "CHẤM CÔNG CỦA THỢ",
-                "Sổ đọc từ app điện thoại qua Supabase. Máy tính chỉ xem — muốn sửa thì sửa trên điện thoại."),
+                "Sổ đọc từ app điện thoại qua Supabase  ·  máy tính chỉ xem, muốn sửa thì sửa trên điện thoại",
+                tuCao: true),
             0,
             0);
         goc.Controls.Add(TaoThanhNoi(), 0, 1);
@@ -124,17 +130,9 @@ public sealed class ChamCongForm : Form
     /// <summary>Hàng nối với Supabase: địa chỉ, khoá, email, mật khẩu.</summary>
     private Control TaoThanhNoi()
     {
-        var nen = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = Theme.ChinhNhat,
-            Margin = new Padding(20, 8, 20, 0),
-            Padding = new Padding(14, 8, 14, 8),
-        };
-
         _txtMatKhau.UseSystemPasswordChar = true;
 
-        var mach = new ToolTip { InitialDelay = 250, AutoPopDelay = 12000 };
+        var mach = _mach;
         mach.SetToolTip(_txtDiaChi, "Supabase → Project Settings → Data API → Project URL");
         mach.SetToolTip(
             _txtKhoa,
@@ -157,36 +155,37 @@ public sealed class ChamCongForm : Form
 
         const int CaoO = 38;
         const int Le = 12;
-        var hang = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            WrapContents = false,
-            AutoScroll = true,
-            Margin = new Padding(0),
-        };
+        var oNhap = new List<Control>();
 
         // Khoá đã nằm trong bản dựng thì **không hiện hai ô ấy ra nữa**: đưa địa chỉ với khoá
         // công khai ra trước mặt chủ cửa hàng chỉ làm họ hoang mang, mà cũng chẳng có gì để họ
         // sửa. Bản dựng chưa có khoá thì vẫn phải hiện, không thì kẹt hẳn.
         if (!_cauHinh.DaCoSan)
         {
-            hang.Controls.Add(Theme.Truong("ĐỊA CHỈ SUPABASE", _txtDiaChi, 320, CaoO, Le));
-            hang.Controls.Add(Theme.Truong("KHOÁ CÔNG KHAI", _txtKhoa, 260, CaoO, Le));
+            oNhap.Add(Theme.Truong("ĐỊA CHỈ SUPABASE", _txtDiaChi, 320, CaoO, Le));
+            oNhap.Add(Theme.Truong("KHOÁ CÔNG KHAI", _txtKhoa, 260, CaoO, Le));
         }
 
-        hang.Controls.Add(Theme.Truong("EMAIL CHỦ", _txtEmail, 260, CaoO, Le));
-        hang.Controls.Add(Theme.Truong("MẬT KHẨU", _txtMatKhau, 200, CaoO, Le));
-        hang.Controls.Add(Theme.Truong(" ", _btnDangNhap, 240, 40, Le));
+        oNhap.Add(Theme.Truong("EMAIL CHỦ", _txtEmail, 260, CaoO, Le));
+        oNhap.Add(Theme.Truong("MẬT KHẨU", _txtMatKhau, 200, CaoO, Le));
 
-        nen.Controls.Add(hang);
-        return nen;
+        // Nút đăng nhập ngồi riêng để nở theo chữ, lùi xuống ngang hàng với mấy ô bên cạnh.
+        var nhomNut = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, Theme.DinhOTrongTruong, Le, 0),
+        };
+        nhomNut.Controls.Add(_btnDangNhap);
+        oNhap.Add(nhomNut);
+
+        return Theme.HangO(Theme.ChinhNhat, oNhap.ToArray());
     }
 
     /// <summary>Chọn bản theo ngày, và chọn xem bảng nào.</summary>
     private Control TaoThanhChonBang()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 10, 20, 6) };
-
         var lbl = Theme.Nhan("BẢN NGÀY:", Theme.FontNhan, Theme.Xam);
         lbl.Margin = new Padding(0, 14, 10, 0);
 
@@ -205,13 +204,21 @@ public sealed class ChamCongForm : Form
         _btnTaiLai.Margin = new Padding(0, 8, 24, 0);
         _btnTaiLai.Click += async (_, _) => await TaiDanhSachBan();
 
-        var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
+        // Hàng này **cho xuống dòng**: bảy thứ nối nhau (nhãn, ô chọn bản, nút tải lại, năm
+        // nút chuyển bảng) là ở cỡ chữ to thì mấy cái cuối lòi hẳn ra ngoài mép cửa sổ.
+        var trai = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = true,
+            Margin = new Padding(0),
+        };
         trai.Controls.Add(lbl);
         trai.Controls.Add(_cboBan);
         trai.Controls.Add(_btnTaiLai);
 
-        _phanTrang.Dock = DockStyle.Right;
-        _phanTrang.Padding = new Padding(0, 8, 0, 0);
+        _phanTrang.Margin = new Padding(0, 8, 0, 0);
         _phanTrang.DoiTrang += (_, _) => _veLaiTrang();
 
         // Năm nút chuyển bảng, nút đang xem tô đặc — cùng cách sổ công nợ làm với hai nút lọc.
@@ -224,15 +231,27 @@ public sealed class ChamCongForm : Form
                      (Bang.KyDaChot, "Kỳ đã chốt", 170),
                  })
         {
-            var nut = Theme.NutPhu(chu, rong, 40);
+            var nut = Theme.NutPhu(chu, rong, 40, noTheoChu: true);
             nut.Margin = new Padding(0, 8, 10, 0);
             nut.Click += (_, _) => DoiBang(bang);
             trai.Controls.Add(nut);
             _nutBang.Add((nut, bang));
         }
 
-        nen.Controls.Add(trai);
-        nen.Controls.Add(_phanTrang);
+        trai.Controls.Add(_phanTrang);
+
+        var nen = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Nen,
+            Padding = new Padding(20, 8, 20, 6),
+        };
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        nen.Controls.Add(trai, 0, 0);
         SonNutBang();
         return nen;
     }
@@ -247,28 +266,28 @@ public sealed class ChamCongForm : Form
 
     private Control TaoThanhTong()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 6, 20, 6) };
-
-        _lblTong.Dock = DockStyle.Fill;
         _lblTong.Font = Theme.FontSo;
         _lblTong.ForeColor = Theme.ChuDam;
-        _lblTong.TextAlign = ContentAlignment.MiddleRight;
+        _lblTong.Anchor = AnchorStyles.Right;
+        _lblTong.Margin = new Padding(20, 6, 20, 6);
 
-        nen.Controls.Add(_lblTong);
+        var nen = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Nen,
+        };
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        nen.Controls.Add(_lblTong, 0, 0);
         return nen;
     }
 
     private Control TaoThanhTrangThai()
     {
-        _lblTrangThai.Dock = DockStyle.Fill;
-        _lblTrangThai.Font = Theme.FontPhu;
-        _lblTrangThai.ForeColor = Theme.Xam;
-        _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
-        _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
-
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
-        nen.Controls.Add(_lblTrangThai);
-        return nen;
+        return Theme.ThanhTrangThai(_lblTrangThai);
     }
 
     // ---------------- Nối và tải ----------------

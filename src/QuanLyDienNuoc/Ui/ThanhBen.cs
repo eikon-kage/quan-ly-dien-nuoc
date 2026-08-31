@@ -38,7 +38,10 @@ public sealed class ThanhBen : Panel
     public ThanhBen(string ten, string phuDe)
     {
         Dock = DockStyle.Left;
-        Width = 268;
+
+        // Bề ngang theo chữ **của máy này**: 268px chỉ vừa ở cỡ hiển thị 100%, máy đặt 125% là
+        // tên mục dài ("Bộ hàng thường dùng") bị cắt cụt bằng dấu "…".
+        Width = Math.Max(268, (Theme.FontThuong.Height * 13) + 70);
         BackColor = Theme.Trang;
 
         // Danh sách mục (neo Fill) thêm trước, logo (neo trên) thêm sau — xem chú thích thứ
@@ -84,15 +87,25 @@ public sealed class ThanhBen : Panel
 
     private static Panel TaoLogo(string ten, string phuDe)
     {
-        var panel = new Panel { Dock = DockStyle.Top, Height = 92, BackColor = Theme.Trang };
+        // Hai dòng chữ neo trên chứ không đặt cứng ở y = 24 và y = 50: cỡ chữ to lên là dòng
+        // tên tràn xuống đè lên dòng phụ đề — xem "Chữ bị cắt" trong docs/giao-dien-may-tinh.md.
+        var fontTen = new Font("Segoe UI", 15F, FontStyle.Bold);
+        var panel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = Math.Max(92, fontTen.Height + Theme.FontPhu.Height + 48),
+            BackColor = Theme.Trang,
+            Padding = new Padding(74, 22, 8, 8),
+        };
 
         var lblTen = new Label
         {
             Text = ten,
-            Font = new Font("Segoe UI", 15F, FontStyle.Bold),
+            Font = fontTen,
             ForeColor = Theme.Chinh,
             AutoSize = true,
-            Location = new Point(74, 24),
+            Dock = DockStyle.Top,
+            Margin = new Padding(0),
         };
 
         var lblPhu = new Label
@@ -101,16 +114,18 @@ public sealed class ThanhBen : Panel
             Font = Theme.FontPhu,
             ForeColor = Theme.XamNhat,
             AutoSize = true,
-            Location = new Point(76, 50),
+            Dock = DockStyle.Top,
+            Margin = new Padding(2, 2, 0, 0),
         };
 
-        panel.Controls.Add(lblTen);
+        // Neo trên thì cái thêm sau nằm trên: thêm phụ đề trước, tên sau.
         panel.Controls.Add(lblPhu);
+        panel.Controls.Add(lblTen);
         panel.Paint += (_, e) =>
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            var o = new Rectangle(20, 26, 42, 42);
+            var o = new Rectangle(20, Math.Max(10, (panel.Height - 42) / 2), 42, 42);
             using var duong = Theme.DuongBo(o, 10);
             using var to = new LinearGradientBrush(o, Theme.Chinh, Theme.Xanh, LinearGradientMode.ForwardDiagonal);
             g.FillPath(to, duong);
@@ -138,7 +153,9 @@ public sealed class ThanhBen : Panel
         {
             _icon = icon;
             Text = chu;
-            Height = 48;
+
+            // Cao theo chữ của máy này: 48px vừa khít ở cỡ 100%, cỡ to hơn là cắt mất dấu.
+            Height = Math.Max(48, Theme.FontThuong.Height + 28);
             Font = Theme.FontThuong;
             ForeColor = Theme.Chu;
             FlatStyle = FlatStyle.Flat;

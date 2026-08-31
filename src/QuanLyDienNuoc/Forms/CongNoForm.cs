@@ -25,8 +25,8 @@ public sealed class CongNoForm : Form
     private readonly TextBox _txtTim = Theme.O(300);
     private readonly NumericUpDown _numNgay = new();
     private readonly DataGridView _luoi = new();
-    private readonly Label _lblTongKet = new();
-    private readonly Label _lblTrangThai = new();
+    private readonly Label _lblTongKet = Theme.NhanDaiDong();
+    private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     private bool _dangNap;
 
@@ -61,16 +61,19 @@ public sealed class CongNoForm : Form
             RowCount = 5,
             BackColor = Theme.Nen,
         };
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 94));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         goc.Controls.Add(
             Theme.ThanhTieuDe(
                 "SỔ CÔNG NỢ",
-                "Xếp theo nợ lâu nhất. \"Số ngày nợ\" tính từ lần lấy hàng hoặc trả tiền gần nhất."),
+                "Xếp theo nợ lâu nhất  ·  \"số ngày nợ\" tính từ lần lấy hàng hay trả tiền gần nhất",
+                tuCao: true),
             0,
             0);
         goc.Controls.Add(TaoThanhCongCu(), 0, 1);
@@ -83,8 +86,6 @@ public sealed class CongNoForm : Form
 
     private Control TaoThanhCongCu()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 12, 20, 8) };
-
         _cboNam.DropDownStyle = ComboBoxStyle.DropDownList;
         _cboNam.Font = Theme.FontNhap;
         _cboNam.SelectedIndexChanged += (_, _) =>
@@ -116,32 +117,30 @@ public sealed class CongNoForm : Form
             }
         };
 
-        var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        trai.Controls.Add(Theme.Truong("NĂM", _cboNam, 190));
-        trai.Controls.Add(Theme.Truong("TÌM KHÁCH HÀNG", _txtTim, 320));
-        trai.Controls.Add(Theme.Truong("NỢ QUÁ (NGÀY)", _numNgay, 200));
-
-        var btnQuaHan = Theme.NutPhu($"Nợ quá {_kho.CaiDat.SoNgayNhacNo} ngày", 230, 42);
-        btnQuaHan.Margin = new Padding(0, 22, 10, 0);
+        var btnQuaHan = Theme.NutPhu($"Nợ quá {_kho.CaiDat.SoNgayNhacNo} ngày", 230, 42, noTheoChu: true);
         btnQuaHan.Click += (_, _) => _numNgay.Value = Math.Min(_numNgay.Maximum, _kho.CaiDat.SoNgayNhacNo);
 
-        var btnTatCa = Theme.NutPhu("Xem tất cả", 160, 42);
-        btnTatCa.Margin = new Padding(0, 22, 10, 0);
+        var btnTatCa = Theme.NutPhu("Xem tất cả", 160, 42, noTheoChu: true);
         btnTatCa.Click += (_, _) => _numNgay.Value = 0;
 
-        var phai = new FlowLayoutPanel
+        // Hai nút lọc nhanh ngồi riêng một nhóm `AutoSize` để nở theo chữ, lùi xuống đúng bằng
+        // chỗ nhãn của mấy ô bên cạnh nên vẫn ngang hàng.
+        var nhomNut = new FlowLayoutPanel
         {
-            Dock = DockStyle.Right,
-            FlowDirection = FlowDirection.RightToLeft,
             AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             WrapContents = false,
+            Margin = new Padding(0, Theme.DinhOTrongTruong, 18, 0),
         };
-        phai.Controls.Add(btnTatCa);
-        phai.Controls.Add(btnQuaHan);
+        nhomNut.Controls.Add(btnQuaHan);
+        nhomNut.Controls.Add(btnTatCa);
 
-        nen.Controls.Add(trai);
-        nen.Controls.Add(phai);
-        return nen;
+        return Theme.HangO(
+            Theme.Nen,
+            Theme.Truong("NĂM", _cboNam, 190),
+            Theme.Truong("TÌM KHÁCH HÀNG", _txtTim, 320),
+            Theme.Truong("NỢ QUÁ (NGÀY)", _numNgay, 200),
+            nhomNut);
     }
 
     private Control TaoLuoi()
@@ -149,14 +148,14 @@ public sealed class CongNoForm : Form
         Theme.ApDungLuoi(_luoi);
         _luoi.ReadOnly = true;
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(DongLuoi.Ten), "KHÁCH HÀNG", 190),
-            Theme.Cot(nameof(DongLuoi.DienThoai), "ĐIỆN THOẠI", 110),
-            Theme.Cot(nameof(DongLuoi.SoHoaDonNo), "SỐ HĐ NỢ", 80, canPhai: true),
-            Theme.Cot(nameof(DongLuoi.TongMua), "TỔNG MUA", 130, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongLuoi.DaTra), "ĐÃ TRẢ", 120, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongLuoi.ConNo), "CÒN NỢ", 130, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongLuoi.PhatSinhCuoi), "PHÁT SINH CUỐI", 120, "dd/MM/yyyy"),
-            Theme.Cot(nameof(DongLuoi.TraCuoi), "TRẢ LẦN CUỐI", 120, "dd/MM/yyyy"),
+            Theme.Cot(nameof(DongLuoi.Ten), "KHÁCH HÀNG", 190, toiThieu: 140),
+            Theme.Cot(nameof(DongLuoi.DienThoai), "ĐIỆN THOẠI", 115, toiThieu: 110),
+            Theme.Cot(nameof(DongLuoi.SoHoaDonNo), "SỐ HĐ NỢ", 85, canPhai: true),
+            Theme.Cot(nameof(DongLuoi.TongMua), "TỔNG MUA", 130, "#,##0", canPhai: true, toiThieu: 110),
+            Theme.Cot(nameof(DongLuoi.DaTra), "ĐÃ TRẢ", 120, "#,##0", canPhai: true, toiThieu: 110),
+            Theme.Cot(nameof(DongLuoi.ConNo), "CÒN NỢ", 130, "#,##0", canPhai: true, toiThieu: 110),
+            Theme.Cot(nameof(DongLuoi.PhatSinhCuoi), "PHÁT SINH CUỐI", 125, "dd/MM/yyyy", toiThieu: 104),
+            Theme.Cot(nameof(DongLuoi.TraCuoi), "TRẢ LẦN CUỐI", 125, "dd/MM/yyyy", toiThieu: 104),
             Theme.Cot(nameof(DongLuoi.SoNgayNo), "SỐ NGÀY NỢ", 100, canPhai: true));
 
         _luoi.DataSource = _nguon;
@@ -176,12 +175,10 @@ public sealed class CongNoForm : Form
 
     private Control TaoThanhDuoi()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 8, 20, 10) };
-
-        var btnMo = Theme.Nut("MỞ ĐƠN HÀNG", Theme.Chinh, 220, 52);
+        var btnMo = Theme.Nut("MỞ ĐƠN HÀNG", Theme.Chinh, 220, 52, noTheoChu: true);
         btnMo.Click += (_, _) => MoDonHang();
 
-        var btnThuTien = Theme.Nut("THU TIỀN", Theme.Xanh, 180, 52);
+        var btnThuTien = Theme.Nut("THU TIỀN", Theme.Xanh, 180, 52, noTheoChu: true);
         btnThuTien.Click += (_, _) => ThuTienCuaKhach();
 
         // Soạn tin và xuất Excel không phải việc hằng ngày: gom vào nút ba chấm cho hàng nút
@@ -191,45 +188,35 @@ public sealed class CongNoForm : Form
             .Ngan()
             .Viec("Xuất sổ công nợ ra Excel", XuatExcel);
 
-        var btnDong = Theme.NutPhu("Đóng", 120, 52);
+        var btnDong = Theme.NutPhu("Đóng", 120, 52, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        trai.Controls.Add(btnMo);
-        trai.Controls.Add(btnThuTien);
-        trai.Controls.Add(viecKhac.Nut);
-        trai.Controls.Add(btnDong);
-
-        _lblTongKet.Dock = DockStyle.Right;
-        _lblTongKet.TextAlign = ContentAlignment.MiddleRight;
         _lblTongKet.Font = Theme.FontSo;
         _lblTongKet.ForeColor = Theme.Do;
-        _lblTongKet.AutoSize = false;
-        _lblTongKet.Width = 520;
+        _lblTongKet.Margin = new Padding(16, 0, 0, 0);
 
-        _phanTrang.Dock = DockStyle.Right;
-        _phanTrang.Padding = new Padding(0, 6, 12, 0);
+        _phanTrang.Margin = new Padding(0, 4, 12, 0);
         _phanTrang.DoiTrang += (_, _) => HienTrang();
 
-        // Thêm sau cùng là nằm ngoài cùng bên phải.
-        nen.Controls.Add(trai);
-        nen.Controls.Add(_phanTrang);
-        nen.Controls.Add(_lblTongKet);
-        return nen;
+        // Số trang và dòng tổng đứng cùng bên phải, gói chung một nhóm `AutoSize` để cả hai
+        // cao đúng bằng chữ của máy này.
+        var phai = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Anchor = AnchorStyles.Right,
+        };
+        phai.Controls.Add(_phanTrang);
+        phai.Controls.Add(_lblTongKet);
+
+        return Theme.ThanhDuoi(phai, btnMo, btnThuTien, viecKhac.Nut, btnDong);
     }
 
     private Control TaoThanhTrangThai()
     {
-        _lblTrangThai.Dock = DockStyle.Fill;
-        _lblTrangThai.Font = Theme.FontPhu;
-        _lblTrangThai.ForeColor = Theme.Xam;
-        _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
-        _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
         _lblTrangThai.Text = "Bấm đúp vào một dòng để mở đơn hàng của khách đó.";
-
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
-        nen.Controls.Add(_lblTrangThai);
-        return nen;
+        return Theme.ThanhTrangThai(_lblTrangThai);
     }
 
     // ---------------- Nạp dữ liệu ----------------

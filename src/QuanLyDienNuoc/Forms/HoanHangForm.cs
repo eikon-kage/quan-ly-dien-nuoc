@@ -27,8 +27,11 @@ public sealed class HoanHangForm : Form
     };
 
     private readonly TextBox _txtLyDo = Theme.O(420);
-    private readonly Label _lblTong = new();
-    private readonly Label _lblTrangThai = new();
+    private readonly Label _lblTong = Theme.NhanDaiDong();
+
+    // Giữ tham chiếu: ToolTip không được control nào giữ hộ, bị dọn rác là mất lời mách.
+    private readonly ToolTip _mach = new() { InitialDelay = 250, AutoPopDelay = 10000 };
+    private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     public HoanHangForm(Guid hoaDonGocId)
     {
@@ -62,11 +65,13 @@ public sealed class HoanHangForm : Form
             RowCount = 5,
             BackColor = Theme.Nen,
         };
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 96));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khung.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var goc = HoaDonGoc;
         var khach = goc is null ? null : _kho.TimKhach(goc.KhachHangId);
@@ -76,7 +81,8 @@ public sealed class HoanHangForm : Form
                 goc is null
                     ? string.Empty
                     : $"Hoàn cho hoá đơn {goc.MaHoaDon} · mở ngày {goc.NgayMo:dd/MM/yyyy}"
-                      + (khach is null ? string.Empty : $" · {khach.Ten}")),
+                      + (khach is null ? string.Empty : $" · {khach.Ten}"),
+                tuCao: true),
             0,
             0);
 
@@ -86,9 +92,7 @@ public sealed class HoanHangForm : Form
         vienLuoi.Controls.Add(Theme.Khung(TaoLuoi()));
         khung.Controls.Add(vienLuoi, 0, 2);
 
-        var vienDuoi = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 10), BackColor = Theme.Nen };
-        vienDuoi.Controls.Add(TaoThanhDuoi());
-        khung.Controls.Add(vienDuoi, 0, 3);
+        khung.Controls.Add(TaoThanhDuoi(), 0, 3);
 
         khung.Controls.Add(TaoThanhTrangThai(), 0, 4);
         Controls.Add(khung);
@@ -96,35 +100,36 @@ public sealed class HoanHangForm : Form
 
     private Control TaoThanhNhap()
     {
-        var nen = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = Theme.ChinhNhat,
-            Padding = new Padding(14, 8, 14, 8),
-        };
-
         _dtNgay.Font = Theme.FontNhapTo;
         _dtNgay.CalendarFont = Theme.FontNhapTo;
 
         // Hoàn hết những gì khách còn giữ là việc hay gặp nhất (khách trả cả lô hàng chưa
         // dùng), nên để hẳn một nút thay vì bắt gõ số vào từng dòng.
-        var btnHoanHet = Theme.Nut("ĐIỀN HOÀN HẾT", Theme.Chinh, 200, 40);
+        var btnHoanHet = Theme.Nut("ĐIỀN HOÀN HẾT", Theme.Chinh, 200, 40, noTheoChu: true);
         btnHoanHet.Click += (_, _) => DienHoanHet();
 
-        var btnXoaTrang = Theme.NutPhu("Bỏ hết số đã gõ", 180, 40);
+        var btnXoaTrang = Theme.NutPhu("Bỏ hết số đã gõ", 180, 40, noTheoChu: true);
         btnXoaTrang.Click += (_, _) => XoaTrangSoHoan();
 
-        var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
-        hang.Controls.Add(Theme.Truong("NGÀY HOÀN", _dtNgay, 180, 40, 12));
-        hang.Controls.Add(Theme.Truong("LÝ DO HOÀN", _txtLyDo, 420, 40, 12));
-        hang.Controls.Add(Theme.Truong(" ", btnHoanHet, 200, 40, 12));
-        hang.Controls.Add(Theme.Truong(" ", btnXoaTrang, 180, 40, 12));
+        // Hai nút ngồi riêng một nhóm `AutoSize` để nở theo chữ, lùi xuống đúng bằng chỗ nhãn
+        // của mấy ô bên cạnh nên vẫn ngang hàng.
+        var nhomNut = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, Theme.DinhOTrongTruong, 12, 0),
+        };
+        nhomNut.Controls.Add(btnHoanHet);
+        nhomNut.Controls.Add(btnXoaTrang);
 
-        var mach = new ToolTip { InitialDelay = 250, AutoPopDelay = 10000 };
-        mach.SetToolTip(_txtLyDo, "Ví dụ: hàng lỗi, khách lấy thừa, sai chủng loại — sẽ in lên tờ hoàn hàng");
+        _mach.SetToolTip(_txtLyDo, "Ví dụ: hàng lỗi, khách lấy thừa, sai chủng loại — sẽ in lên tờ hoàn hàng");
 
-        nen.Controls.Add(hang);
-        return nen;
+        return Theme.HangO(
+            Theme.ChinhNhat,
+            Theme.Truong("NGÀY HOÀN", _dtNgay, 190, 40, 12),
+            Theme.Truong("LÝ DO HOÀN", _txtLyDo, 420, 40, 12),
+            nhomNut);
     }
 
     private Control TaoLuoi()
@@ -132,15 +137,15 @@ public sealed class HoanHangForm : Form
         Theme.ApDungLuoi(_luoi);
         _luoi.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(DongChon.Ngay), "NGÀY LẤY", 90, "dd/MM/yyyy"),
-            Theme.Cot(nameof(DongChon.TenHang), "TÊN HÀNG", 240),
-            Theme.Cot(nameof(DongChon.DonVi), "ĐƠN VỊ", 80),
-            Theme.Cot(nameof(DongChon.DonGia), "ĐƠN GIÁ", 110, "#,##0", canPhai: true),
+            Theme.Cot(nameof(DongChon.Ngay), "NGÀY LẤY", 105, "dd/MM/yyyy", toiThieu: 104),
+            Theme.Cot(nameof(DongChon.TenHang), "TÊN HÀNG", 240, toiThieu: 150),
+            Theme.Cot(nameof(DongChon.DonVi), "ĐƠN VỊ", 85),
+            Theme.Cot(nameof(DongChon.DonGia), "ĐƠN GIÁ", 115, "#,##0", canPhai: true, toiThieu: 104),
             Theme.Cot(nameof(DongChon.DaMua), "ĐÃ LẤY", 90, "#,##0.##", canPhai: true),
-            Theme.Cot(nameof(DongChon.DaHoan), "ĐÃ HOÀN", 90, "#,##0.##", canPhai: true),
-            Theme.Cot(nameof(DongChon.ConHoanDuoc), "CÒN HOÀN ĐƯỢC", 120, "#,##0.##", canPhai: true),
+            Theme.Cot(nameof(DongChon.DaHoan), "ĐÃ HOÀN", 95, "#,##0.##", canPhai: true),
+            Theme.Cot(nameof(DongChon.ConHoanDuoc), "CÒN HOÀN ĐƯỢC", 125, "#,##0.##", canPhai: true),
             Theme.Cot(nameof(DongChon.SoHoan), "SỐ HOÀN", 110, "#,##0.##", canPhai: true, chiDoc: false),
-            Theme.Cot(nameof(DongChon.TienHoan), "TIỀN HOÀN", 140, "#,##0", canPhai: true));
+            Theme.Cot(nameof(DongChon.TienHoan), "TIỀN HOÀN", 140, "#,##0", canPhai: true, toiThieu: 116));
 
         Theme.ChoPhepGoSo(_luoi, nameof(DongChon.SoHoan));
 
@@ -213,40 +218,21 @@ public sealed class HoanHangForm : Form
 
     private Control TaoThanhDuoi()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(0, 10, 0, 0) };
-
-        var btnTao = Theme.Nut("TẠO HOÁ ĐƠN HOÀN HÀNG", Theme.Cam, 300, 46);
+        var btnTao = Theme.Nut("TẠO HOÁ ĐƠN HOÀN HÀNG", Theme.Cam, 300, 46, noTheoChu: true);
         btnTao.Click += (_, _) => TaoHoaDonHoan();
 
-        var btnDong = Theme.NutPhu("Đóng", 140, 46);
+        var btnDong = Theme.NutPhu("Đóng", 140, 46, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        trai.Controls.Add(btnTao);
-        trai.Controls.Add(btnDong);
-
-        _lblTong.Dock = DockStyle.Right;
-        _lblTong.Width = 560;
         _lblTong.Font = Theme.FontSo;
         _lblTong.ForeColor = Theme.Do;
-        _lblTong.TextAlign = ContentAlignment.MiddleRight;
 
-        nen.Controls.Add(trai);
-        nen.Controls.Add(_lblTong);
-        return nen;
+        return Theme.ThanhDuoi(_lblTong, btnTao, btnDong);
     }
 
     private Control TaoThanhTrangThai()
     {
-        _lblTrangThai.Dock = DockStyle.Fill;
-        _lblTrangThai.Font = Theme.FontPhu;
-        _lblTrangThai.ForeColor = Theme.Xam;
-        _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
-        _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
-
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
-        nen.Controls.Add(_lblTrangThai);
-        return nen;
+        return Theme.ThanhTrangThai(_lblTrangThai);
     }
 
     // ---------------- Nạp dữ liệu ----------------

@@ -12,6 +12,8 @@ public sealed class NhapChuoiForm : Form
         Text = tieuDe;
         StartPosition = FormStartPosition.CenterParent;
         ClientSize = new Size(520, 210);
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowOnly;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -22,20 +24,41 @@ public sealed class NhapChuoiForm : Form
         _o.Text = macDinh;
         _o.SelectAll();
 
+        // Xếp bằng khung tự cao thay cho toạ độ cứng `(30, 26)` và `(30, 120)`: cỡ chữ to lên
+        // là ô nhập cao thêm rồi hai cái nút nằm đè lên nó.
         var truong = Theme.Truong(nhan, _o, 460);
-        truong.Location = new Point(30, 26);
+        truong.Margin = new Padding(0, 0, 0, 12);
 
-        var btnOk = Theme.Nut("Đồng ý", Theme.Chinh, 160, 48);
-        btnOk.Location = new Point(30, 120);
+        var btnOk = Theme.Nut("Đồng ý", Theme.Chinh, 160, 48, noTheoChu: true);
         btnOk.Click += (_, _) => Xong();
 
-        var btnHuy = Theme.NutPhu("Huỷ", 140, 48);
-        btnHuy.Location = new Point(206, 120);
+        var btnHuy = Theme.NutPhu("Huỷ", 140, 48, noTheoChu: true);
         btnHuy.Click += (_, _) => Close();
 
-        Controls.Add(truong);
-        Controls.Add(btnOk);
-        Controls.Add(btnHuy);
+        var nut = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0),
+        };
+        nut.Controls.Add(btnOk);
+        nut.Controls.Add(btnHuy);
+
+        var khung = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Nen,
+            Padding = new Padding(30, 22, 30, 20),
+        };
+        khung.Controls.Add(truong);
+        khung.Controls.Add(nut);
+
+        Controls.Add(khung);
         AcceptButton = btnOk;
     }
 

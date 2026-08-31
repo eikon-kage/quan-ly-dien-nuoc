@@ -23,6 +23,21 @@ Chọn nhầm file thì chọn dòng đó trong lô và bấm **Bỏ trang này*
 Thêm hai lần cùng một file thì phần mềm hỏi lại: hàng vào sổ hai lần thì trên sổ không còn dấu
 vết nào để nhận ra.
 
+Cột **LẤY** là ô tích đứng ngay trước cột **FILE** — thêm file vào rồi vẫn bỏ được. Bấm vào dòng
+nào thì bảng xem trước bên phải bày đúng file của dòng ấy (kể cả file chưa tích), nút **Xem cả
+lô** đổi sang bày toàn bộ. Cái vào sổ luôn là **cả lô đang tích**, không phải bảng đang bày.
+
+## Hai tab "mẫu cũ" và "mẫu mới" trong một file
+
+File hoá đơn của cửa hàng hay để hai tab cạnh nhau: `mau cũ` là tờ đã điền cho khách, `mẫu mới`
+là mẫu trắng còn sót mấy dòng ví dụ chép sẵn — file nào cũng y hệt file nào. Nay
+[`Excel/DocHoaDon.cs`](../src/QuanLyDienNuoc.Core/Excel/DocHoaDon.cs) **bỏ tab `mẫu mới`** khi
+trong file có tab `mau cũ` đọc ra được dòng hàng, nên `to2.xls` chỉ còn một trang trong lô.
+
+Tab `mau cũ` không ra dòng nào thì giữ nguyên cả hai (bỏ nốt là cả file trắng trơn), và chỉ xét
+đúng hai cái tên ấy: `to1.xls` đặt tên tab là `mau hoa don cũ` / `mẫu hoá đơn mối` mà tờ đã điền
+lại nằm ở tab "mối" — so lỏng tay là vứt đúng tờ của khách.
+
 ## Trang 1 và trang sau khác nhau ở đâu
 
 Cài trong [`Excel/DocHoaDon.cs`](../src/QuanLyDienNuoc.Core/Excel/DocHoaDon.cs), xét theo **dòng
@@ -61,7 +76,8 @@ TIỀN, ô đầu dòng gộp lại và để trống — không có chữ "TỔ
 mẫu mới ghi **tiền cộng sang từ tờ trước**: `to2.xls` sheet `mẫu mới` dòng 7 mang 2.507.900 —
 đúng bằng tổng của sheet `mau cũ` cùng file. Lấy dòng đó vào là sinh một mặt hàng không tên và
 cộng tiền của tờ trước thêm một lần nữa. Nay **thấy dòng chỉ có tiền ở cột thành tiền là hết
-bảng**.
+bảng** (riêng sheet `mẫu mới` của `to2.xls` thì nay không đọc tới nữa — xem phần hai tab ở
+trên — nhưng luật này vẫn giữ cho mọi tờ khác).
 
 **2. Mẫu in sẵn số thứ tự.** Mẫu trang 1 in trước số 1..26 và công thức thành tiền ra 0 cho cả
 trang, nên "có chữ ở cột TT" không có nghĩa là có hàng. Nay **ba dòng trống liền nhau là hết
@@ -87,19 +103,27 @@ khác ghi ngày cho từng dòng.
 - Mốc đứng riêng một dòng (dòng đó không có hàng) vẫn có hiệu lực cho các dòng dưới.
 - Dòng nào không nằm dưới mốc nào thì lấy **NGÀY LẤY HÀNG** đặt chung cho cả lô.
 
-**Xuất Excel ghi mốc ngày y như vậy** ([`Excel/XuatHoaDon.cs`](../src/QuanLyDienNuoc.Core/Excel/XuatHoaDon.cs)),
-nhưng **mốc đứng riêng một dòng**, không ghi đè lên số thứ tự của dòng hàng: đổi ngày thì chèn một
-dòng chỉ có `1/12` ở cột TT, hàng lấy hôm ấy nằm bên dưới và vẫn giữ số thứ tự của nó. Cách cũ ghi
-mốc thẳng vào ô số thứ tự của dòng hàng, nên tờ của khách mối — mỗi ngày lấy một ít — có gần như cả
-cột TT là ngày, chẳng còn số thứ tự nào để soát.
+**Xuất Excel ghi mốc ngày y như vậy** ([`Excel/XuatHoaDon.cs`](../src/QuanLyDienNuoc.Core/Excel/XuatHoaDon.cs)):
+mốc ghi vào **ô số thứ tự của dòng hàng đầu tiên lấy hôm ấy**, các dòng cùng ngày bên dưới mới ghi
+số, đúng lối chủ cửa hàng viết tay. Một tờ hai ngày, mỗi ngày hai món, ra thế này:
 
-Dòng mốc **ăn một dòng của trang** y như một dòng hàng, nên trang 1 gom hàng của một ngày chỉ còn
-24 dòng hàng (không phải 25), trang sau còn 34. Chỗ này tính trong `XuatHoaDon.LenTrang` và cả bản
-in dùng chung, để tờ in ra giấy và file Excel xuất ra ngắt trang giống nhau.
+```
+1/3   Ống 27   ...
+2     Ống 34   ...
+12/4  Co 90    ...
+4     Van khoá ...
+```
 
-**Dòng đầu mỗi trang luôn có mốc**, kể cả khi cùng ngày với dòng cuối trang trước — mỗi trang là
-một file riêng và nhập vào từng lần, trang nào không tự mang ngày của nó thì nhập riêng trang đó ra
-là mất ngày.
+Số thứ tự vẫn chạy liên tục bên dưới (dòng có mốc nuốt số của nó), nên cột TT nhảy `1/3 → 2 → 12/4
+→ 4`. Bản in dùng chung cách xếp này với file Excel xuất ra, để tờ in ra giấy và file xuất ngắt
+trang giống nhau.
+
+Mốc **không ăn thêm dòng nào của trang** — nó chỉ thay con số ở cột TT — nên trang 1 vẫn chứa đủ 25
+dòng hàng và trang sau 35, dù tờ gom hàng của bao nhiêu ngày.
+
+**Dòng hàng đầu mỗi trang luôn có mốc**, kể cả khi cùng ngày với dòng cuối trang trước — mỗi trang
+là một file riêng và nhập vào từng lần, trang nào không tự mang ngày của nó thì nhập riêng trang đó
+ra là mất ngày.
 
 ## Xuất ra: mỗi trang một file riêng
 
@@ -145,5 +169,6 @@ hết — dòng `Ngày … tháng … năm …` ở chân tờ `to1.xls` vì v�
 — nhận trang 1 / trang sau (cả trên file thật `to1.xls`, `to2.xls`), file mẫu chưa điền ra 0
 dòng, dòng tổng không nhãn, dòng thiếu tên hàng, ba dòng trống liền, giữ đúng 32 dòng của
 `to1.xls`, ghép năm đã chọn, giữ lại năm ghi trên giấy, chữ dạng tổ hợp, mốc ngày ở cột số thứ
-tự (kể cả mốc đứng riêng và số thứ tự viết lạ), xuất rồi đọc lại giữ nguyên ngày từng dòng kể cả
-qua chỗ sang trang, và bốn cách xếp thứ tự trang trong lô.
+tự (kể cả mốc đứng riêng một dòng trên tờ viết tay và số thứ tự viết lạ), mốc nằm đúng dòng hàng
+đầu tiên của ngày lúc xuất, xuất rồi đọc lại giữ nguyên ngày từng dòng kể cả qua chỗ sang trang, và
+bốn cách xếp thứ tự trang trong lô.

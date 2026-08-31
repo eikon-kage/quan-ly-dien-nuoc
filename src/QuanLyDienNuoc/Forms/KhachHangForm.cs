@@ -53,12 +53,16 @@ public sealed class KhachHangForm : Form
             RowCount = 3,
             BackColor = Theme.Nen,
         };
-        goc2.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
+        // Dòng có chữ thì tự cao theo chữ: xem "Chữ bị cắt" trong docs/giao-dien-may-tinh.md.
+        goc2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         goc2.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        goc2.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
+        goc2.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         goc2.Controls.Add(
-            Theme.ThanhTieuDe(goc is null ? "THÊM KHÁCH HÀNG" : "SỬA KHÁCH HÀNG", "Chỉ tên khách là bắt buộc"),
+            Theme.ThanhTieuDe(
+                goc is null ? "THÊM KHÁCH HÀNG" : "SỬA KHÁCH HÀNG",
+                "Chỉ tên khách là bắt buộc",
+                tuCao: true),
             0,
             0);
 
@@ -72,42 +76,19 @@ public sealed class KhachHangForm : Form
             BackColor = Theme.Nen,
         };
 
-        var truongGhiChu = new Panel { Width = 520, Height = 124, Margin = new Padding(0, 0, 0, 6) };
-        truongGhiChu.Controls.Add(new Label
-        {
-            Text = "GHI CHÚ",
-            Font = Theme.FontNhan,
-            ForeColor = Theme.Xam,
-            Location = new Point(0, 0),
-            Size = new Size(520, 24),
-            TextAlign = ContentAlignment.MiddleLeft,
-        });
-        _txtGhiChu.Location = new Point(0, 26);
-        truongGhiChu.Controls.Add(_txtGhiChu);
-
         than.Controls.Add(Theme.Truong("TÊN KHÁCH HÀNG *", _txtTen, 520));
         than.Controls.Add(Theme.Truong("ĐIỆN THOẠI", _txtDienThoai, 520));
         than.Controls.Add(Theme.Truong("ĐỊA CHỈ", _txtDiaChi, 520));
-        than.Controls.Add(truongGhiChu);
+        than.Controls.Add(Theme.TruongNhieuDong("GHI CHÚ", _txtGhiChu, 520, 4));
 
-        var btnLuu = Theme.Nut("LƯU", Theme.Xanh, 160, 48);
+        var btnLuu = Theme.Nut("LƯU", Theme.Xanh, 160, 48, noTheoChu: true);
         btnLuu.Click += (_, _) => Luu(goc);
 
-        var btnHuy = Theme.NutPhu("Huỷ", 140, 48);
+        var btnHuy = Theme.NutPhu("Huỷ", 140, 48, noTheoChu: true);
         btnHuy.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
-        var duoi = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(0, 14, 24, 0),
-            BackColor = Theme.Nen,
-        };
-        duoi.Controls.Add(btnLuu);
-        duoi.Controls.Add(btnHuy);
-
         goc2.Controls.Add(than, 0, 1);
-        goc2.Controls.Add(duoi, 0, 2);
+        goc2.Controls.Add(Theme.ThanhDuoi(null, nutBenPhai: true, btnHuy, btnLuu), 0, 2);
         Controls.Add(goc2);
 
         AcceptButton = btnLuu;

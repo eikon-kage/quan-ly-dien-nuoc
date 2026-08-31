@@ -15,7 +15,7 @@ public sealed class NhatKyForm : Form
 
     private readonly TextBox _txtTim = Theme.O(360);
     private readonly DataGridView _luoi = new();
-    private readonly Label _lblTrangThai = new();
+    private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     public NhatKyForm()
     {
@@ -40,28 +40,29 @@ public sealed class NhatKyForm : Form
             RowCount = 5,
             BackColor = Theme.Nen,
         };
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 86));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 78));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         goc.Controls.Add(
-            Theme.ThanhTieuDe("NHẬT KÝ THAY ĐỔI", "Mọi lần thêm, sửa, xoá đều được ghi lại kèm giờ."),
+            Theme.ThanhTieuDe(
+                "NHẬT KÝ THAY ĐỔI",
+                "Mọi lần thêm, sửa, xoá đều được ghi lại kèm giờ.",
+                tuCao: true),
             0,
             0);
 
         _txtTim.TextChanged += (_, _) => Nap();
-        var thanhTim = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 8, 20, 4) };
-        var hang = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        hang.Controls.Add(Theme.Truong("TÌM TRONG NHẬT KÝ", _txtTim, 380));
-        thanhTim.Controls.Add(hang);
-        goc.Controls.Add(thanhTim, 0, 1);
+        goc.Controls.Add(Theme.HangO(Theme.Nen, Theme.Truong("TÌM TRONG NHẬT KÝ", _txtTim, 380)), 0, 1);
 
         Theme.ApDungLuoi(_luoi);
         _luoi.ReadOnly = true;
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(DongLuoi.Luc), "LÚC", 150, "dd/MM/yyyy HH:mm:ss"),
+            Theme.Cot(nameof(DongLuoi.Luc), "LÚC", 175, "dd/MM/yyyy HH:mm:ss", toiThieu: 176),
             Theme.Cot(nameof(DongLuoi.MoTa), "THAY ĐỔI", 320),
             Theme.Cot(nameof(DongLuoi.ChiTiet), "CHI TIẾT", 300));
         _luoi.DataSource = _nguon;
@@ -70,29 +71,18 @@ public sealed class NhatKyForm : Form
         vien.Controls.Add(Theme.Khung(_luoi));
         goc.Controls.Add(vien, 0, 2);
 
-        var btnMoFile = Theme.NutPhu("Mở file nhật ký", 220, 48);
+        var btnMoFile = Theme.NutPhu("Mở file nhật ký", 220, 48, noTheoChu: true);
         btnMoFile.Click += (_, _) => MoFile();
 
-        var btnLamMoi = Theme.NutPhu("Nạp lại", 140, 48);
+        var btnLamMoi = Theme.NutPhu("Nạp lại", 140, 48, noTheoChu: true);
         btnLamMoi.Click += (_, _) => Nap();
 
-        var btnDong = Theme.NutPhu("Đóng", 120, 48);
+        var btnDong = Theme.NutPhu("Đóng", 120, 48, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var nut = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(20, 6, 20, 6) };
-        nut.Controls.Add(btnMoFile);
-        nut.Controls.Add(btnLamMoi);
-        nut.Controls.Add(btnDong);
-        goc.Controls.Add(nut, 0, 3);
+        goc.Controls.Add(Theme.ThanhDuoi(null, btnMoFile, btnLamMoi, btnDong), 0, 3);
 
-        _lblTrangThai.Dock = DockStyle.Fill;
-        _lblTrangThai.Font = Theme.FontPhu;
-        _lblTrangThai.ForeColor = Theme.Xam;
-        _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
-        _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
-        var nenTrangThai = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
-        nenTrangThai.Controls.Add(_lblTrangThai);
-        goc.Controls.Add(nenTrangThai, 0, 4);
+        goc.Controls.Add(Theme.ThanhTrangThai(_lblTrangThai), 0, 4);
 
         Controls.Add(goc);
     }

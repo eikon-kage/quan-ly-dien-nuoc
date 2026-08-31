@@ -72,8 +72,8 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   khách), rồi bấm *+ Thêm trang...* cho từng trang sau. Trang 1 nằm sai chỗ hay lô có hai
   trang 1 thì phần mềm chặn lại. Giấy không ghi năm nên có ô *NĂM CỦA TỜ* ngay lúc nhập; ngày
   của từng dòng đọc ở mốc ngày viết trong cột số thứ tự (`1/12`, `12\4`). Lúc xuất Excel cũng
-  ghi mốc y như vậy để xuất ra rồi nhập lại không mất ngày, nhưng mốc đứng **riêng một dòng**
-  nên cột số thứ tự của dòng hàng vẫn còn đủ số. Xem
+  ghi mốc y như vậy để xuất ra rồi nhập lại không mất ngày: ngày nằm ở ô số thứ tự của **dòng
+  hàng đầu tiên lấy hôm ấy**, các dòng cùng ngày bên dưới vẫn ghi số. Xem
   [docs/nhap-hoa-don-nhieu-trang.md](docs/nhap-hoa-don-nhieu-trang.md).
 - **Thanh toán**: ghi nhiều lần trả tiền cho một hoá đơn, tự tính còn nợ.
 - **Thu tiền của khách (một lần trả cho nhiều hoá đơn)**: khách đưa 5 triệu trả cho 3 hoá đơn
@@ -81,7 +81,9 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   bao nhiêu, còn lại bao nhiêu. Ghi một lần thành một phiếu thu, muốn bỏ thì xoá cả lần thu
   chứ không phải đi từng hoá đơn. Đưa thừa thì hỏi có ghi phần thừa thành trả trước không.
 - **Chốt hoá đơn**: hoá đơn đã chốt thì khoá không cho sửa, cần thì mở lại.
-- **Danh mục vật tư**: giá chung của cửa hàng, dùng khi khách chưa có giá riêng.
+- **Danh mục vật tư**: giá chung của cửa hàng, dùng khi khách chưa có giá riêng. Mỗi mặt
+  hàng đặt được **nhóm** (Ống nước, Điện, Đèn…) để lọc danh mục cho gọn; gõ tên nhóm vào
+  ô tìm cũng ra cả nhóm.
 - **In hoá đơn**: xem trước đúng như tờ giấy sẽ in rồi in thẳng ra máy in. Không cần máy
   có Excel hay WPS. Nhiều hàng thì tự chia trang, trang giữa ghi *Cộng trang này*, trang
   cuối ghi *Tổng cộng* kèm số tiền bằng chữ.
@@ -221,7 +223,7 @@ src/
     Forms/ThanhToanForm.cs      các lần trả tiền của một hoá đơn
     Forms/ThuTienForm.cs        thu một cục tiền, chia cho nhiều hoá đơn
     Forms/BangGiaForm.cs        bảng giá riêng theo khách
-    Forms/VatTuForm.cs          danh mục vật tư (kèm mã tắt)
+    Forms/VatTuForm.cs          danh mục vật tư (kèm mã tắt, nhóm hàng)
     Forms/BoHangForm.cs         bộ hàng thường dùng
     Forms/NhapNhieuDongForm.cs  gõ một dòng ra nhiều món, có xem trước
     Forms/SaoLuuForm.cs         sao lưu, khôi phục, xuất toàn bộ ra Excel
