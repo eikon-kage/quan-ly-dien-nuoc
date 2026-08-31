@@ -1029,13 +1029,10 @@ public sealed class DonHangForm : Form
             ? new List<ChiTietHoaDon>()
             : hoaDon.ChiTiet.ToList();
 
-        // Sang hoá đơn khác thì về trang đầu. Cùng một hoá đơn — nạp lại sau khi sửa, xoá, hoàn
-        // tác — thì giữ nguyên trang đang xem, không thì mỗi lần sửa một ô lại bị quăng về đầu sổ.
-        if (_hoaDonDaBay != hoaDon?.Id)
-        {
-            _hoaDonDaBay = hoaDon?.Id;
-            _phanTrang.VeTrangDau();
-        }
+        // Cùng một hoá đơn — nạp lại sau khi sửa, xoá, hoàn tác — thì giữ nguyên trang đang xem,
+        // không thì mỗi lần sửa một ô lại bị quăng đi chỗ khác. Sang hoá đơn khác thì xem bên dưới.
+        var doiHoaDon = _hoaDonDaBay != hoaDon?.Id;
+        _hoaDonDaBay = hoaDon?.Id;
 
         // Dòng mốc biến mất (xoá dòng, đổi hoá đơn, hoàn tác) thì dòng trống về lại cuối lưới,
         // chứ không treo lơ lửng ở chỗ chẳng còn dòng nào.
@@ -1093,6 +1090,15 @@ public sealed class DonHangForm : Form
         // hoá đơn dài mà bảng cứ đứng nguyên trang 1 thì người dùng không thấy dòng mình vừa ghi,
         // tưởng là phần mềm nuốt mất.
         _phanTrang.DatTong(_tatCaDong.Count);
+
+        // Mở một hoá đơn ra thì vào thẳng **trang cuối**: hàng mới nhất và dòng trống để gõ đều
+        // nằm ở đấy. Đó là chỗ chủ cửa hàng cần tới ngay, còn xem lại hàng cũ mới là việc thỉnh
+        // thoảng — mở ở trang 1 thì tờ dài mấy trăm dòng lần nào cũng phải bấm "Trang sau" mấy lượt.
+        if (doiHoaDon)
+        {
+            _phanTrang.VeTrang(PhanTrang.SoTrang(_tatCaDong.Count) - 1);
+        }
+
         if (chonDong is { } idCanXem)
         {
             var viTri = _tatCaDong.FindIndex(c => c.Id == idCanXem);

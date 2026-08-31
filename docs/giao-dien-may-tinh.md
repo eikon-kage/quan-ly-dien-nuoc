@@ -148,6 +148,9 @@ Bảng này lâu nay để nguyên không chia trang, vì **dòng vàng đang g�
 trang thì đứng ở trang 1 không thấy nó đâu. Hoá đơn công trình dài vài trăm dòng nên vẫn phải
 chia; chỗ dòng vàng xử lý như sau:
 
+- Mở một hoá đơn ra là vào thẳng **trang cuối**, không phải trang 1: hàng mới nhất và dòng vàng
+  đều ở đấy, đó là chỗ cần tới ngay. Nạp lại cùng hoá đơn ấy (sửa, xoá, hoàn tác) thì giữ nguyên
+  trang đang xem.
 - Dòng vàng vẫn giữ đúng chỗ của nó trong **cả bảng** (cuối bảng, hoặc cạnh dòng mốc khi bấm
   Ctrl+Enter chèn giữa), rồi mới cắt trang. Nó nằm trang nào là do chỗ chèn quyết định.
 - Mọi đường dẫn con trỏ về dòng vàng (Ctrl+Enter, Enter ghi xong một dòng, bấm "Không" ở câu hỏi
