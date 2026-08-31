@@ -221,6 +221,14 @@ public sealed class DonHangForm : Form
         // được điều cần xem.
         _luoiCT.CurrentCell = dongThat[^1].Cells[1];
         ChenDongTrong(chenDuoi: false);
+
+        // Rồi cuộn hẳn xuống đáy: đặt con trỏ chỉ kéo lưới đủ để thấy ô chèn, mà ô nhập cuối
+        // bảng thì nằm ngay dưới mép khung — đúng cái tấm ảnh này cần cho thấy.
+        var soHienDuoc = _luoiCT.DisplayedRowCount(includePartialRow: false);
+        if (_luoiCT.Rows.Count > soHienDuoc)
+        {
+            _luoiCT.FirstDisplayedScrollingRowIndex = _luoiCT.Rows.Count - soHienDuoc;
+        }
     }
 
     /// <summary>Gõ dở một dòng trên lưới rồi đóng cửa sổ thì nhắc lại, khỏi mất công gõ lại.</summary>
