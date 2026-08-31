@@ -39,7 +39,7 @@ public sealed class NhapExcelForm : Form
 
     private readonly TextBox _txtFile = Theme.O(360);
     private readonly ComboBox _cboNam = new();
-    private readonly DateTimePicker _dtNgay = new() { Format = DateTimePickerFormat.Custom, CustomFormat = Theme.DangNgay, Font = Theme.FontNhap };
+    private readonly OChonNgay _dtNgay = new() { Font = Theme.FontNhap };
     private readonly ComboBox _cboDich = new();
     // Hai nhãn này chứa **câu**, không phải nhãn ngắn: cho tự xuống dòng và tự cao theo chữ,
     // chứ nhét câu vào một dòng cao cứng là cắt mất đuôi ngay ở cỡ chữ 125%.

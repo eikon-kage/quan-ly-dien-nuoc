@@ -19,12 +19,7 @@ public sealed class HoanHangForm : Form
     private readonly DataGridView _luoi = new();
     private readonly BindingList<DongChon> _nguon = new();
 
-    private readonly DateTimePicker _dtNgay = new()
-    {
-        Format = DateTimePickerFormat.Custom,
-        CustomFormat = Theme.DangNgay,
-        Font = Theme.FontNhap,
-    };
+    private readonly OChonNgay _dtNgay = new() { Font = Theme.FontNhap };
 
     private readonly TextBox _txtLyDo = Theme.O(420);
     private readonly Label _lblTong = Theme.NhanDaiDong();
@@ -101,7 +96,6 @@ public sealed class HoanHangForm : Form
     private Control TaoThanhNhap()
     {
         _dtNgay.Font = Theme.FontNhapTo;
-        _dtNgay.CalendarFont = Theme.FontNhapTo;
 
         // Hoàn hết những gì khách còn giữ là việc hay gặp nhất (khách trả cả lô hàng chưa
         // dùng), nên để hẳn một nút thay vì bắt gõ số vào từng dòng.

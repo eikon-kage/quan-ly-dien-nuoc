@@ -112,18 +112,20 @@ public class HoaDonExcelTests : IDisposable
     }
 
     [Fact]
-    public void ChiaTrang_SapXepTheoNgay()
+    public void ChiaTrang_GiuNguyenThuTuTrongSo_KhongTuXepTheoNgay()
     {
         var chiTiet = new List<ChiTietHoaDon>
         {
-            new() { Ngay = new DateTime(2026, 5, 10), TenHang = "Sau" },
-            new() { Ngay = new DateTime(2026, 3, 1), TenHang = "Truoc" },
+            new() { Ngay = new DateTime(2026, 5, 10), TenHang = "Go truoc" },
+            new() { Ngay = new DateTime(2026, 3, 1), TenHang = "Go sau" },
         };
 
         var trang = XuatHoaDon.ChiaTrang(chiTiet);
 
-        Assert.Equal("Truoc", trang[0][0].TenHang);
-        Assert.Equal("Sau", trang[0][1].TenHang);
+        // Dòng ngày 10/5 gõ trước thì in ra vẫn nằm trước, dù ngày của nó muộn hơn: bảng trên màn
+        // hình thấy sao thì tờ giấy đúng như vậy.
+        Assert.Equal("Go truoc", trang[0][0].TenHang);
+        Assert.Equal("Go sau", trang[0][1].TenHang);
     }
 
     [Fact]

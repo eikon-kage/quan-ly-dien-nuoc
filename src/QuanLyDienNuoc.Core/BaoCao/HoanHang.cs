@@ -77,7 +77,7 @@ public static class HoanHang
             .GroupBy(c => c.DongGocId!.Value)
             .ToDictionary(nhom => nhom.Key, nhom => -nhom.Sum(c => c.SoLuong));
 
-        return ThuTuDong.TheoThuTu(goc.ChiTiet)
+        return goc.ChiTiet
             .Where(c => c.SoLuong > 0m)
             .Select(c => new DongCoTheHoan(c, c.SoLuong, daHoan.TryGetValue(c.Id, out var da) ? da : 0m))
             .ToList();

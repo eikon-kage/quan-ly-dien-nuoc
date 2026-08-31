@@ -3,13 +3,12 @@ using NPOI.SS.Util;
 using NPOI.XSSF.UserModel;
 using QuanLyDienNuoc.BaoCao;
 using QuanLyDienNuoc.Models;
-using QuanLyDienNuoc.Ui;
 
 namespace QuanLyDienNuoc.Excel;
 
 /// <summary>
 /// Xuất toàn bộ dữ liệu ra một file Excel nhiều trang (khách hàng, hoá đơn, chi tiết hàng,
-/// thanh toán, công nợ, vật tư, bảng giá riêng, bộ hàng). Đây vừa là bản sao lưu đọc được
+/// thanh toán, công nợ, vật tư, bảng giá riêng). Đây vừa là bản sao lưu đọc được
 /// bằng Excel/WPS mà không cần phần mềm, vừa là cách lấy số liệu ra để tự lọc, tự cộng.
 /// </summary>
 public static class XuatToanBo
@@ -27,7 +26,6 @@ public static class XuatToanBo
         TrangCongNo(wb, kieu, duLieu, ngay);
         TrangVatTu(wb, kieu, duLieu);
         TrangBangGiaRieng(wb, kieu, duLieu);
-        TrangBoHang(wb, kieu, duLieu);
 
         var thuMuc = Path.GetDirectoryName(fileRa);
         if (!string.IsNullOrEmpty(thuMuc))
@@ -124,7 +122,7 @@ public static class XuatToanBo
         foreach (var hoaDon in SapXepHoaDon(duLieu))
         {
             var tenKhach = TenKhach(duLieu, hoaDon.KhachHangId);
-            foreach (var ct in ThuTuDong.TheoThuTu(hoaDon.ChiTiet))
+            foreach (var ct in hoaDon.ChiTiet)
             {
                 var r = sheet.CreateRow(dong++);
                 Ngay(r, 0, ct.Ngay, kieu);
@@ -246,28 +244,6 @@ public static class XuatToanBo
                 Chu(r, 2, vatTu.DonVi, kieu);
                 Tien(r, 3, gia, kieu);
                 Tien(r, 4, vatTu.DonGiaMacDinh, kieu);
-            }
-        }
-
-        ChotDong(sheet, dong, 5);
-    }
-
-    private static void TrangBoHang(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)
-    {
-        var sheet = TaoTrang(wb, kieu, "Bộ hàng",
-            ("Tên bộ hàng", 30), ("Tên hàng", 34), ("Đơn vị", 12), ("Số lượng", 12), ("Ghi chú", 26));
-
-        var dong = 1;
-        foreach (var bo in duLieu.BoHangs.OrderBy(b => b.Ten, StringComparer.CurrentCultureIgnoreCase))
-        {
-            foreach (var mon in bo.Dong)
-            {
-                var r = sheet.CreateRow(dong++);
-                Chu(r, 0, bo.Ten, kieu);
-                Chu(r, 1, mon.TenHang, kieu);
-                Chu(r, 2, mon.DonVi, kieu);
-                Luong(r, 3, mon.SoLuong, kieu);
-                Chu(r, 4, bo.GhiChu, kieu);
             }
         }
 

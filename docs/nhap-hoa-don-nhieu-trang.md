@@ -104,8 +104,9 @@ khác ghi ngày cho từng dòng.
 - Dòng nào không nằm dưới mốc nào thì lấy **NGÀY LẤY HÀNG** đặt chung cho cả lô.
 
 **Xuất Excel ghi mốc ngày y như vậy** ([`Excel/XuatHoaDon.cs`](../src/QuanLyDienNuoc.Core/Excel/XuatHoaDon.cs)):
-mốc ghi vào **ô số thứ tự của dòng hàng đầu tiên lấy hôm ấy**, các dòng cùng ngày bên dưới mới ghi
-số, đúng lối chủ cửa hàng viết tay. Một tờ hai ngày, mỗi ngày hai món, ra thế này:
+mốc ghi vào **ô số thứ tự của dòng đầu tiên mang ngày ấy**, các dòng ngay dưới cùng ngày thì mới
+ghi số, đúng lối chủ cửa hàng viết tay. Bảng không tự xếp lại theo ngày, nên mốc hiện ra mỗi khi
+dòng dưới đổi sang ngày khác dòng trên — quay lại ngày cũ thì lại có mốc mới. Một tờ hai ngày, mỗi ngày hai món, ra thế này:
 
 ```
 1/3   Ống 27   ...

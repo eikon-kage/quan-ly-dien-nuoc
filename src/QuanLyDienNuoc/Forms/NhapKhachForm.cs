@@ -37,12 +37,7 @@ public sealed class NhapKhachForm : Form
     private readonly TextBox _txtDiaChi = Theme.O(300);
     private readonly TextBox _txtGhiChu = Theme.O(220);
     private readonly ComboBox _cboNam = new();
-    private readonly DateTimePicker _dtNgay = new()
-    {
-        Format = DateTimePickerFormat.Custom,
-        CustomFormat = Theme.DangNgay,
-        Font = Theme.FontNhap,
-    };
+    private readonly OChonNgay _dtNgay = new() { Font = Theme.FontNhap };
 
     // Giữ tham chiếu: ToolTip không được control nào giữ hộ, bị dọn rác là mất lời mách.
     private readonly ToolTip _mach = new() { InitialDelay = 250, AutoPopDelay = 8000 };

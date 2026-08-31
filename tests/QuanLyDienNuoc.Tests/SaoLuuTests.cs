@@ -180,11 +180,6 @@ public sealed class SaoLuuTests : IDisposable
     {
         var khach = ThemKhach("Ông Long");
         khach.BangGiaRieng[_kho.DuLieu.VatTus[0].Id] = 40_000;
-        _kho.DuLieu.BoHangs.Add(new BoHang
-        {
-            Ten = "Bộ lắp bồn",
-            Dong = { new DongBoHang { TenHang = "Ống nhựa PVC D27", DonVi = "Cây", SoLuong = 3 } },
-        });
 
         var file = Path.Combine(_thuMucTam, "toan-bo.xlsx");
         XuatToanBo.Xuat(_kho.DuLieu, file, new DateTime(2026, 8, 3));
@@ -195,7 +190,7 @@ public sealed class SaoLuuTests : IDisposable
         foreach (var ten in new[]
                  {
                      "Khách hàng", "Hoá đơn", "Chi tiết hàng", "Thanh toán",
-                     "Công nợ", "Vật tư", "Bảng giá riêng", "Bộ hàng",
+                     "Công nợ", "Vật tư", "Bảng giá riêng",
                  })
         {
             Assert.NotNull(wb.GetSheet(ten));

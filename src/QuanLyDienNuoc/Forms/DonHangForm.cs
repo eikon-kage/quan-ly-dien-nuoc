@@ -18,10 +18,20 @@ public sealed class DonHangForm : Form
 
     private readonly ComboBox _cboHoaDon = new();
     private readonly DataGridView _luoiCT = new();
-    private BindingList<ChiTietHoaDon> _nguonCT = new();
+
+    /// <summary>
+    /// Các dòng hàng **thật** của hoá đơn đang xem, đã xếp thứ tự. Lưới chỉ nhận đúng một trang
+    /// trong này — hoá đơn công trình dài vài trăm dòng mà đổ hết vào lưới thì mở ra là đứng máy
+    /// mấy giây, cuộn cũng giật. Dòng vàng gõ dở không nằm trong đây: nó chưa vào sổ nên không
+    /// được tính vào số dòng của hoá đơn, chỗ cắm nó lên lưới giữ riêng ở <see cref="_viTriDongNhap"/>.
+    /// </summary>
+    private readonly List<ChiTietHoaDon> _tatCaDong = new();
+
+    private readonly BindingList<ChiTietHoaDon> _nguonCT = new();
+    private readonly ThanhPhanTrang _phanTrang = new();
 
     private readonly ComboBox _cboNam = new();
-    private readonly DateTimePicker _dtNgay = new();
+    private readonly OChonNgay _dtNgay = new();
     private readonly ComboBox _cboHang = new();
     private readonly TextBox _txtDonVi = Theme.O(120);
     private readonly TextBox _txtDonGia = Theme.O(150);
@@ -45,6 +55,19 @@ public sealed class DonHangForm : Form
     private Control _thanhThemNhanh = null!;
 
     private Guid? _hoaDonId;
+
+    /// <summary>Hoá đơn mà lưới đang bày, để biết lúc nào phải lật về trang đầu.</summary>
+    private Guid? _hoaDonDaBay;
+
+    /// <summary>Phần mềm đang tự lật trang (đi tìm một dòng) chứ không phải người dùng bấm nút.</summary>
+    private bool _dangTuLatTrang;
+
+    /// <summary>
+    /// Dòng vàng gõ dở cắm vào chỗ nào của <see cref="_tatCaDong"/>: bằng số dòng thật là nằm
+    /// cuối bảng, nhỏ hơn là đang chèn giữa (Ctrl+Enter). -1 là lúc này không có dòng gõ dở.
+    /// </summary>
+    private int _viTriDongNhap = -1;
+
     private bool _dangNap;
     private bool _sanSang;
     private string? _anhChupTruocKhiSua;
@@ -220,8 +243,10 @@ public sealed class DonHangForm : Form
         // Một menu duy nhất cho mọi việc còn lại của khách và của hoá đơn — chia nhóm bằng vạch
         // ngăn. Cái nào cả tháng mới bấm một lần thì không đáng một nút riêng ngoài màn hình.
         var viecKhac = Theme.NutBaCham("Việc khác với khách và hoá đơn này", 44)
+            // Một mục duy nhất cho việc khách trả tiền: "Trả cho hoá đơn này" trước đây mở một
+            // cửa sổ riêng với đúng ba ô ngày / số tiền / ghi chú y hệt màn Thu tiền, nay là ô
+            // TRẢ CHO ngay trong màn ấy.
             .Viec("Thu tiền của khách", MoThuTien, Theme.Xanh)
-            .Viec("Trả cho hoá đơn này", MoThanhToan, bat: () => HoaDonHienTai is { LaHoanHang: false })
             .Ngan()
             .Viec(
                 "Hoàn hàng cho hoá đơn này",
@@ -237,10 +262,12 @@ public sealed class DonHangForm : Form
             .Viec("Xoá hoá đơn này", XoaHoaDon, Theme.Do, () => HoaDonHienTai is not null)
             .Ngan()
             .Viec("Bảng giá riêng của khách", MoBangGia)
-            .Viec("Soạn tin nhắc nợ", SoanTinNhacNo)
             .Ngan()
+            // Chỉ để "Hoàn tác" ngoài menu. "Làm lại" chỉ dùng được trong đúng một tình huống
+            // — vừa bấm nhầm Ctrl+Z xong muốn lấy lại ngay — vì gõ thêm bất cứ thao tác mới
+            // nào là chồng làm lại bị xoá sạch (`KhoDuLieu.GhiNhan`). Phím Ctrl+Y vẫn chạy,
+            // chỉ là không chiếm chỗ trong menu nữa.
             .Viec("Hoàn tác        Ctrl+Z", HoanTac, bat: () => _kho.CoTheHoanTac)
-            .Viec("Làm lại          Ctrl+Y", LamLai, bat: () => _kho.CoTheLamLai)
             .Ngan()
             .Viec("Xuất hoá đơn ra Excel", XuatExcel)
             .Viec("Nhập hoá đơn / tờ hoàn từ file Excel", NhapTuExcel);
@@ -326,18 +353,57 @@ public sealed class DonHangForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 3,
+            RowCount = 4,
             BackColor = Theme.Nen,
         };
         cot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         cot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         cot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        cot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         _thanhThemNhanh = TaoThanhThemNhanh();
         cot.Controls.Add(_thanhThemNhanh, 0, 0);
         cot.Controls.Add(Theme.Khung(TaoLuoiChiTiet()), 0, 1);
-        cot.Controls.Add(TaoThanhTongTien(), 0, 2);
+        cot.Controls.Add(TaoThanhPhanTrang(), 0, 2);
+        cot.Controls.Add(TaoThanhTongTien(), 0, 3);
         return cot;
+    }
+
+    /// <summary>
+    /// Dải phân trang nằm ngay dưới bảng, nép phải cho gần chỗ mắt vừa đọc xong. Không ghép vào
+    /// dải tổng tiền phía dưới: dải ấy đã có hai nút bên trái và ba con số tiền bên phải, nhét
+    /// thêm câu "Trang 2/7" với hai nút nữa là máy màn 1366 (hoặc máy đặt cỡ chữ to) bị chồng chữ.
+    /// </summary>
+    private Control TaoThanhPhanTrang()
+    {
+        _phanTrang.Anchor = AnchorStyles.Right;
+        _phanTrang.BackColor = Theme.Nen;
+        _phanTrang.Margin = new Padding(0, 6, 2, 0);
+        _phanTrang.DoiTrang += (_, _) =>
+        {
+            HienTrang();
+
+            // Chỉ nhắc khi chính người dùng bấm lùi/tiến. Phần mềm tự lật trang là để đi tìm một
+            // dòng, lúc ấy câu đáng đọc là "đã ghi dòng…" / "đã xoá 3 dòng…" của việc vừa làm.
+            if (!_dangNap && !_dangTuLatTrang)
+            {
+                _lblTrangThai.Text = NhanTrang();
+            }
+        };
+
+        var nen = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Nen,
+        };
+        nen.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        nen.Controls.Add(_phanTrang, 0, 0);
+        return nen;
     }
 
     private Control TaoThanhThemNhanh()
@@ -357,13 +423,9 @@ public sealed class DonHangForm : Form
         };
         nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        _dtNgay.Format = DateTimePickerFormat.Custom;
-        _dtNgay.CustomFormat = Theme.DangNgay;
-
-        // Ô ngày là chỗ bấm nhiều nhất trong hàng nhập nên cho to hẳn: chữ 14pt, ô cao 40px,
-        // và lịch bung ra cũng đặt cỡ chữ riêng cho ô ngày dễ bấm hơn.
+        // Ô ngày là chỗ bấm nhiều nhất trong hàng nhập nên cho to hẳn: chữ 14pt, ô cao 40px.
+        // Tờ lịch bung ra ăn theo cỡ chữ này nên cũng to và dễ bấm hơn.
         _dtNgay.Font = Theme.FontNhapTo;
-        _dtNgay.CalendarFont = Theme.FontNhapTo;
 
         // Đổi ngày ở đây thì dòng trống cuối bảng ăn theo luôn, miễn là chưa gõ gì vào nó.
         _dtNgay.ValueChanged += (_, _) =>
@@ -816,7 +878,17 @@ public sealed class DonHangForm : Form
             WrapContents = false,
             Margin = new Padding(0),
         };
+        // Cuối mỗi buổi là bấm một lần, nên để hẳn nút ngoài màn chứ không giấu trong menu.
+        // Đứng dưới bảng, cạnh nút nhập nhiều dòng: gõ xong hàng trong ngày thì ngay bên cạnh
+        // là nút gửi lại cho khách xem.
+        var btnBangKe = Theme.Nut("BẢNG KÊ TRONG NGÀY", Theme.Tim, 230, 44, noTheoChu: true);
+        btnBangKe.Click += (_, _) => MoBangKeNgay();
+        _mach.SetToolTip(
+            btnBangKe,
+            "Gom hàng khách lấy trong ngày thành một tấm ảnh để gửi Zalo cho khách");
+
         trai.Controls.Add(btnNhieuDong);
+        trai.Controls.Add(btnBangKe);
         trai.Controls.Add(viecDong.Nut);
 
         // Ba con số tổng: `AutoSize` theo chữ chứ không ô rộng cứng 250px — số tiền hàng chục
@@ -955,7 +1027,15 @@ public sealed class DonHangForm : Form
         var hoaDon = HoaDonHienTai;
         var dong = hoaDon is null
             ? new List<ChiTietHoaDon>()
-            : ThuTuDong.TheoThuTu(hoaDon.ChiTiet);
+            : hoaDon.ChiTiet.ToList();
+
+        // Sang hoá đơn khác thì về trang đầu. Cùng một hoá đơn — nạp lại sau khi sửa, xoá, hoàn
+        // tác — thì giữ nguyên trang đang xem, không thì mỗi lần sửa một ô lại bị quăng về đầu sổ.
+        if (_hoaDonDaBay != hoaDon?.Id)
+        {
+            _hoaDonDaBay = hoaDon?.Id;
+            _phanTrang.VeTrangDau();
+        }
 
         // Dòng mốc biến mất (xoá dòng, đổi hoá đơn, hoàn tác) thì dòng trống về lại cuối lưới,
         // chứ không treo lơ lửng ở chỗ chẳng còn dòng nào.
@@ -967,7 +1047,8 @@ public sealed class DonHangForm : Form
         }
 
         _dangNap = true;
-        _nguonCT = new BindingList<ChiTietHoaDon>(new List<ChiTietHoaDon>(dong));
+        _tatCaDong.Clear();
+        _tatCaDong.AddRange(dong);
 
         // Tờ hoàn hàng không sửa từng dòng trên lưới: số hoàn phải khớp với hoá đơn gốc, sửa
         // tay ở đây là hoàn quá số khách đã lấy mà không ai chặn. Muốn khác thì xoá tờ, lập lại.
@@ -992,21 +1073,36 @@ public sealed class DonHangForm : Form
                     Ngay = moc?.Ngay ?? (dong.Count > 0 ? dong[^1].Ngay : _dtNgay.Value.Date),
                 };
 
-        if (_dongNhap is { } nhap)
+        if (_dongNhap is not null)
         {
             // Không có mốc thì ViTriChen trả về cuối danh sách, tức là dòng trống nằm cuối lưới
             // đúng như cũ.
-            _nguonCT.Insert(ThuTuDong.ViTriChen(dong, _mocDongNhap, _chenDuoiMoc), nhap);
+            _viTriDongNhap = ThuTuDong.ViTriChen(dong, _mocDongNhap, _chenDuoiMoc);
         }
         else
         {
+            _viTriDongNhap = -1;
+
             // Hoá đơn chốt / tờ hoàn hàng thì không có dòng trống nào, bỏ luôn chỗ đang chèn —
             // để dành đấy thì lúc mở lại hoá đơn dòng trống tự nhiên hiện ra giữa bảng.
             _mocDongNhap = null;
             _chenDuoiMoc = false;
         }
 
-        _luoiCT.DataSource = _nguonCT;
+        // Dòng vừa làm việc với nằm ở trang nào thì mở đúng trang ấy. Ghi thêm một dòng vào cuối
+        // hoá đơn dài mà bảng cứ đứng nguyên trang 1 thì người dùng không thấy dòng mình vừa ghi,
+        // tưởng là phần mềm nuốt mất.
+        _phanTrang.DatTong(_tatCaDong.Count);
+        if (chonDong is { } idCanXem)
+        {
+            var viTri = _tatCaDong.FindIndex(c => c.Id == idCanXem);
+            if (viTri >= 0)
+            {
+                _phanTrang.VeTrang(PhanTrang.TrangCuaDong(viTri));
+            }
+        }
+
+        HienTrang();
 
         if (chonDong is { } id)
         {
@@ -1026,6 +1122,95 @@ public sealed class DonHangForm : Form
         _lblTrangThai.Text = NhanCoBan();
 
         CapNhatTong();
+    }
+
+    /// <summary>
+    /// Đổ đúng trang đang xem vào lưới. Không thay <c>DataSource</c> mà dọn rồi đổ lại vào chính
+    /// danh sách cũ: lưới giữ nguyên cột, giữ nguyên ô đang sửa dở, và dòng gõ dở vẫn là đúng
+    /// một đối tượng từ đầu đến cuối — nhiều chỗ trong màn này so bằng <c>ReferenceEquals</c>.
+    /// </summary>
+    private void HienTrang()
+    {
+        // Chặn sự kiện của lưới trong lúc đổ: con trỏ nhảy về đầu trang sẽ đá vào CurrentCellChanged
+        // và RowValidated, mà lúc ấy danh sách mới với mấy dòng cũ trên lưới còn đang lệch nhau.
+        var dangNapTruoc = _dangNap;
+        _dangNap = true;
+
+        var trang = _phanTrang.Cat(_tatCaDong);
+
+        // Dòng vàng gõ dở cắm vào đúng chỗ của nó, tính lùi về vị trí trong trang đang xem. Nằm
+        // ngay sau dòng cuối trang cũng cắm (dấu <=): hoá đơn vừa tròn 30 dòng thì dòng vàng đứng
+        // luôn cuối trang ấy, chứ đẻ thêm một trang chỉ để chứa mỗi nó thì tìm mãi không ra.
+        if (_dongNhap is { } nhap && _viTriDongNhap >= 0)
+        {
+            var trongTrang = _viTriDongNhap - (_phanTrang.Trang * PhanTrang.MoiTrang);
+            if (trongTrang >= 0 && trongTrang <= trang.Count)
+            {
+                trang.Insert(trongTrang, nhap);
+            }
+        }
+
+        _nguonCT.RaiseListChangedEvents = false;
+        _nguonCT.Clear();
+        foreach (var dong in trang)
+        {
+            _nguonCT.Add(dong);
+        }
+
+        _nguonCT.RaiseListChangedEvents = true;
+        _nguonCT.ResetBindings();
+
+        _dangNap = dangNapTruoc;
+    }
+
+    /// <summary>
+    /// Câu nhắc lúc vừa lật trang: đang ở trang nào, và dòng trống để gõ thẳng đang nằm ở trang
+    /// nào — nó theo chỗ chèn chứ không cứ ở trang cuối, không nói thì người dùng lật vài trang
+    /// tìm không ra.
+    /// </summary>
+    private string NhanTrang()
+    {
+        var cauTrang = PhanTrang.MoTa(_phanTrang.Trang, _tatCaDong.Count) + ".";
+        if (_dongNhap is null || _viTriDongNhap < 0)
+        {
+            return cauTrang;
+        }
+
+        var trangNhap = TrangCuaDongNhap();
+        return trangNhap == _phanTrang.Trang
+            ? cauTrang + " Dòng trống để gõ thẳng nằm ngay trang này."
+            : cauTrang + $" Dòng trống để gõ thẳng đang ở trang {trangNhap + 1} — "
+                + "gõ ở thanh trên bảng thì trang nào cũng ghi được.";
+    }
+
+    /// <summary>
+    /// Dòng vàng gõ dở đang ở trang nào. Cắm ở cuối bảng thì vị trí của nó bằng đúng số dòng thật,
+    /// tức là trỏ ra ngoài trang cuối một nấc — kẹp lại cho khớp với chỗ <see cref="HienTrang"/>
+    /// thật sự cắm nó vào.
+    /// </summary>
+    private int TrangCuaDongNhap() =>
+        PhanTrang.TrangHopLe(PhanTrang.TrangCuaDong(_viTriDongNhap), _tatCaDong.Count);
+
+    /// <summary>
+    /// Mở đúng trang đang có dòng vàng gõ dở. Dùng trước khi đặt con trỏ vào nó: nó nằm ở trang
+    /// khác thì lưới không có hàng nào của nó, đặt con trỏ là trượt không trúng gì cả.
+    /// </summary>
+    private void MoTrangDongNhap()
+    {
+        if (_viTriDongNhap < 0)
+        {
+            return;
+        }
+
+        _dangTuLatTrang = true;
+        try
+        {
+            _phanTrang.VeTrang(TrangCuaDongNhap());
+        }
+        finally
+        {
+            _dangTuLatTrang = false;
+        }
     }
 
     private void CapNhatTong()
@@ -1162,8 +1347,9 @@ public sealed class DonHangForm : Form
 
     /// <summary>
     /// Ctrl+Enter: mở một dòng trống ngay trên (hoặc ngay dưới) dòng đang chọn để gõ thẳng trên
-    /// lưới, giống chèn dòng trong bảng tính. Dòng trống lấy ngày của dòng mốc — có vậy lúc vào
-    /// sổ nó mới nằm yên đúng chỗ vừa chèn. Gõ tên hàng với số lượng rồi Enter là ghi vào sổ.
+    /// lưới, giống chèn dòng trong bảng tính. Dòng trống mới điền sẵn ngày của dòng mốc cho đỡ
+    /// phải gõ lại, còn nằm ở đâu là do chỗ chèn chứ không do ngày. Gõ tên hàng với số lượng rồi
+    /// Enter là ghi vào sổ.
     /// <para>
     /// Đang gõ dở nửa dòng mà bấm chèn thì dòng đó theo sang chỗ mới, giữ nguyên chữ đã gõ,
     /// chứ không mất công gõ lại.
@@ -1195,14 +1381,9 @@ public sealed class DonHangForm : Form
         _mocDongNhap = moc.Id;
         _chenDuoiMoc = chenDuoi;
 
-        // Dòng trống phải cùng ngày với dòng mốc, không thì lúc vào sổ nó bị xếp sang nhóm ngày
-        // khác — chèn thành vô nghĩa. Dòng gõ dở đang có chữ thì đổi ngày cho nó luôn, còn dòng
-        // trống mới do NapChiTiet dựng đã lấy sẵn ngày của mốc.
-        if (_dongNhap is { } nhap)
-        {
-            nhap.Ngay = moc.Ngay;
-        }
-
+        // Ngày của dòng gõ dở để nguyên như người dùng đã gõ: bảng không xếp lại theo ngày nên
+        // chèn cạnh dòng nào là nằm yên cạnh dòng ấy, ngày gì cũng thế. Dòng trống mới do
+        // NapChiTiet dựng thì vẫn lấy sẵn ngày của mốc cho đỡ phải gõ lại.
         NapChiTiet();
         DatConTroDongNhap(OCanSua.TenHang);
 
@@ -1608,10 +1789,10 @@ public sealed class DonHangForm : Form
         ChepNoiDung(nhap, banCat);
         XoaTrangDongNhap(nhacLai: false);
 
-        // Đang chèn vào giữa thì ghi vào đúng chỗ cạnh dòng mốc. Người dùng sửa ô NGÀY sang ngày
-        // khác thì thôi không chèn nữa: dòng đó thuộc nhóm ngày khác, đứng cạnh mốc là sai chỗ.
+        // Đang chèn vào giữa thì ghi vào đúng chỗ cạnh dòng mốc — kể cả khi người dùng vừa sửa ô
+        // NGÀY sang ngày khác: bảng đi theo thứ tự người dùng xếp chứ không xếp lại theo ngày.
         var moc = HoaDonHienTai is { } hoaDonMoc && _mocDongNhap is { } mocId
-            ? hoaDonMoc.ChiTiet.FirstOrDefault(c => c.Id == mocId && c.Ngay.Date == banCat.Ngay.Date)
+            ? hoaDonMoc.ChiTiet.FirstOrDefault(c => c.Id == mocId)
             : null;
         var chenDuoi = _chenDuoiMoc;
         if (moc is null)
@@ -1667,6 +1848,9 @@ public sealed class DonHangForm : Form
         {
             return;
         }
+
+        // Bảng dài chia trang: dòng trống có thể đang nằm ở trang khác trang đang xem.
+        MoTrangDongNhap();
 
         var thuocTinh = o switch
         {
@@ -1793,8 +1977,9 @@ public sealed class DonHangForm : Form
     }
 
     /// <summary>
-    /// Chọn hết các dòng thật của hoá đơn (Ctrl+A). Dòng vàng cuối bảng không chọn: nó chưa vào
-    /// sổ nên xoá hay chuyển nó cùng cả nhóm đều vô nghĩa.
+    /// Chọn hết các dòng thật <b>của trang đang xem</b> (Ctrl+A) — lưới chỉ giữ đúng một trang
+    /// nên cũng chỉ chọn được đến đấy; hoá đơn nhiều trang thì thanh dưới nói rõ là "ở trang này".
+    /// Dòng vàng cuối bảng không chọn: nó chưa vào sổ nên xoá hay chuyển nó cùng cả nhóm đều vô nghĩa.
     /// <para>
     /// Không dùng <c>SelectAll</c> của Windows, và cũng không dời con trỏ: dời con trỏ khỏi dòng
     /// vàng là phần mềm ghi luôn dòng đang gõ dở vào sổ, mà người dùng chỉ muốn chọn dòng.
@@ -1837,7 +2022,10 @@ public sealed class DonHangForm : Form
         var dong = DongDaChon();
         if (dong.Count >= 2)
         {
-            _lblTrangThai.Text = $"Đang chọn {dong.Count} dòng · {So.Tien(dong.Sum(c => c.ThanhTien))}"
+            // Nhiều trang thì nói rõ "ở trang này": chọn 30 dòng trên hoá đơn 196 dòng mà chỉ ghi
+            // "đang chọn 30 dòng" thì bấm Delete xong mới ngã ngửa là còn sót mấy trang kia.
+            var oTrangNay = PhanTrang.SoTrang(_tatCaDong.Count) > 1 ? " ở trang này" : string.Empty;
+            _lblTrangThai.Text = $"Đang chọn {dong.Count} dòng{oTrangNay} · {So.Tien(dong.Sum(c => c.ThanhTien))}"
                 + " — Delete xoá cả nhóm, Alt+↑ / Alt+↓ chuyển cả nhóm.";
             _dangNhacNhom = true;
         }
@@ -1857,7 +2045,7 @@ public sealed class DonHangForm : Form
             + "Sửa lại thì xoá tờ này rồi lập tờ hoàn mới.",
         { DaChot: true } hoaDon => $"Hoá đơn {hoaDon.MaHoaDon} đã chốt nên không sửa được. "
             + "Muốn thêm hàng thì mở nút ⋯ rồi chọn \"Mở lại hoá đơn\".",
-        _ => "Chọn nhiều dòng: Ctrl+bấm thêm từng dòng, Shift+bấm cả dải, Ctrl+A cả bảng — "
+        _ => "Chọn nhiều dòng: Ctrl+bấm thêm từng dòng, Shift+bấm cả dải, Ctrl+A cả trang — "
             + "rồi Delete xoá hoặc Alt+↑ / Alt+↓ chuyển cả nhóm.",
     };
 
@@ -1907,7 +2095,7 @@ public sealed class DonHangForm : Form
 
         // Nhớ trước dòng liền kề để xoá xong con trỏ đứng ngay chỗ cũ, khỏi nhảy về đầu bảng —
         // xoá mấy dòng ở giữa một hoá đơn dài mới đỡ phải cuộn lại từ đầu mỗi lần.
-        var thuTu = ThuTuDong.TheoThuTu(hoaDon.ChiTiet);
+        var thuTu = hoaDon.ChiTiet;
         var idXoa = canXoa.Select(c => c.Id).ToHashSet();
         var viTriCuoi = thuTu.FindIndex(c => c.Id == canXoa[^1].Id);
         var dongKe = thuTu.Skip(viTriCuoi + 1).FirstOrDefault(c => !idXoa.Contains(c.Id))
@@ -2061,7 +2249,7 @@ public sealed class DonHangForm : Form
         }
 
         // Chuyển thử trước rồi mới ghi lịch sử, để không đẻ ra bước hoàn tác rỗng khi dòng đã
-        // nằm ở đầu / cuối ngày của nó.
+        // nằm ở đầu / cuối bảng.
         var truoc = _kho.ChupNhanh();
         var soDaChuyen = ThuTuDong.ChuyenNhom(hoaDon.ChiTiet, canChuyen.Select(c => c.Id), xuong);
 
@@ -2069,9 +2257,8 @@ public sealed class DonHangForm : Form
         {
             var dau = canChuyen[0];
             _lblTrangThai.Text = canChuyen.Count == 1
-                ? $"Dòng \"{dau.TenHang}\" đã ở {(xuong ? "cuối" : "đầu")} ngày "
-                  + $"{dau.Ngay:dd/MM/yyyy} rồi. Muốn sang ngày khác thì sửa ô NGÀY."
-                : $"Nhóm dòng đã chọn đã ở {(xuong ? "cuối" : "đầu")} ngày của nó rồi.";
+                ? $"Dòng \"{dau.TenHang}\" đã ở {(xuong ? "cuối" : "đầu")} bảng rồi."
+                : $"Nhóm dòng đã chọn đã ở {(xuong ? "cuối" : "đầu")} bảng rồi.";
             return;
         }
 
@@ -2085,29 +2272,6 @@ public sealed class DonHangForm : Form
         _lblTrangThai.Text = canChuyen.Count == 1
             ? $"Đã chuyển dòng {canChuyen[0].TenHang} {(xuong ? "xuống dưới" : "lên trên")}. Bấm Ctrl+Z nếu muốn quay lại."
             : $"Đã chuyển {soDaChuyen} dòng {(xuong ? "xuống dưới" : "lên trên")}. Bấm Ctrl+Z nếu muốn quay lại.";
-    }
-
-    private void SoanTinNhacNo()
-    {
-        if (Khach is not { } khach)
-        {
-            return;
-        }
-
-        var hoaDons = _kho.HoaDonCuaKhach(_khachId);
-        var conNo = hoaDons.Sum(h => h.ConLai);
-        if (conNo <= 0m)
-        {
-            HopThoai.Bao(this, $"{khach.Ten} không còn nợ khoản nào.");
-            return;
-        }
-
-        var noiDung = TinNhacNo.Soan(khach, hoaDons, DateTime.Today, ThongTinCuaHang.DocTuMau());
-        using var form = new VanBanForm(
-            "Tin nhắc nợ",
-            $"{khach.Ten} — còn nợ {So.Tien(conNo)}. Sửa lại lời cho hợp rồi chép đi gửi.",
-            noiDung);
-        form.ShowDialog(this);
     }
 
     // ---------------- Thao tác trên hoá đơn ----------------
@@ -2431,17 +2595,22 @@ public sealed class DonHangForm : Form
         return ten;
     }
 
-    private void MoThanhToan()
+    /// <summary>
+    /// Bảng kê hàng trong ngày của khách, ra một tấm ảnh để gửi Zalo. Mở sẵn ở ngày của dòng
+    /// đang chọn trên lưới — đang xem hàng của hôm nào thì gửi hôm ấy là đúng ý nhất; không
+    /// chọn dòng nào thì lấy hôm nay.
+    /// </summary>
+    private void MoBangKeNgay()
     {
-        if (HoaDonHienTai is not { } hoaDon)
+        if (Khach is null)
         {
-            HopThoai.CanhBao(this, "Chưa có hoá đơn nào để ghi thanh toán.");
             return;
         }
 
-        using var form = new ThanhToanForm(hoaDon.Id);
+        var ngay = _luoiCT.CurrentRow?.DataBoundItem is ChiTietHoaDon dong ? dong.Ngay : DateTime.Today;
+
+        using var form = new TongHopNgayForm(_khachId, ngay);
         form.ShowDialog(this);
-        NapHoaDon(hoaDon.Id);
     }
 
     private void MoThuTien()

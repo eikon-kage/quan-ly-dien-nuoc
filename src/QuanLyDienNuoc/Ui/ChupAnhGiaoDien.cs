@@ -16,6 +16,9 @@ public static class ChupAnhGiaoDien
     private const int RongAnh = 1600;
     private const int CaoAnh = 950;
 
+    /// <summary>Ngày coi như "hôm nay" lúc chụp, để mỗi lần chạy ra ảnh giống hệt nhau.</summary>
+    private static readonly DateTime NgayChup = new(2026, 8, 3);
+
     private static readonly StringBuilder NhatKy = new();
 
     public static int Chay(string thuMucRa)
@@ -46,8 +49,7 @@ public static class ChupAnhGiaoDien
             loi += ChupForm(thuMucRa, "04-sua-khach-hang", () => new KhachHangForm(khach));
             loi += ChupForm(thuMucRa, "05-bang-gia-rieng", () => new BangGiaForm(khach.Id));
             loi += ChupForm(thuMucRa, "06-danh-muc-vat-tu", () => new VatTuForm());
-            loi += ChupForm(thuMucRa, "07-thanh-toan", () => new ThanhToanForm(hoaDon.Id));
-            loi += ChupForm(thuMucRa, "07b-thu-tien-cua-khach", () => new ThuTienForm(khach.Id));
+            loi += ChupForm(thuMucRa, "07-thu-tien-cua-khach", () => new ThuTienForm(khach.Id));
             loi += ChupForm(thuMucRa, "08-tao-hoa-don", () => new HoaDonForm(null, "HD2026-03", 2026));
             loi += ChupForm(thuMucRa, "09-nhap-tu-excel", () => new NhapExcelForm(khach.Id, 2026, hoaDon.Id, fileExcel));
 
@@ -90,15 +92,23 @@ public static class ChupAnhGiaoDien
             // mạng: cửa sổ chỉ gọi khi bấm đăng nhập.
             loi += ChupForm(thuMucRa, "17-cham-cong", () => new ChamCongForm());
 
-            // BỘ HÀNG ĐỂ CUỐI CÙNG, có lý do: trên máy dựng của GitHub, cửa sổ này **treo** lúc
-            // chụp (bước chụp bị cắt sau 5 phút, xem log workflow ngày 20/08/2026). Chưa tìm ra
-            // chỗ treo, mà để nó ở giữa danh sách thì mọi màn sau nó không bao giờ được chụp —
-            // tính đến hôm nay là mất sáu màn. Để cuối thì cùng lắm mất đúng một ảnh này.
-            loi += ChupForm(thuMucRa, "12-bo-hang", () => new BoHangForm());
-
             var fileToanBo = Path.Combine(thuMucRa, "toan-bo-du-lieu.xlsx");
             XuatToanBo.Xuat(kho.DuLieu, fileToanBo, new DateTime(2026, 8, 3));
             Ghi($"Đã xuất Excel toàn bộ dữ liệu: {fileToanBo}");
+
+            loi += ChupLichTiengViet(thuMucRa, "21-lich-chon-ngay");
+
+            // Bảng kê hàng trong ngày: chụp cả màn hình lẫn chính tấm ảnh gửi khách. Tấm ảnh
+            // mới là thứ khách nhìn thấy trong Zalo, mà nó nằm thu nhỏ trong màn hình nên
+            // không soi được chữ — lưu riêng ở cỡ thật để xem lại bố cục.
+            var ngayNhieuHang = new DateTime(2026, 3, 30);
+            var ngayTraLai = new DateTime(2026, 4, 29);
+            loi += ChupForm(
+                thuMucRa,
+                "22-tong-hop-ngay",
+                () => new TongHopNgayForm(khach.Id, ngayNhieuHang, NgayChup));
+            loi += ChupAnhBangKe(thuMucRa, kho, khach, ngayNhieuHang, "22b-anh-bang-ke-gui-zalo");
+            loi += ChupAnhBangKe(thuMucRa, kho, khach, ngayTraLai, "22c-anh-bang-ke-hang-tra-lai");
 
             loi += ChupBanIn(thuMucRa, hoaDon, khach, "10-ban-in-trang");
             var hoaDonGocCuaToHoan = hoanHang.HoaDonGocId is { } gocId ? kho.TimHoaDon(gocId) : null;
@@ -164,6 +174,91 @@ public static class ChupAnhGiaoDien
             form?.Close();
             form?.Dispose();
             Application.DoEvents();
+        }
+    }
+
+    /// <summary>
+    /// Chụp ô chọn ngày cùng tờ lịch bung ra của nó. Tờ lịch nằm ở cửa sổ con riêng nên
+    /// <c>DrawToBitmap</c> của cửa sổ chính không thấy — dựng riêng một khung có sẵn cả hai,
+    /// đúng thứ người dùng nhìn thấy lúc bấm nút lịch.
+    /// </summary>
+    private static int ChupLichTiengViet(string thuMucRa, string ten)
+    {
+        Form? form = null;
+        try
+        {
+            var o = new OChonNgay { Font = Theme.FontNhapTo, Value = new DateTime(2026, 8, 3) };
+            var truong = Theme.Truong("NGÀY LẤY HÀNG", o, 220, 40);
+            truong.Location = new Point(24, 18);
+
+            var lich = new BangLich { Font = Theme.FontNhapTo, NgayChon = new DateTime(2026, 8, 3) };
+            lich.Size = lich.CoVua();
+            lich.Location = new Point(24, truong.Bottom + 4);
+
+            form = new Form
+            {
+                FormBorderStyle = FormBorderStyle.None,
+                StartPosition = FormStartPosition.Manual,
+                Location = new Point(0, 0),
+                BackColor = Theme.Nen,
+                ShowInTaskbar = false,
+                ClientSize = new Size(lich.Right + 24, lich.Bottom + 24),
+            };
+            form.Controls.Add(truong);
+            form.Controls.Add(lich);
+            form.Show();
+
+            for (var i = 0; i < 8; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(60);
+            }
+
+            using var anh = new Bitmap(form.Width, form.Height);
+            form.DrawToBitmap(anh, new Rectangle(0, 0, form.Width, form.Height));
+            anh.Save(Path.Combine(thuMucRa, ten + ".png"), System.Drawing.Imaging.ImageFormat.Png);
+            Ghi($"OK  {ten}.png  ({form.Width}x{form.Height})");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Ghi($"LỖI {ten}: {ex.GetType().Name} - {ex.Message}");
+            return 1;
+        }
+        finally
+        {
+            form?.Close();
+            form?.Dispose();
+            Application.DoEvents();
+        }
+    }
+
+    /// <summary>
+    /// Lưu chính tấm ảnh bảng kê ngày ở cỡ thật — đúng thứ khách nhận được trong Zalo.
+    /// </summary>
+    private static int ChupAnhBangKe(
+        string thuMucRa,
+        KhoDuLieu kho,
+        KhachHang khach,
+        DateTime ngay,
+        string ten)
+    {
+        try
+        {
+            var bang = BaoCao.TongHopNgay.Lam(khach, kho.HoaDonCuaKhach(khach.Id), ngay, NgayChup);
+            using var anh = AnhBangKeNgay.Ve(
+                bang,
+                ThongTinCuaHang.DocTuMau(),
+                NgayChup.AddHours(17).AddMinutes(20));
+
+            AnhBangKeNgay.LuuPng(anh, Path.Combine(thuMucRa, ten + ".png"));
+            Ghi($"OK  {ten}.png  ({anh.Width}x{anh.Height}, {bang.Dong.Count} dòng hàng)");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Ghi($"LỖI {ten}: {ex.GetType().Name} - {ex.Message}");
+            return 1;
         }
     }
 
@@ -369,44 +464,6 @@ public static class ChupAnhGiaoDien
         MaTat("Ống nhựa PVC D34", "o34");
         MaTat("Keo dán ống 100g", "keo");
         MaTat("Aptomat 1 pha 20A", "at20");
-
-        // Bộ hàng thường dùng
-        var boBon = new BoHang { Ten = "Bộ lắp bồn nước", GhiChu = "Hay đi cùng nhau" };
-        foreach (var (ten, soLuong) in new (string, decimal)[]
-                 {
-                     ("Ống nhựa PVC D27", 3), ("Co nối PVC D21", 6), ("Tê PVC D21", 2),
-                     ("Van khoá nước D21", 2), ("Keo dán ống 100g", 1),
-                 })
-        {
-            var vatTu = kho.TimVatTuTheoTen(ten);
-            boBon.Dong.Add(new DongBoHang
-            {
-                VatTuId = vatTu?.Id,
-                TenHang = ten,
-                DonVi = vatTu?.DonVi ?? string.Empty,
-                SoLuong = soLuong,
-            });
-        }
-
-        var boDien = new BoHang { Ten = "Bộ điện một phòng" };
-        foreach (var (ten, soLuong) in new (string, decimal)[]
-                 {
-                     ("Dây điện Cadivi 2x1.5", 30), ("Ống ruột gà D20", 20),
-                     ("Ổ cắm đôi 3 chấu", 2), ("Công tắc đơn", 2), ("Bóng đèn LED bulb 9W", 3),
-                 })
-        {
-            var vatTu = kho.TimVatTuTheoTen(ten);
-            boDien.Dong.Add(new DongBoHang
-            {
-                VatTuId = vatTu?.Id,
-                TenHang = ten,
-                DonVi = vatTu?.DonVi ?? string.Empty,
-                SoLuong = soLuong,
-            });
-        }
-
-        kho.DuLieu.BoHangs.Add(boBon);
-        kho.DuLieu.BoHangs.Add(boDien);
 
         kho.Luu();
 

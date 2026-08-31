@@ -94,11 +94,6 @@ public sealed class MainForm : Form
 
         _mucTrangChu = _thanhBen.Them("Trang chủ", KieuIcon.Nha, () => { });
         _thanhBen.Them("Danh mục vật tư", KieuIcon.Thung, MoDanhMucVatTu);
-        _thanhBen.Them("Bộ hàng thường dùng", KieuIcon.Bo, () =>
-        {
-            using var form = new BoHangForm();
-            form.ShowDialog(this);
-        });
         _thanhBen.Ngan();
 
         // Chấm công thợ là sổ của app điện thoại, máy tính chỉ đọc — để riêng một khoang cho

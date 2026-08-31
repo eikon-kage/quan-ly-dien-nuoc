@@ -48,6 +48,8 @@ Lấy đúng biến màu của bộ thiết kế, khai báo ở [`Ui/Theme.cs`](
 | `Theme.ApDungLuoi` | Theme.cs | bảng kiểu mới: đầu bảng trắng, kẻ dòng mảnh |
 | `Theme.ThanhTieuDe` | Theme.cs | dải tiêu đề đầu mỗi cửa sổ con: nền trắng, kẻ một vạch dưới |
 | `ThanhBen` | ThanhBen.cs | thanh bên trái của màn hình chính, kèm hình vẽ nét |
+| `OChonNgay` | OChonNgay.cs | ô chọn ngày: gõ bằng bàn phím, bấm nút lịch thì bung tờ lịch tiếng Việt |
+| `BangLich` | BangLich.cs | tờ lịch tháng tự vẽ, chữ tiếng Việt (xem mục dưới) |
 
 Mười lăm cửa sổ con không phải sửa gì: chúng dựng bằng đúng các hàm trên, đổi ở `Theme.cs` là
 đổi hết một lượt.
@@ -60,7 +62,7 @@ Mười lăm cửa sổ con không phải sửa gì: chúng dựng bằng đúng
 │              ├──────────────────────────────────────────────────────┤
 │ Trang chủ    │  ┌ ⚠ 2 khách nợ quá 60 ngày …    [Mở sổ công nợ] ──┐│
 │ Danh mục vật │  └─────────────────────────────────────────────────┘│
-│ Bộ hàng      │  ┌ Khách hàng        ☐ Chỉ hiện khách có đơn ───────┐│
+│              │  ┌ Khách hàng        ☐ Chỉ hiện khách có đơn ───────┐│
 │              │  │ bảng khách hàng                                  ││
 │              │  │                                                  ││
 │ Sao lưu      │  │                                                  ││
@@ -123,8 +125,8 @@ Ctrl+Z để lấy lại.") và nhắc ô còn thiếu.
 
 ## Bảng dài thì chia trang, 30 dòng một trang
 
-Ba bảng dài nhất — **khách hàng** (trang chủ), **sổ công nợ**, và các bảng của màn **chấm công**
-— chỉ đổ 30 dòng vào lưới một lúc. Phép chia trang nằm ở
+Các bảng dài — **khách hàng** (trang chủ), **sổ công nợ**, các bảng của màn **chấm công**, và
+**bảng hàng trong đơn hàng của khách** — chỉ đổ 30 dòng vào lưới một lúc. Phép chia trang nằm ở
 [`PhanTrang.cs`](../src/QuanLyDienNuoc.Core/Ui/PhanTrang.cs) (hàm thuần, có test), thanh nút ở
 [`ThanhPhanTrang.cs`](../src/QuanLyDienNuoc/Ui/ThanhPhanTrang.cs).
 
@@ -140,8 +142,24 @@ Hai chỗ dễ sai lặng lẽ, cả hai đều có test canh:
 Nạp lại sau khi sửa thì **mở đúng trang có dòng đang chọn**, chứ không quăng về trang 1 — đang dò
 dở giữa sổ mà bị đẩy về đầu là phải bấm lại cả chục lần. Vừa một trang thì hai nút ẩn hẳn.
 
-Bảng chi tiết hoá đơn **không** chia trang: dòng vàng đang gõ dở phải luôn nằm ở cuối bảng, chia
-trang là gõ ở trang 1 không thấy nó đâu.
+### Bảng hàng của hoá đơn: chia trang mà vẫn gõ được
+
+Bảng này lâu nay để nguyên không chia trang, vì **dòng vàng đang gõ dở** nằm lẫn trong bảng — chia
+trang thì đứng ở trang 1 không thấy nó đâu. Hoá đơn công trình dài vài trăm dòng nên vẫn phải
+chia; chỗ dòng vàng xử lý như sau:
+
+- Dòng vàng vẫn giữ đúng chỗ của nó trong **cả bảng** (cuối bảng, hoặc cạnh dòng mốc khi bấm
+  Ctrl+Enter chèn giữa), rồi mới cắt trang. Nó nằm trang nào là do chỗ chèn quyết định.
+- Mọi đường dẫn con trỏ về dòng vàng (Ctrl+Enter, Enter ghi xong một dòng, bấm "Không" ở câu hỏi
+  kiểm tra) đều **mở đúng trang có nó** trước khi đặt con trỏ — nếu không thì đặt con trỏ vào một
+  hàng không có trên lưới, trượt không trúng gì cả.
+- Lật trang thì thanh dưới nói luôn dòng vàng đang ở trang nào. Còn thanh nhập nhanh phía **trên**
+  bảng thì trang nào cũng ghi được, ghi xong bảng tự nhảy tới trang chứa dòng vừa ghi.
+- Ctrl+A chỉ chọn được các dòng **của trang đang xem** — lưới chỉ giữ đến đấy. Nhiều trang thì câu
+  nhắc ghi rõ "ở trang này", để không ai bấm Delete xong mới ngã ngửa là còn sót mấy trang kia.
+
+Ba con số tiền dưới bảng (tổng cộng, đã trả, còn lại) vẫn tính trên **cả hoá đơn**, in và xuất
+Excel cũng cả hoá đơn — đúng luật số 2 ở trên.
 
 ## Nhập hàng: Enter đi một đường
 
@@ -183,10 +201,30 @@ màn hình: rộng hơn nữa là hàng nút bị đẩy ra ngoài rồi cắt m
 Nhãn trên ô nhập chỉ để một hai chữ. Cách gõ tắt tên hàng, gõ phép tính ở ô đơn giá, gõ số âm
 ở ô số lượng — chuyển hết vào chú thích hiện ra khi trỏ chuột vào đúng ô đó.
 
+## Bảng hàng không tự xếp lại dòng
+
+Thứ tự các dòng trong hoá đơn là **đúng thứ tự chủ cửa hàng đã gõ** — không xếp theo ngày, không
+xếp theo vần ([`ThuTuDong.cs`](../src/QuanLyDienNuoc.Core/Ui/ThuTuDong.cs)). Bảng trên màn hình,
+tờ in ra giấy và file Excel đều đi theo thứ tự ấy.
+
+Trước đây bảng tự xếp theo ngày lấy hàng. Bỏ đi vì phép xếp ấy giành quyền của người dùng: gõ bù
+một dòng của hôm trước là dòng ấy tự nhảy lên giữa bảng, sửa ô NGÀY một dòng là nó biến mất khỏi
+chỗ đang nhìn. Tờ hoá đơn viết tay vốn hàng nào ghi trước thì nằm trước.
+
+Bỏ phép xếp thì mấy chỗ dựng quanh nó cũng bỏ theo:
+
+- `Alt+↑` / `Alt+↓` **đi được khắp bảng**, không còn bị chặn ở mép ngày. Câu nhắc khi hết đường
+  cũng đổi thành "đã ở đầu / cuối bảng" chứ không phải "đầu / cuối ngày".
+- Dòng chèn bằng `Ctrl+Enter` **giữ nguyên ngày người dùng gõ**. Trước đây phần mềm ép ngày của nó
+  theo dòng mốc, chỉ để phép xếp khỏi kéo nó đi chỗ khác; dòng trống mới vẫn điền sẵn ngày của
+  dòng mốc, nhưng chỉ để đỡ phải gõ lại.
+- Mốc ngày trên tờ in hiện ra mỗi khi dòng dưới đổi ngày so với dòng trên, nên một ngày có thể
+  hiện mốc mấy lần nếu chủ cửa hàng gõ xen kẽ — vẫn đọc lại đúng ngày lúc nhập tờ ấy vào.
+
 ## Chọn nhiều dòng rồi làm một lượt
 
 Bảng chi tiết cho chọn nhiều dòng: `Ctrl`+bấm để chọn thêm từng dòng, `Shift`+bấm để chọn cả
-dải, `Ctrl+A` chọn hết bảng (trừ dòng vàng đang gõ dở). Xoá (`Delete`) và chuyển lên / xuống
+dải, `Ctrl+A` chọn hết **trang đang xem** (trừ dòng vàng đang gõ dở). Xoá (`Delete`) và chuyển lên / xuống
 (`Alt+↑` / `Alt+↓`) áp cho **cả nhóm đang chọn**, ghi thành một bước hoàn tác duy nhất.
 Chuyển xuống thì chạy từ dòng cuối nhóm lên, chuyển lên thì từ dòng đầu xuống — làm ngược lại
 là cả nhóm dồn cục vào nhau (`ThuTuDong.ChuyenNhom`). Chuyển xong nhóm vẫn được chọn, bấm
@@ -312,6 +350,36 @@ cũ, ra một chuỗi vô nghĩa. Nên sau khi đặt `DroppedDown = true` phả
 3. viết lại đúng chữ người dùng đang gõ rồi đặt con trỏ về cuối.
 
 Danh sách vẫn hiện bình thường; muốn lấy một dòng thì bấm chuột, hoặc `↓` rồi `Enter`.
+
+## Ô chọn ngày: vì sao phải tự vẽ lấy tờ lịch
+
+`DateTimePicker` của WinForms có hai phần, và **hai phần lấy ngôn ngữ ở hai chỗ khác nhau**:
+
+- phần ô gõ — phần mềm ép `CustomFormat = "dd/MM/yyyy"` ([`Theme.DangNgay`](../src/QuanLyDienNuoc/Ui/Theme.cs))
+  nên luôn viết kiểu Việt;
+- phần **bảng lịch bung ra** — Windows tự vẽ, lấy tên tháng và tên thứ theo *cài đặt Region của
+  máy*, **không** theo ngôn ngữ phần mềm đặt trong `Program.cs`. Máy cài Windows tiếng Anh thì
+  chủ cửa hàng bấm mũi tên là thấy "August 2026 — S M T W T F S".
+
+Đặt `CultureInfo` hay gọi `SetThreadLocale` đều không chắc đổi được bảng ấy, nên phần mềm **tự vẽ
+lấy tờ lịch**:
+
+- [`OChonNgay`](../src/QuanLyDienNuoc/Ui/OChonNgay.cs) — ô chọn ngày dùng ở 7 màn hình. Bên trong
+  vẫn là `DateTimePicker` để giữ lối gõ quen tay (gõ từng phần ngày/tháng/năm, mũi tên ↑↓ chỉnh
+  nhanh), nhưng bật `ShowUpDown = true` — **đây là cách duy nhất tắt hẳn bảng lịch của Windows**.
+  Bên phải là nút hình tờ lịch, bấm vào (hoặc `F4`, `Alt+↓`) thì bung tờ lịch tự vẽ.
+- [`BangLich`](../src/QuanLyDienNuoc/Ui/BangLich.cs) — tờ lịch: "Tháng 8, 2026", cột `T2 T3 T4 T5
+  T6 T7 CN` bắt đầu từ thứ hai như lịch treo tường, cột chủ nhật màu đỏ, ngày đang chọn tô đặc,
+  hôm nay viền xanh, chân bảng có dòng "Hôm nay: Thứ hai, 31/08/2026" bấm được. Lật tháng bằng
+  `‹ ›`, lật năm bằng `‹‹ ››`; bàn phím thì mũi tên đi từng ngày, `PageUp/PageDown` đổi tháng,
+  `Enter` chọn, `Esc` bỏ.
+- [`LichViet`](../src/QuanLyDienNuoc.Core/Ui/LichViet.cs) — phần tính toán (xếp 42 ô của tháng,
+  tên thứ, tên tháng) để ở Core, **không dính WinForms**, nên chạy được `dotnet test` trên máy
+  Mac: xem [`LichVietTests`](../tests/QuanLyDienNuoc.Tests/LichVietTests.cs).
+
+Mọi số đo của tờ lịch tính theo `Font.Height` nên máy đặt cỡ hiển thị 125% hay 150% thì lịch nở
+theo, không vỡ chữ. Ảnh `21-lich-chon-ngay.png` trong [`docs/anh-giao-dien/`](anh-giao-dien/) là
+tờ lịch chụp trên máy Windows thật.
 
 ## Xem ảnh giao diện
 

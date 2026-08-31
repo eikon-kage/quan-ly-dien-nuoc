@@ -8,7 +8,6 @@ public enum KieuIcon
     Nha,
     Bang,
     Thung,
-    Bo,
     Tien,
     Luu,
     DongHo,
@@ -40,7 +39,7 @@ public sealed class ThanhBen : Panel
         Dock = DockStyle.Left;
 
         // Bề ngang theo chữ **của máy này**: 268px chỉ vừa ở cỡ hiển thị 100%, máy đặt 125% là
-        // tên mục dài ("Bộ hàng thường dùng") bị cắt cụt bằng dấu "…".
+        // tên mục dài ("Sao lưu và khôi phục") bị cắt cụt bằng dấu "…".
         Width = Math.Max(268, (Theme.FontThuong.Height * 13) + 70);
         BackColor = Theme.Trang;
 
@@ -268,13 +267,6 @@ public sealed class ThanhBen : Panel
                 });
                 g.DrawRectangle(but, o.X + 1, o.Y + 2, o.Width - 3, 4);
                 g.DrawLine(but, o.X + 8, o.Y + 11, o.Right - 8, o.Y + 11);
-                break;
-
-            case KieuIcon.Bo:
-                g.DrawRectangle(but, o.X + 1, o.Y + 1, 8, 8);
-                g.DrawRectangle(but, o.X + 12, o.Y + 1, 8, 8);
-                g.DrawRectangle(but, o.X + 1, o.Y + 12, 8, 8);
-                g.DrawRectangle(but, o.X + 12, o.Y + 12, 8, 8);
                 break;
 
             case KieuIcon.Tien:

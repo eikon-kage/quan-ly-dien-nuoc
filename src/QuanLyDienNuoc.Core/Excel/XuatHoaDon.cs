@@ -37,7 +37,7 @@ public static class XuatHoaDon
     /// </summary>
     public static List<List<DongTrenTo>> LenTrang(IEnumerable<ChiTietHoaDon> chiTiet)
     {
-        var dong = ThuTuDong.TheoThuTu(chiTiet);
+        var dong = chiTiet.ToList();
 
         var trang = new List<List<DongTrenTo>>();
         var daLay = 0;

@@ -5,7 +5,10 @@ using Xunit;
 
 namespace QuanLyDienNuoc.Tests;
 
-/// <summary>Chèn dòng vào giữa, đổi chỗ dòng, và thứ tự đó phải giữ nguyên khi in ra.</summary>
+/// <summary>
+/// Chèn dòng vào giữa, đổi chỗ dòng, và thứ tự đó phải giữ nguyên khi in ra — bảng đi theo đúng
+/// thứ tự chủ cửa hàng đã xếp, không tự xếp lại theo ngày.
+/// </summary>
 public class ThuTuDongTests
 {
     private static ChiTietHoaDon Dong(string ten, int ngay = 1) => new()
@@ -20,7 +23,7 @@ public class ThuTuDongTests
     private static List<string> Ten(IEnumerable<ChiTietHoaDon> dong) => dong.Select(d => d.TenHang).ToList();
 
     [Fact]
-    public void TheoThuTu_XepTheoNgay_TrongCungNgayGiuNguyenThuTuNguoiDungXep()
+    public void KhongTuXepLaiTheoNgay_GoSaoThiNamVayVaInRaVay()
     {
         var chiTiet = new List<ChiTietHoaDon>
         {
@@ -30,10 +33,13 @@ public class ThuTuDongTests
             Dong("Băng tan", ngay: 5),
         };
 
-        // Không xếp theo vần: trong cùng một ngày thì "Ống 27" vẫn đứng trước "Co 90".
-        Assert.Equal(
-            new[] { "Ống 27", "Co 90", "Keo", "Băng tan" },
-            Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        // Ngày 5/3 gõ trước ngày 1/3 thì nó vẫn nằm trước: bảng không tự xếp lại theo ngày, cũng
+        // không xếp theo vần. Chủ cửa hàng gõ bù một dòng của hôm trước thì dòng ấy nằm yên chỗ
+        // vừa gõ, chứ không tự nhảy lên giữa bảng.
+        Assert.Equal(new[] { "Keo", "Ống 27", "Co 90", "Băng tan" }, Ten(chiTiet));
+
+        // Tờ in ra cũng đúng thứ tự ấy.
+        Assert.Equal(new[] { "Keo", "Ống 27", "Co 90", "Băng tan" }, Ten(XuatHoaDon.ChiaTrang(chiTiet)[0]));
     }
 
     [Fact]
@@ -44,7 +50,7 @@ public class ThuTuDongTests
 
         ThuTuDong.Chen(chiTiet, Dong("Van khoá"), moc.Id, chenDuoi: false);
 
-        Assert.Equal(new[] { "Ống 27", "Van khoá", "Co 90", "Keo" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Van khoá", "Co 90", "Keo" }, Ten(chiTiet));
     }
 
     [Fact]
@@ -55,11 +61,11 @@ public class ThuTuDongTests
 
         ThuTuDong.Chen(chiTiet, Dong("Van khoá"), moc.Id, chenDuoi: true);
 
-        Assert.Equal(new[] { "Ống 27", "Co 90", "Van khoá", "Keo" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Co 90", "Van khoá", "Keo" }, Ten(chiTiet));
     }
 
     [Fact]
-    public void Chen_LayNgayCuaDongMoc_NenDungYenDungCho()
+    public void Chen_GiuNguyenNgayNguoiDungGo_VaNamDungChoDaChen()
     {
         var chiTiet = new List<ChiTietHoaDon>
         {
@@ -68,13 +74,14 @@ public class ThuTuDongTests
             Dong("Keo", ngay: 9),
         };
 
-        // Dòng mới mang ngày 20/3 nhưng chèn cạnh dòng ngày 1/3 thì phải theo ngày của dòng mốc,
-        // không thì xếp lại theo ngày là nó nhảy xuống tận cuối bảng.
+        // Dòng mới mang ngày 20/3 mà chèn cạnh dòng ngày 1/3: ngày để nguyên như người dùng gõ,
+        // dòng vẫn nằm yên đúng chỗ vừa chèn. Trước đây phần mềm sửa ngày dòng mới theo dòng mốc,
+        // chỉ để nó khỏi bị phép xếp theo ngày kéo xuống cuối bảng — nay không còn phép xếp ấy.
         var dongMoi = Dong("Van khoá", ngay: 20);
         ThuTuDong.Chen(chiTiet, dongMoi, chiTiet[0].Id, chenDuoi: true);
 
-        Assert.Equal(new DateTime(2026, 3, 1), dongMoi.Ngay);
-        Assert.Equal(new[] { "Ống 27", "Van khoá", "Co 90", "Keo" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new DateTime(2026, 3, 20), dongMoi.Ngay);
+        Assert.Equal(new[] { "Ống 27", "Van khoá", "Co 90", "Keo" }, Ten(chiTiet));
     }
 
     [Fact]
@@ -84,7 +91,7 @@ public class ThuTuDongTests
 
         ThuTuDong.Chen(chiTiet, Dong("Keo"), mocId: null, chenDuoi: false);
 
-        Assert.Equal(new[] { "Ống 27", "Co 90", "Keo" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Co 90", "Keo" }, Ten(chiTiet));
     }
 
     [Fact]
@@ -94,23 +101,23 @@ public class ThuTuDongTests
         var keo = chiTiet[2];
 
         Assert.True(ThuTuDong.Chuyen(chiTiet, keo.Id, xuong: false));
-        Assert.Equal(new[] { "Ống 27", "Keo", "Co 90" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Keo", "Co 90" }, Ten(chiTiet));
 
         Assert.True(ThuTuDong.Chuyen(chiTiet, keo.Id, xuong: true));
-        Assert.Equal(new[] { "Ống 27", "Co 90", "Keo" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Co 90", "Keo" }, Ten(chiTiet));
     }
 
     [Fact]
-    public void Chuyen_DaODauNgay_ThiKhongDoiGi()
+    public void Chuyen_DaODauBang_ThiKhongDoiGi()
     {
         var chiTiet = new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Co 90") };
 
         Assert.False(ThuTuDong.Chuyen(chiTiet, chiTiet[0].Id, xuong: false));
-        Assert.Equal(new[] { "Ống 27", "Co 90" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Co 90" }, Ten(chiTiet));
     }
 
     [Fact]
-    public void Chuyen_KhongVuotSangNgayKhac()
+    public void Chuyen_DiDuocSangChoCoNgayKhac()
     {
         var chiTiet = new List<ChiTietHoaDon>
         {
@@ -119,13 +126,10 @@ public class ThuTuDongTests
             Dong("Băng tan", ngay: 5),
         };
 
-        // "Keo" là dòng đầu của ngày 5/3, chuyển lên nữa là lấn sang ngày 1/3 nên phải chặn.
-        Assert.False(ThuTuDong.Chuyen(chiTiet, chiTiet[1].Id, xuong: false));
-        Assert.Equal(new[] { "Ống 27", "Keo", "Băng tan" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
-
-        // Còn "Băng tan" thì đổi chỗ được với "Keo" vì cùng ngày.
-        Assert.True(ThuTuDong.Chuyen(chiTiet, chiTiet.First(c => c.TenHang == "Băng tan").Id, xuong: false));
-        Assert.Equal(new[] { "Ống 27", "Băng tan", "Keo" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        // "Keo" mang ngày 5/3, ngay trên nó là dòng ngày 1/3. Trước đây chặn không cho vượt mép
+        // ngày; nay bảng không xếp theo ngày nữa nên Alt+↑ đi được khắp bảng.
+        Assert.True(ThuTuDong.Chuyen(chiTiet, chiTiet[1].Id, xuong: false));
+        Assert.Equal(new[] { "Keo", "Ống 27", "Băng tan" }, Ten(chiTiet));
     }
 
     [Fact]
@@ -134,7 +138,7 @@ public class ThuTuDongTests
         var chiTiet = new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Co 90") };
 
         Assert.False(ThuTuDong.Chuyen(chiTiet, Guid.NewGuid(), xuong: true));
-        Assert.Equal(new[] { "Ống 27", "Co 90" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Co 90" }, Ten(chiTiet));
     }
 
     [Fact]
@@ -147,10 +151,10 @@ public class ThuTuDongTests
         var nhom = new[] { chiTiet[2].Id, chiTiet[3].Id };
 
         Assert.Equal(2, ThuTuDong.ChuyenNhom(chiTiet, nhom, xuong: false));
-        Assert.Equal(new[] { "Ống 27", "Keo", "Băng tan", "Co 90" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Keo", "Băng tan", "Co 90" }, Ten(chiTiet));
 
         Assert.Equal(2, ThuTuDong.ChuyenNhom(chiTiet, nhom, xuong: true));
-        Assert.Equal(new[] { "Ống 27", "Co 90", "Keo", "Băng tan" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Co 90", "Keo", "Băng tan" }, Ten(chiTiet));
     }
 
     [Fact]
@@ -167,7 +171,7 @@ public class ThuTuDongTests
         var nhom = new[] { chiTiet[1].Id, chiTiet[0].Id };
 
         Assert.Equal(2, ThuTuDong.ChuyenNhom(chiTiet, nhom, xuong: true));
-        Assert.Equal(new[] { "Keo", "Ống 27", "Co 90", "Băng tan" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Keo", "Ống 27", "Co 90", "Băng tan" }, Ten(chiTiet));
     }
 
     [Fact]
@@ -180,22 +184,22 @@ public class ThuTuDongTests
         var nhom = new[] { chiTiet[1].Id, chiTiet[3].Id };
 
         Assert.Equal(2, ThuTuDong.ChuyenNhom(chiTiet, nhom, xuong: false));
-        Assert.Equal(new[] { "Co 90", "Ống 27", "Băng tan", "Keo" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Co 90", "Ống 27", "Băng tan", "Keo" }, Ten(chiTiet));
     }
 
     [Fact]
-    public void ChuyenNhom_DaSatDauNgay_ThiKhongDoiGi()
+    public void ChuyenNhom_DaSatDauBang_ThiKhongDoiGi()
     {
         var chiTiet = new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Co 90"), Dong("Keo") };
         var nhom = new[] { chiTiet[0].Id, chiTiet[1].Id };
 
-        // Nhóm đã sát đầu ngày: báo 0 để màn hình khỏi ghi một bước hoàn tác rỗng.
+        // Nhóm đã sát đầu bảng: báo 0 để màn hình khỏi ghi một bước hoàn tác rỗng.
         Assert.Equal(0, ThuTuDong.ChuyenNhom(chiTiet, nhom, xuong: false));
-        Assert.Equal(new[] { "Ống 27", "Co 90", "Keo" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        Assert.Equal(new[] { "Ống 27", "Co 90", "Keo" }, Ten(chiTiet));
     }
 
     [Fact]
-    public void ChuyenNhom_KhongVuotSangNgayKhac()
+    public void ChuyenNhom_DiDuocSangChoCoNgayKhac()
     {
         var chiTiet = new List<ChiTietHoaDon>
         {
@@ -205,9 +209,9 @@ public class ThuTuDongTests
         };
         var nhom = new[] { chiTiet[1].Id, chiTiet[2].Id };
 
-        // Cả nhóm là trọn ngày 5/3, chuyển lên nữa là lấn sang ngày 1/3 nên phải chặn.
-        Assert.Equal(0, ThuTuDong.ChuyenNhom(chiTiet, nhom, xuong: false));
-        Assert.Equal(new[] { "Ống 27", "Keo", "Băng tan" }, Ten(ThuTuDong.TheoThuTu(chiTiet)));
+        // Cả nhóm mang ngày 5/3, ngay trên là dòng ngày 1/3: nay cả khối vượt qua được.
+        Assert.Equal(2, ThuTuDong.ChuyenNhom(chiTiet, nhom, xuong: false));
+        Assert.Equal(new[] { "Keo", "Băng tan", "Ống 27" }, Ten(chiTiet));
     }
 
     [Fact]
@@ -215,10 +219,7 @@ public class ThuTuDongTests
     {
         // Ctrl+Enter mở một dòng trống ngay cạnh dòng đang chọn. Chỗ đặt nó trên lưới tính theo
         // thứ tự đang hiện, chính là hàm này.
-        var thuTu = ThuTuDong.TheoThuTu(new List<ChiTietHoaDon>
-        {
-            Dong("Ống 27"), Dong("Co 90"), Dong("Keo"),
-        });
+        var thuTu = new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Co 90"), Dong("Keo") };
 
         Assert.Equal(1, ThuTuDong.ViTriChen(thuTu, thuTu[1].Id, chenDuoi: false));
         Assert.Equal(2, ThuTuDong.ViTriChen(thuTu, thuTu[1].Id, chenDuoi: true));
@@ -227,7 +228,7 @@ public class ThuTuDongTests
     [Fact]
     public void ViTriChen_KhongCoMocHoacMocDaBiXoa_ThiDongTrongVeCuoiLuoi()
     {
-        var thuTu = ThuTuDong.TheoThuTu(new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Co 90") });
+        var thuTu = new List<ChiTietHoaDon> { Dong("Ống 27"), Dong("Co 90") };
 
         // Chưa chèn gì thì dòng trống nằm cuối lưới như thường.
         Assert.Equal(2, ThuTuDong.ViTriChen(thuTu, mocId: null, chenDuoi: false));
@@ -248,7 +249,7 @@ public class ThuTuDongTests
 
         Assert.Equal(
             new[] { "Ống 27", "Van khoá", "Băng tan", "Co 90", "Keo" },
-            Ten(ThuTuDong.TheoThuTu(chiTiet)));
+            Ten(chiTiet));
     }
 
     [Fact]
@@ -266,7 +267,7 @@ public class ThuTuDongTests
 
         Assert.Equal(
             new[] { "Ống 27", "Co 90", "Van khoá", "Băng tan", "Keo" },
-            Ten(ThuTuDong.TheoThuTu(chiTiet)));
+            Ten(chiTiet));
     }
 
     [Fact]

@@ -24,6 +24,12 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   Mở phần mềm lên là có ngay dải nhắc *"3 khách nợ quá 60 ngày"* trên đầu màn hình.
 - **Tin nhắc nợ soạn sẵn**: bấm một nút ra đoạn tin kèm bảng kê từng hoá đơn còn nợ và số
   tiền bằng chữ, sửa vài chữ rồi chép sang Zalo là gửi được.
+- **Bảng kê trong ngày gửi Zalo**: cuối buổi bấm *Bảng kê trong ngày* ở màn đơn hàng, chọn
+  **Hôm nay** hay **Hôm qua** (ngày khác thì có ô lịch) là ra một **tấm ảnh** bảng kê — hàng
+  khách lấy hôm ấy gom đủ cả mấy tờ hoá đơn, hàng trả lại ghi đỏ, tổng tiền hàng kèm số tiền
+  bằng chữ và số còn nợ. Bấm *Chép ảnh* rồi sang Zalo bấm `Ctrl+V` là ảnh vào khung chat;
+  mỗi lần chép cũng tự cất một bản `.png` trong thư mục dữ liệu. Xem
+  [docs/bang-ke-ngay-gui-zalo.md](docs/bang-ke-ngay-gui-zalo.md).
 - **Gõ thẳng vào bảng như Excel**: cuối bảng chi tiết luôn có sẵn một dòng trống tô vàng — gõ
   tên hàng (tự điền đơn vị và **giá của đúng khách đó**), gõ số lượng rồi `Enter` là dòng đó
   vào sổ và có ngay dòng trống mới để gõ tiếp. Ngày lấy theo dòng ngay trên, sửa lại được.
@@ -38,8 +44,6 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 - **Nhập nhiều dòng một lượt**: gõ `ống 27 x10, co 90 x5, keo x1` rồi xem trước giá trước
   khi ghi vào hoá đơn. Muốn ghi luôn giá thì thêm `@`, gõ tắt kiểu nói miệng cũng được:
   `keo x1 @8k`, `bồn 1000 x1 @2tr5`, `van x2 @150 nghìn`.
-- **Bộ hàng thường dùng**: gom các món hay đi cùng nhau thành một bộ ("Bộ lắp bồn nước"),
-  chọn một lần là ra đủ dòng, giá vẫn lấy theo bảng giá của khách.
 - **Cảnh báo nhập sai**: giá lệch quá 20% so với lần gần nhất bán cho chính khách đó, dòng
   trùng y hệt (cùng ngày, cùng hàng, cùng số lượng), hoặc thêm khách trùng tên — đều hỏi lại
   trước khi ghi.
@@ -47,11 +51,12 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
 - **Chèn dòng vào giữa, không phải chỉ thêm vào cuối**: quên một món ở giữa thì chọn dòng
   muốn chèn cạnh rồi `Ctrl+Enter` (lên trên) hoặc `Ctrl+Shift+Enter` (xuống dưới) — một dòng
   trống mở ra ngay chỗ đó, con trỏ nhảy vào ô TÊN HÀNG, gõ tên hàng với số lượng rồi `Enter`
-  là vào sổ. Dòng trống lấy luôn ngày của dòng đang chọn nên nằm yên đúng chỗ vừa chèn; gõ
-  liền mấy dòng thì dòng trống mới lại mở ra tiếp ngay chỗ đó. Xếp sai thì `Alt+↑` / `Alt+↓`
-  đổi chỗ hai dòng (trong cùng một ngày). Bấm
-  chuột phải lên lưới ra đủ các lệnh này. Thứ tự trên lưới cũng chính là thứ tự in ra giấy
-  và xuất Excel — trong cùng một ngày phần mềm không tự xếp lại theo vần nữa.
+  là vào sổ. Dòng trống điền sẵn ngày của dòng đang chọn cho đỡ phải gõ lại; gõ liền mấy dòng
+  thì dòng trống mới lại mở ra tiếp ngay chỗ đó. Xếp sai thì `Alt+↑` / `Alt+↓` đổi chỗ hai
+  dòng, đi được khắp bảng. Bấm
+  chuột phải lên lưới ra đủ các lệnh này. **Phần mềm không tự xếp lại dòng** — không theo ngày,
+  không theo vần: gõ sao nằm vậy, và thứ tự trên lưới cũng chính là thứ tự in ra giấy và xuất
+  Excel.
 - **Hoàn tác / Làm lại**: `Ctrl+Z` / `Ctrl+Y` cho mọi thao tác (thêm, sửa, xoá dòng, xoá hoá
   đơn, xoá khách…). Lịch sử chỉ giữ trong phiên đang mở, tối đa 50 bước — đóng phần mềm là
   hết, dữ liệu đã lưu vẫn còn nguyên.
@@ -73,7 +78,7 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   trang 1 thì phần mềm chặn lại. Giấy không ghi năm nên có ô *NĂM CỦA TỜ* ngay lúc nhập; ngày
   của từng dòng đọc ở mốc ngày viết trong cột số thứ tự (`1/12`, `12\4`). Lúc xuất Excel cũng
   ghi mốc y như vậy để xuất ra rồi nhập lại không mất ngày: ngày nằm ở ô số thứ tự của **dòng
-  hàng đầu tiên lấy hôm ấy**, các dòng cùng ngày bên dưới vẫn ghi số. Xem
+  đầu tiên mang ngày ấy**, các dòng ngay dưới cùng ngày thì vẫn ghi số. Xem
   [docs/nhap-hoa-don-nhieu-trang.md](docs/nhap-hoa-don-nhieu-trang.md).
 - **Thanh toán**: ghi nhiều lần trả tiền cho một hoá đơn, tự tính còn nợ.
 - **Thu tiền của khách (một lần trả cho nhiều hoá đơn)**: khách đưa 5 triệu trả cho 3 hoá đơn
@@ -99,8 +104,8 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   một file `.json` (nạp ngược lại vào phần mềm) và một file `.xlsx` nhiều trang (mở xem bằng
   Excel/WPS mà không cần phần mềm này). Đặt thư mục sao lưu ở USB hoặc OneDrive là mất máy
   vẫn còn dữ liệu. Khôi phục ngay trong phần mềm, không phải mò vào `%APPDATA%`.
-- **Xuất toàn bộ ra Excel**: một file `.xlsx` có 8 trang — khách hàng, hoá đơn, chi tiết hàng,
-  thanh toán, công nợ, vật tư, bảng giá riêng, bộ hàng — kèm dòng tổng và bộ lọc sẵn.
+- **Xuất toàn bộ ra Excel**: một file `.xlsx` có 7 trang — khách hàng, hoá đơn, chi tiết hàng,
+  thanh toán, công nợ, vật tư, bảng giá riêng — kèm dòng tổng và bộ lọc sẵn.
 - **Nhật ký thay đổi**: mọi lần thêm/sửa/xoá đều ghi lại kèm giờ, ghi ra file riêng nên
   `Ctrl+Z` không xoá mất. Khách thắc mắc *"sao hôm trước giá khác"* là có chỗ tra.
 - **Hai máy dùng chung một file**: để `dulieu.json` trên thư mục mạng rồi mở ở hai máy thì
@@ -157,13 +162,14 @@ Toàn bộ dữ liệu nằm trong thư mục `%APPDATA%\QuanLyDienNuoc\`:
 
 | File / thư mục | Là gì |
 |---|---|
-| `dulieu.json` | Toàn bộ khách hàng, hoá đơn, vật tư, bộ hàng |
+| `dulieu.json` | Toàn bộ khách hàng, hoá đơn, vật tư |
 | `dulieu.json.bak` | Bản của lần ghi ngay trước đó |
 | `dulieu.json.khoa`, `dulieu.json.dangmo` | Đánh dấu đang có máy mở file; tự xoá khi đóng phần mềm |
 | `dulieu.json.maykhac-….json` | Bản của máy khác, cất lại trước khi mình ghi đè |
 | `caidat.json` | Cài đặt: số ngày nhắc nợ, thư mục sao lưu, ngưỡng cảnh báo giá |
 | `nhatky.jsonl` | Nhật ký thay đổi, mỗi dòng một mục |
 | `SaoLuu\` | Các bản sao lưu theo ngày (`.json` + `.xlsx`), mặc định giữ 30 bản |
+| `BangKeNgay\` | Ảnh bảng kê trong ngày đã gửi khách, mỗi lần chép ảnh lưu một file |
 
 Cài đặt và nhật ký để riêng khỏi `dulieu.json` để `Ctrl+Z` không cuốn theo.
 
@@ -182,7 +188,7 @@ lên mạng (OneDrive, Google Drive) — hỏng ổ cứng thì vẫn còn dữ 
 QuanLyDienNuoc.sln
 src/
   QuanLyDienNuoc.Core/          thư viện nghiệp vụ, không phụ thuộc giao diện (net8.0)
-    Models/                     KhachHang, VatTu, HoaDon, ChiTietHoaDon, ThanhToan, BoHang
+    Models/                     KhachHang, VatTu, HoaDon, ChiTietHoaDon, ThanhToan
     Data/KhoDuLieu.cs           đọc/ghi JSON + lịch sử hoàn tác + chống hai máy ghi đè nhau
     Data/KhoaFile.cs            khoá file dữ liệu khi đang mở, báo máy nào đang giữ
     Data/CaiDat.cs              cài đặt, lưu riêng khỏi dữ liệu
@@ -190,6 +196,7 @@ src/
     Data/SaoLuu.cs              tạo / liệt kê / khôi phục bản sao lưu
     BaoCao/CongNo.cs            tính công nợ và số ngày nợ từng khách
     BaoCao/TinNhacNo.cs         soạn tin nhắc nợ
+    BaoCao/TongHopNgay.cs       gom hàng khách lấy trong một ngày thành bảng kê
     BaoCao/ThuTien.cs           chia một lần thu tiền cho nhiều hoá đơn, cũ nhất trả trước
     BaoCao/KiemTra.cs           cảnh báo giá lệch, dòng trùng, khách trùng tên, trả lại quá số đã mua
     Excel/MauHoaDon.cs          toạ độ các ô trên mẫu hoá đơn
@@ -201,7 +208,7 @@ src/
     Ui/So.cs, Ui/ChuViet.cs     đọc số kiểu "1.500.000" và phép tính, tìm kiếm không dấu
     Ui/TimHang.cs               khớp tên hàng theo kiểu gõ tắt
     Ui/DongNhapNhanh.cs         tách "ống 27 x10, co 90 x5" thành từng món
-    Ui/ThuTuDong.cs             thứ tự dòng hàng: chèn vào giữa, đổi chỗ, giữ đúng thứ tự khi in
+    Ui/ThuTuDong.cs             thứ tự dòng hàng: chèn vào giữa, đổi chỗ, giữ nguyên thứ tự đã gõ
     Ui/DocSo.cs                 đọc số tiền thành chữ
   ChamCong.Core/                thư viện chấm công thợ (net8.0)
     SoDiDong/SoChamCong.cs      dáng sổ đúng như app điện thoại ghi ra
@@ -224,7 +231,6 @@ src/
     Forms/ThuTienForm.cs        thu một cục tiền, chia cho nhiều hoá đơn
     Forms/BangGiaForm.cs        bảng giá riêng theo khách
     Forms/VatTuForm.cs          danh mục vật tư (kèm mã tắt, nhóm hàng)
-    Forms/BoHangForm.cs         bộ hàng thường dùng
     Forms/NhapNhieuDongForm.cs  gõ một dòng ra nhiều món, có xem trước
     Forms/SaoLuuForm.cs         sao lưu, khôi phục, xuất toàn bộ ra Excel
     Forms/NhatKyForm.cs         xem nhật ký thay đổi
