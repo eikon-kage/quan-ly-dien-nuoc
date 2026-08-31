@@ -7,8 +7,8 @@ namespace QuanLyDienNuoc.BaoCao;
 public sealed record MucHoan(ChiTietHoaDon Dong, decimal SoLuong);
 
 /// <summary>
-/// Một dòng của hoá đơn gốc kèm số đã mua và số đã hoàn ở những lần trước — đủ để màn hình
-/// hoàn hàng bày ra bảng chọn mà không phải tự đi cộng lại.
+/// Một dòng của hoá đơn gốc kèm số đã mua và số đã hoàn ở những lần trước — đủ để biết món
+/// đó còn hoàn được bao nhiêu mà không phải tự đi cộng lại.
 /// </summary>
 public sealed record DongCoTheHoan(ChiTietHoaDon Dong, decimal DaMua, decimal DaHoan)
 {
@@ -64,13 +64,13 @@ public static class HoanHang
         HoanCuaHoaDon(hoaDons, hoaDonGocId).Sum(h => h.TienHoan);
 
     /// <summary>
-    /// Các dòng của hoá đơn gốc có thể hoàn, theo đúng thứ tự đang hiện trên bảng. Bỏ những
-    /// dòng số lượng âm — đó là hàng khách đã trả lại ngay trong hoá đơn, hoàn nữa là hoàn hai lần.
+    /// Các dòng của hoá đơn gốc có thể hoàn, theo đúng thứ tự trên tờ gốc. Bỏ những dòng số
+    /// lượng âm — đó là hàng khách đã trả lại ngay trong hoá đơn, hoàn nữa là hoàn hai lần.
     /// </summary>
     public static List<DongCoTheHoan> DongCoTheHoanCua(IEnumerable<HoaDon> hoaDons, HoaDon goc)
     {
-        // Duyệt danh sách hoá đơn đúng một lần: màn hình hoàn hàng gọi hàm này mỗi lần nạp
-        // lại bảng, mà khách mối có thể có vài chục hoá đơn với hàng trăm dòng.
+        // Duyệt danh sách hoá đơn đúng một lần: khách mối có thể có vài chục hoá đơn với hàng
+        // trăm dòng, mà mỗi lần nhập một tờ hoàn từ file là gọi lại hàm này.
         var daHoan = HoanCuaHoaDon(hoaDons, goc.Id)
             .SelectMany(h => h.ChiTiet)
             .Where(c => c.DongGocId is not null)
@@ -85,8 +85,8 @@ public static class HoanHang
 
     /// <summary>
     /// Ghép các dòng hoàn đọc từ file Excel vào đúng dòng của hoá đơn gốc, để tờ hoàn nhập từ
-    /// file cũng biết mỗi món hoàn cho dòng nào — có vậy màn hình hoàn hàng mới cộng đúng cột
-    /// ĐÃ HOÀN, không cho hoàn lần nữa số đã hoàn bằng file.
+    /// file cũng biết mỗi món hoàn cho dòng nào — có vậy lần nhập file sau mới biết món ấy đã
+    /// hoàn bao nhiêu rồi mà nhắc "cần xem lại" khi hoàn quá số khách đã lấy.
     /// <para>
     /// Chỉ ghép khi trùng cả tên hàng và đơn giá: giá lệch là món khác (hoặc hoàn theo giá khác)
     /// nên thà để dòng đứng riêng và báo một câu, hơn là nối bừa vào dòng không phải nó. Một
@@ -157,22 +157,12 @@ public static class HoanHang
     }
 
     /// <summary>
-    /// Lập tờ hoàn hàng cho <paramref name="goc"/>. Các món có số lượng bằng 0 bị bỏ qua, số
-    /// lượng ghi vào hoá đơn là số âm. Hoá đơn hoàn thuộc đúng năm của hoá đơn gốc, kể cả khi
-    /// khách trả hàng sang năm sau: hai tờ phải nằm cùng một năm mới đối chiếu được với nhau.
+    /// Lập tờ hoàn hàng cho <paramref name="goc"/> theo từng dòng của chính hoá đơn đó. Các
+    /// món có số lượng bằng 0 bị bỏ qua, số lượng ghi vào hoá đơn là số âm.
     /// </summary>
     public static HoaDon Tao(HoaDon goc, IEnumerable<MucHoan> muc, string maHoaDon, DateTime ngay, string lyDo = "")
     {
-        var hoanHang = new HoaDon
-        {
-            KhachHangId = goc.KhachHangId,
-            Loai = LoaiHoaDon.HoanHang,
-            HoaDonGocId = goc.Id,
-            MaHoaDon = maHoaDon,
-            Nam = goc.Nam,
-            NgayMo = ngay.Date,
-            GhiChu = lyDo.Trim(),
-        };
+        var hoanHang = ToTrong(goc, maHoaDon, ngay, lyDo);
 
         foreach (var mot in muc.Where(m => m.SoLuong > 0m))
         {
@@ -193,6 +183,58 @@ public static class HoanHang
 
         return hoanHang;
     }
+
+    /// <summary>
+    /// Lập tờ hoàn hàng cho <paramref name="goc"/> từ những món gõ tay: mỗi dòng là tên hàng,
+    /// đơn vị, đơn giá và số lượng khách mang trả về (gõ số dương, vào sổ thành số âm). Dòng
+    /// trống tên hàng hoặc số lượng không quá 0 bị bỏ qua.
+    /// <para>
+    /// Khác <see cref="Tao"/> ở chỗ món hoàn không phải là một dòng của hoá đơn gốc: tờ hoàn là
+    /// chứng từ riêng nên hoàn được cả món không nằm trên tờ gốc (đổi hàng, hàng giao thừa từ
+    /// lần trước) và hoàn theo giá đã thoả với khách. Đổi lại, không có dòng gốc để đối chiếu
+    /// nên phần mềm không tự chặn hoàn quá số đã bán — người lập tự soát.
+    /// </para>
+    /// </summary>
+    public static HoaDon TaoTuDongGo(
+        HoaDon goc,
+        IEnumerable<ChiTietHoaDon> dongGo,
+        string maHoaDon,
+        DateTime ngay,
+        string lyDo = "")
+    {
+        var hoanHang = ToTrong(goc, maHoaDon, ngay, lyDo);
+
+        foreach (var mot in dongGo.Where(d => d.SoLuong > 0m && !string.IsNullOrWhiteSpace(d.TenHang)))
+        {
+            hoanHang.ChiTiet.Add(new ChiTietHoaDon
+            {
+                Ngay = mot.Ngay.Date,
+                VatTuId = mot.VatTuId,
+                TenHang = mot.TenHang.Trim(),
+                DonVi = mot.DonVi.Trim(),
+                DonGia = mot.DonGia,
+                SoLuong = -mot.SoLuong,
+                GhiChu = mot.GhiChu.Trim(),
+            });
+        }
+
+        return hoanHang;
+    }
+
+    /// <summary>
+    /// Tờ hoàn chưa có dòng hàng nào. Hoá đơn hoàn thuộc đúng năm của hoá đơn gốc, kể cả khi
+    /// khách trả hàng sang năm sau: hai tờ phải nằm cùng một năm mới đối chiếu được với nhau.
+    /// </summary>
+    private static HoaDon ToTrong(HoaDon goc, string maHoaDon, DateTime ngay, string lyDo) => new()
+    {
+        KhachHangId = goc.KhachHangId,
+        Loai = LoaiHoaDon.HoanHang,
+        HoaDonGocId = goc.Id,
+        MaHoaDon = maHoaDon,
+        Nam = goc.Nam,
+        NgayMo = ngay.Date,
+        GhiChu = lyDo.Trim(),
+    };
 
     /// <summary>Cùng một món để ghép: trùng tên hàng (không xét dấu, hoa thường) và trùng đơn giá.</summary>
     private static bool CungMotMon(ChiTietHoaDon dongGoc, ChiTietHoaDon dongDoc) =>

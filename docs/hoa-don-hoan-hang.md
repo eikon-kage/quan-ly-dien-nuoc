@@ -15,19 +15,26 @@ hoàn hàng thì không sửa vào tờ cũ một chữ nào.
 
 ## Lập tờ hoàn
 
-Mở đơn hàng của khách, chọn hoá đơn bán ở ô trên, rồi nút ⋯ → *Hoàn hàng cho hoá đơn này*:
+Mở đơn hàng của khách, chọn hoá đơn bán ở ô trên, rồi nút ⋯ → *Hoàn hàng cho hoá đơn này*.
+Tờ hoàn là **một hoá đơn mới, nhập riêng**: bảng bày ra trống, gõ tay từng món khách mang
+trả về chứ không phải chọn trong hàng của hoá đơn gốc.
 
-- Bảng bày ra **từng dòng hàng của hoá đơn gốc**, kèm đã lấy bao nhiêu, đã hoàn bao nhiêu ở
-  những lần trước và **còn hoàn được** bao nhiêu.
-- Gõ số vào cột **SỐ HOÀN** (ô tô vàng) ở những dòng khách mang về. Khách trả cả lô thì bấm
-  **ĐIỀN HOÀN HẾT** rồi sửa lại vài dòng.
-- Gõ quá số còn hoàn được thì phần mềm sửa lại đúng số đó và nhắc một câu ở thanh dưới, chứ
-  không bật hộp thoại chặn giữa lúc đang gõ.
-- **NGÀY HOÀN** và **LÝ DO HOÀN** (hàng lỗi, khách lấy thừa, sai chủng loại…) đều in lên tờ giấy.
+- Mỗi dòng gõ **tên hàng, đơn vị, đơn giá, số hoàn** (và ghi chú nếu cần). Gõ xong tên hàng
+  thì đơn vị và giá **tự điền**: lấy đúng giá đã bán trên hoá đơn gốc trước, món không có
+  trên tờ gốc thì tra sang bảng giá riêng của khách. Ô nào đã gõ tay thì để nguyên.
+- Ô tên hàng có **gợi ý**: món trên hoá đơn gốc và cả danh mục vật tư.
+- Gõ xong một dòng là bảng tự mở thêm dòng trống ở dưới. Còn nút **+ THÊM DÒNG**, nút
+  **Xoá dòng đang chọn** và phím `Delete` cho dòng gõ nhầm.
+- Số hoàn và đơn giá gõ **số dương**; vào sổ phần mềm tự ghi thành số âm. Gõ số âm thì phần
+  mềm lấy lại số dương và nhắc một câu ở thanh dưới.
+- **NGÀY HOÀN** và **LÝ DO HOÀN** (hàng lỗi, khách lấy thừa, sai chủng loại…) đều in lên tờ
+  giấy. Cả tờ ghi theo đúng ngày hoàn, khỏi gõ ngày ở từng dòng.
 - Bấm **TẠO HOÁ ĐƠN HOÀN HÀNG**. Nhầm thì `Ctrl+Z`.
 
-Giá hoàn lấy đúng **giá đã bán** trên dòng gốc, không lấy giá hiện tại của danh mục: giá lên
-xuống theo tháng, hoàn theo giá mới là một trong hai bên bị hụt.
+Nhập riêng như vậy vì hàng khách mang trả về không phải lúc nào cũng đúng một dòng trên tờ
+gốc: khách đổi món lấy từ lần khác, hai bên thoả lại giá lúc hoàn, hay gộp mấy dòng thành
+một. Đổi lại, phần mềm **không tự chặn hoàn quá số đã bán** nữa — người lập tự soát với tờ
+hoá đơn gốc (mã và ngày của nó ghi ngay trên đầu cửa sổ).
 
 ## Số tiền chạy đi đâu
 
@@ -80,9 +87,10 @@ là tiền của nó trừ đi. Vào nút ⋯ → *Nhập hoá đơn / tờ hoà
   sai) thì hỏi lại trước khi nhập: nhập tiếp vẫn được, nợ vẫn trừ đúng, chỉ là tờ hoàn đứng
   riêng nên hoá đơn kia không biết đã hoàn.
 - Nối được vào hoá đơn gốc thì từng dòng còn ghép vào **đúng dòng hàng** của hoá đơn đó (khớp cả
-  tên hàng và đơn giá), nên cột *ĐÃ HOÀN* ở màn hình hoàn hàng cộng đủ cả phần hoàn bằng file,
-  không hoàn hai lần một món. Hoá đơn gốc bán món đó ở hai ngày thì một dòng trên giấy tách ra
-  hai dòng trong sổ, đúng số của từng ngày.
+  tên hàng và đơn giá), nên **lần nhập file sau** biết món ấy đã hoàn bao nhiêu rồi mà nhắc khi
+  hoàn quá số khách đã lấy. Hoá đơn gốc bán món đó ở hai ngày thì một dòng trên giấy tách ra
+  hai dòng trong sổ, đúng số của từng ngày. (Tờ hoàn gõ tay không nối vào dòng gốc: nó ghi
+  đúng những gì đã gõ, nên cũng không góp vào con số này.)
 - Món không có trên hoá đơn gốc, giá lệch, hay hoàn quá số khách đã lấy: **vẫn ghi vào tờ hoàn**
   (sổ phải khớp tờ giấy khách đang giữ) nhưng có câu nhắc "cần xem lại" ở hộp thoại sau khi nhập.
 
@@ -95,9 +103,10 @@ phải nằm cùng một năm mới đối chiếu được với nhau.
 
 ## Không sửa từng dòng trên tờ hoàn
 
-Chọn một tờ `HH…` ở ô hoá đơn thì bảng chi tiết chỉ để xem: số hoàn phải khớp với hoá đơn
-gốc, sửa tay trên lưới là hoàn quá số khách đã lấy mà không ai chặn. Hoàn thiếu thì lập thêm
-một tờ hoàn nữa; hoàn sai thì xoá cả tờ (nút ⋯ → *Xoá hoá đơn này*) rồi lập lại.
+Chọn một tờ `HH…` ở ô hoá đơn thì bảng chi tiết chỉ để xem. Tờ hoàn là chứng từ đã đưa
+khách, lập trọn một lượt ở màn hình Hoàn hàng — sửa lắt nhắt trên lưới là tờ trong sổ lệch
+tờ giấy khách đang giữ. Hoàn thiếu thì lập thêm một tờ hoàn nữa; hoàn sai thì xoá cả tờ
+(nút ⋯ → *Xoá hoá đơn này*) rồi lập lại.
 
 Thêm dòng vào một tờ `HH…` sẵn có thì chỉ có một đường: **nhập từ file Excel** — file là chứng
 từ nói rõ hoàn những gì, khác hẳn gõ tay từng ô trên lưới mà không có gì đối chiếu.
@@ -107,7 +116,7 @@ từ nói rõ hoàn những gì, khác hẳn gõ tay từng ô trên lưới mà
 | Việc | File |
 |---|---|
 | Loại hoá đơn, tờ gốc, dấu khi in | [Models/LoaiHoaDon.cs](../src/QuanLyDienNuoc.Core/Models/LoaiHoaDon.cs), [Models/HoaDon.cs](../src/QuanLyDienNuoc.Core/Models/HoaDon.cs) |
-| Còn hoàn được bao nhiêu, lập tờ hoàn | [BaoCao/HoanHang.cs](../src/QuanLyDienNuoc.Core/BaoCao/HoanHang.cs) |
+| Lập tờ hoàn, ghép tờ hoàn từ file vào hoá đơn gốc | [BaoCao/HoanHang.cs](../src/QuanLyDienNuoc.Core/BaoCao/HoanHang.cs) |
 | Màn hình hoàn hàng | [Forms/HoanHangForm.cs](../src/QuanLyDienNuoc/Forms/HoanHangForm.cs) |
 | Bản in | [Ui/InHoaDon.cs](../src/QuanLyDienNuoc/Ui/InHoaDon.cs) |
 | Xuất / đọc Excel | [Excel/XuatHoaDon.cs](../src/QuanLyDienNuoc.Core/Excel/XuatHoaDon.cs), [Excel/DocHoaDon.cs](../src/QuanLyDienNuoc.Core/Excel/DocHoaDon.cs) |

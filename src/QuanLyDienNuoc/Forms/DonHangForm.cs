@@ -2283,8 +2283,9 @@ public sealed class DonHangForm : Form
     // ---------------- Thao tác trên hoá đơn ----------------
 
     /// <summary>
-    /// Câu nhắc khi người dùng định sửa dòng hàng ngay trên tờ hoàn hàng. Số hoàn phải khớp
-    /// với hoá đơn gốc nên tờ hoàn chỉ lập một lần, sửa thì xoá đi lập lại.
+    /// Câu nhắc khi người dùng định sửa dòng hàng ngay trên tờ hoàn hàng. Tờ hoàn là chứng từ
+    /// đã đưa khách, lập trọn một lượt ở màn hình Hoàn hàng — sửa thì xoá đi lập lại, để tờ
+    /// trong sổ luôn khớp tờ giấy khách đang giữ.
     /// </summary>
     private const string ChanSuaToHoan =
         "Đây là hoá đơn hoàn hàng nên không sửa dòng hàng ở đây được.\n\n"

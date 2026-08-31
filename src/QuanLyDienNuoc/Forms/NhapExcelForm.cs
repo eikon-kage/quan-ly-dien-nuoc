@@ -1015,8 +1015,8 @@ public sealed class NhapExcelForm : Form
         }
 
         // Giấy ghi mã mà tra trong sổ không ra (hoá đơn của khách khác, hay gõ sai mã): tờ hoàn
-        // vẫn nhập được và nợ vẫn đúng, nhưng cột ĐÃ HOÀN của hoá đơn kia vẫn để 0 nên hoàn
-        // được lần thứ hai — nói trước một câu để người dùng còn kịp xem lại mã.
+        // vẫn nhập được và nợ vẫn đúng, nhưng hoá đơn kia không biết là đã hoàn nên lần nhập
+        // file sau không nhắc được gì — nói trước một câu để người dùng còn kịp xem lại mã.
         if (laToHoan && !string.IsNullOrWhiteSpace(_maGoc) && goc is null && !HopThoai.Hoi(
             this,
             $"Giấy ghi hoàn cho hoá đơn {_maGoc} mà trong sổ của khách này không có mã đó "
@@ -1027,8 +1027,8 @@ public sealed class NhapExcelForm : Form
             return;
         }
 
-        // Biết hoàn cho hoá đơn nào thì ghép từng dòng vào đúng dòng của hoá đơn đó, để màn
-        // hình hoàn hàng cộng đúng cột ĐÃ HOÀN và không cho hoàn lần nữa số đã hoàn bằng file.
+        // Biết hoàn cho hoá đơn nào thì ghép từng dòng vào đúng dòng của hoá đơn đó, để lần nhập
+        // file sau còn nhắc được khi một món bị hoàn quá số khách đã lấy.
         var dongMoi = dongDoc;
         var canhBaoGhep = new List<string>();
         if (goc is not null)

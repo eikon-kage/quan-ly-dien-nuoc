@@ -135,6 +135,90 @@ public class HoanHangTests
         Assert.Equal("Hàng lỗi", toHoan.GhiChu);
     }
 
+    // ---------- Lập tờ hoàn bằng cách gõ tay từng món ----------
+
+    [Fact]
+    public void TaoTuDongGo_GhiDungNhungGiDaGoVaTruVaoNoCuaKhach()
+    {
+        var (duLieu, _, goc) = TaoSo();
+
+        var toHoan = HoanHang.TaoTuDongGo(
+            goc,
+            new[]
+            {
+                new ChiTietHoaDon
+                {
+                    Ngay = new DateTime(2026, 4, 2),
+                    TenHang = "  Ống 27  ",
+                    DonVi = " Cây ",
+                    DonGia = 45_000,
+                    SoLuong = 2,
+                    GhiChu = " nứt ",
+                },
+            },
+            "HH2026-01",
+            new DateTime(2026, 4, 2),
+            "Hàng lỗi");
+
+        duLieu.HoaDons.Add(toHoan);
+
+        var dong = Assert.Single(toHoan.ChiTiet);
+        Assert.Equal("Ống 27", dong.TenHang);
+        Assert.Equal("Cây", dong.DonVi);
+        Assert.Equal("nứt", dong.GhiChu);
+
+        // Gõ số dương, vào sổ thành số âm nên tự trừ vào nợ của khách.
+        Assert.Equal(-2m, dong.SoLuong);
+        Assert.Equal(90_000m, toHoan.TienHoan);
+        Assert.Equal(380_000m, duLieu.HoaDons.Sum(h => h.ConLai));
+
+        // Hoá đơn gốc không bị sửa một chữ.
+        Assert.Equal(470_000m, goc.TongTien);
+        Assert.Equal(goc.Id, toHoan.HoaDonGocId);
+        Assert.Equal(2026, toHoan.Nam);
+    }
+
+    [Fact]
+    public void TaoTuDongGo_HoanDuocCaMonKhongCoTrenHoaDonGoc()
+    {
+        var (_, _, goc) = TaoSo();
+
+        // Khách đổi trả món lấy từ lần khác, hoặc hai bên thoả lại giá lúc hoàn: tờ hoàn là
+        // chứng từ riêng nên ghi đúng những gì đã bàn, không bị bó theo dòng của tờ gốc.
+        var toHoan = HoanHang.TaoTuDongGo(
+            goc,
+            new[] { new ChiTietHoaDon { TenHang = "Van khoá 21", DonVi = "Cái", DonGia = 30_000, SoLuong = 3 } },
+            "HH2026-01",
+            new DateTime(2026, 4, 2));
+
+        var dong = Assert.Single(toHoan.ChiTiet);
+        Assert.Equal("Van khoá 21", dong.TenHang);
+        Assert.Equal(90_000m, toHoan.TienHoan);
+
+        // Không nối vào dòng nào của tờ gốc: món này đâu có trên tờ ấy.
+        Assert.Null(dong.DongGocId);
+    }
+
+    [Fact]
+    public void TaoTuDongGo_BoQuaDongTrongVaDongChuaGoSo()
+    {
+        var (_, _, goc) = TaoSo();
+
+        var toHoan = HoanHang.TaoTuDongGo(
+            goc,
+            new[]
+            {
+                new ChiTietHoaDon { TenHang = "   ", DonGia = 45_000, SoLuong = 2 },
+                new ChiTietHoaDon { TenHang = "Ống 27", DonGia = 45_000, SoLuong = 0 },
+                new ChiTietHoaDon { TenHang = "Băng tan", DonVi = "Cuộn", DonGia = 5_000, SoLuong = 4 },
+            },
+            "HH2026-01",
+            new DateTime(2026, 4, 2));
+
+        Assert.Equal("Băng tan", Assert.Single(toHoan.ChiTiet).TenHang);
+        Assert.Equal(20_000m, toHoan.TienHoan);
+    }
+
     [Fact]
     public void Tao_HoaDonGocDaChotVanHoanDuoc()
     {
@@ -563,7 +647,7 @@ public class HoanHangTests
         Assert.Equal(goc.ChiTiet[0].Id, dong.DongGocId);
         Assert.Equal(-3m, dong.SoLuong);
 
-        // Ghi vào sổ rồi thì màn hình hoàn hàng phải thấy 3 cái đã hoàn, chỉ còn hoàn được 7.
+        // Ghi vào sổ rồi thì phải thấy 3 cái đã hoàn, chỉ còn hoàn được 7.
         var toHoan = new HoaDon
         {
             KhachHangId = goc.KhachHangId,

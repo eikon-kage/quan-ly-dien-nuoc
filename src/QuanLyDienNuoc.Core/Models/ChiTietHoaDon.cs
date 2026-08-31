@@ -13,8 +13,9 @@ public sealed class ChiTietHoaDon
     public Guid? VatTuId { get; set; }
 
     /// <summary>
-    /// Dòng của hoá đơn bán mà dòng này hoàn lại. Chỉ các dòng trong hoá đơn hoàn hàng mới
-    /// có, để biết mỗi món đã hoàn bao nhiêu rồi mà không cho hoàn quá số khách đã lấy.
+    /// Dòng của hoá đơn bán mà dòng này hoàn lại. Chỉ tờ hoàn nhập từ file Excel mới nối được
+    /// vào dòng gốc (tờ hoàn gõ tay nhập riêng từng món nên để trống), dùng để biết món ấy đã
+    /// hoàn bao nhiêu rồi mà nhắc khi lần nhập sau hoàn quá số khách đã lấy.
     /// </summary>
     public Guid? DongGocId { get; set; }
 
