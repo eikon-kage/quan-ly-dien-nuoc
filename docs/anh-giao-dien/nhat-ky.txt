@@ -1,0 +1,28 @@
+﻿Dữ liệu mẫu: 5 khách, 5 hoá đơn, file D:\a\quan-ly-dien-nuoc\quan-ly-dien-nuoc/anh-giao-dien\du-lieu-mau\dulieu.json
+Đã xuất Excel mẫu: D:\a\quan-ly-dien-nuoc\quan-ly-dien-nuoc/anh-giao-dien\hoa-don-mau-xuat-ra.xls
+OK  01-trang-chu.png  (1600x950)
+OK  02-don-hang-cua-khach.png  (1600x950)
+OK  03-them-khach-hang.png  (1600x950)
+OK  04-sua-khach-hang.png  (1600x950)
+OK  05-bang-gia-rieng.png  (1600x950)
+OK  06-danh-muc-vat-tu.png  (1600x950)
+OK  07-thu-tien-cua-khach.png  (1600x950)
+OK  08-tao-hoa-don.png  (1600x950)
+OK  09-nhap-tu-excel.png  (1600x950)
+Đã tạo tờ hoá đơn của khách mới: D:\a\quan-ly-dien-nuoc\quan-ly-dien-nuoc/anh-giao-dien\to-hoa-don-khach-moi.xls
+OK  20-nhap-khach-tu-file.png  (1600x950)
+OK  11-so-cong-no.png  (1600x950)
+OK  18-hoan-hang.png  (1600x950)
+OK  13-nhap-nhieu-dong.png  (1600x950)
+OK  14-sao-luu.png  (1600x950)
+OK  15-nhat-ky.png  (1600x950)
+OK  16-tin-nhac-no.png  (1600x950)
+OK  17-cham-cong.png  (1600x950)
+Đã xuất Excel toàn bộ dữ liệu: D:\a\quan-ly-dien-nuoc\quan-ly-dien-nuoc/anh-giao-dien\toan-bo-du-lieu.xlsx
+OK  21-lich-chon-ngay.png  (401x487)
+OK  22-tong-hop-ngay.png  (1600x950)
+OK  22b-anh-bang-ke-gui-zalo.png  (1000x673, 3 dòng hàng)
+OK  22c-anh-bang-ke-hang-tra-lai.png  (1000x601, 2 dòng hàng)
+OK  10-ban-in-trang-1.png  (A4 150dpi)
+OK  19-ban-in-hoan-hang-trang-1.png  (A4 150dpi)
+Đã xuất Excel tờ hoàn hàng: D:\a\quan-ly-dien-nuoc\quan-ly-dien-nuoc/anh-giao-dien\hoa-don-hoan-hang-xuat-ra.xls
