@@ -372,16 +372,18 @@ public sealed class MainForm : Form
         return _luoi;
     }
 
+    /// <summary>
+    /// Chân bảng khách: **mọi việc làm được với khách đang chọn đều là một nút bày ra ngoài**,
+    /// không giấu sau nút ba chấm nữa — nhìn vào là thấy hết, khỏi phải bấm thử mới biết trong
+    /// đó có gì.
+    /// <para>
+    /// Đổi lại hàng nút dài ra, nên cả dải phải <b>tự xuống hàng và tự cao theo chữ</b>: máy đặt
+    /// cỡ hiển thị 125% hoặc cửa sổ kéo hẹp thì nút cuối tụt xuống hàng dưới, chứ không lấn sang
+    /// đè lên dòng tổng kết với thanh phân trang bên phải.
+    /// </para>
+    /// </summary>
     private Control TaoChanThe()
     {
-        var nen = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = Math.Max(62, Theme.FontDam.Height + 44),
-            BackColor = Theme.Trang,
-            Padding = new Padding(0, 10, 0, 0),
-        };
-
         var btnMo = Theme.Nut("Mở đơn hàng", Theme.Chinh, 190, 42, noTheoChu: true);
         btnMo.Click += (_, _) => MoDonHang();
 
@@ -389,43 +391,77 @@ public sealed class MainForm : Form
         btnThuTien.ForeColor = Theme.Xanh;
         btnThuTien.Click += (_, _) => ThuTienCuaKhach();
 
-        // Sửa và xoá khách: cả tháng mới đụng tới, để ngoài thành hàng bốn nút chữ san sát
-        // nhau, chủ cửa hàng phải đọc hết mới biết bấm cái nào. Gom vào nút ba chấm.
-        var viecKhach = Theme.NutBaCham("Việc khác với khách đang chọn", 42)
-            .Viec("Sửa khách hàng", SuaKhach)
-            .Ngan()
-            .Viec("Xoá khách hàng", XoaKhach, Theme.Do);
+        var btnLichSu = Theme.NutPhu("Lịch sử thu tiền", 200, 42, noTheoChu: true);
+        btnLichSu.Click += (_, _) => ThuTienCuaKhach(moLichSu: true);
+
+        var btnSua = Theme.NutPhu("Sửa khách hàng", 190, 42, noTheoChu: true);
+        btnSua.Click += (_, _) => SuaKhach();
+
+        var btnXoa = Theme.NutPhu("Xoá khách hàng", 190, 42, noTheoChu: true);
+        btnXoa.ForeColor = Theme.Do;
+        btnXoa.Click += (_, _) => XoaKhach();
 
         var trai = new FlowLayoutPanel
         {
-            Dock = DockStyle.Left,
+            Dock = DockStyle.Fill,
             AutoSize = true,
-            WrapContents = false,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+
+            // Cho xuống hàng: đây là chỗ duy nhất giữ được hàng nút dài này khỏi bị cắt cụt.
+            WrapContents = true,
             BackColor = Theme.Trang,
+            Margin = new Padding(0),
         };
         trai.Controls.Add(btnMo);
         trai.Controls.Add(btnThuTien);
-        trai.Controls.Add(viecKhach.Nut);
+        trai.Controls.Add(btnLichSu);
+        trai.Controls.Add(btnSua);
+        trai.Controls.Add(btnXoa);
 
-        _phanTrang.Dock = DockStyle.Right;
         _phanTrang.BackColor = Theme.Trang;
-        _phanTrang.Padding = new Padding(0, 2, 16, 0);
+        _phanTrang.Margin = new Padding(0, 2, 16, 0);
         _phanTrang.DoiTrang += (_, _) => HienTrang();
 
         // Tự co theo chữ chứ không ô rộng cứng 420px: câu tổng kết dài hơn thế ở cỡ chữ to là
         // cụt mất đuôi.
-        _lblTongKet.Dock = DockStyle.Right;
         _lblTongKet.TextAlign = ContentAlignment.MiddleRight;
         _lblTongKet.Font = Theme.FontThuong;
         _lblTongKet.ForeColor = Theme.Xam;
         _lblTongKet.AutoSize = true;
         _lblTongKet.BackColor = Theme.Trang;
+        _lblTongKet.Margin = new Padding(0, 10, 4, 0);
 
-        // Thêm sau cùng là được đặt trước, tức là nằm ngoài cùng bên phải: câu tổng kết ở mép
-        // phải, thanh phân trang lui vào trong một bậc.
-        nen.Controls.Add(trai);
-        nen.Controls.Add(_phanTrang);
-        nen.Controls.Add(_lblTongKet);
+        // Thanh phân trang rồi tới câu tổng kết: tổng kết nằm ngoài cùng bên phải như cũ.
+        var phai = new FlowLayoutPanel
+        {
+            Anchor = AnchorStyles.Right,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            BackColor = Theme.Trang,
+            Margin = new Padding(0),
+        };
+        phai.Controls.Add(_phanTrang);
+        phai.Controls.Add(_lblTongKet);
+
+        var nen = new TableLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            ColumnCount = 2,
+            RowCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.Trang,
+            Padding = new Padding(0, 10, 0, 4),
+        };
+
+        // Hàng nút ăn phần rộng còn lại (nên mới biết lúc nào phải xuống hàng), nhóm bên phải
+        // giữ đúng bề ngang của chữ.
+        nen.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        nen.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        nen.Controls.Add(trai, 0, 0);
+        nen.Controls.Add(phai, 1, 0);
         return nen;
     }
 
@@ -729,15 +765,21 @@ public sealed class MainForm : Form
         form.ShowDialog(this);
     }
 
-    private void ThuTienCuaKhach()
+    /// <param name="moLichSu">
+    /// Mở sẵn danh sách các lần đã thu — nút "Lịch sử thu tiền" đi lối này, cùng một cửa sổ với
+    /// nút "Thu tiền" chứ không dựng thêm màn hình riêng.
+    /// </param>
+    private void ThuTienCuaKhach(bool moLichSu = false)
     {
         if (KhachDangChon is not { } khach)
         {
-            HopThoai.CanhBao(this, "Hãy chọn khách hàng vừa đưa tiền.");
+            HopThoai.CanhBao(this, moLichSu
+                ? "Hãy chọn khách hàng muốn xem lịch sử thu tiền."
+                : "Hãy chọn khách hàng vừa đưa tiền.");
             return;
         }
 
-        using var form = new ThuTienForm(khach.Id);
+        using var form = new ThuTienForm(khach.Id, moLichSu);
         form.ShowDialog(this);
         NapDanhSach();
         _lblTrangThai.Text = $"Đã cập nhật tiền của {khach.Ten}.";

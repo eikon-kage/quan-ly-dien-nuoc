@@ -51,7 +51,12 @@ public sealed class ThuTienForm : Form
     /// <summary>Cả khối lịch sử: bảng và nút xoá. Ẩn hẳn cho tới khi người dùng mở ra.</summary>
     private Control _khoiLichSu = null!;
 
-    public ThuTienForm(Guid khachId)
+    /// <param name="khachId">Khách đang thu tiền.</param>
+    /// <param name="moLichSu">
+    /// Mở sẵn danh sách các lần đã thu — dùng khi người dùng chọn "Xem lịch sử thu tiền" ở màn
+    /// khác: họ vào đây để **tra**, không phải để ghi, nên thứ cần xem phải bày ra ngay.
+    /// </param>
+    public ThuTienForm(Guid khachId, bool moLichSu = false)
     {
         _khachId = khachId;
 
@@ -65,6 +70,24 @@ public sealed class ThuTienForm : Form
 
         TaoGiaoDien();
         Nap();
+
+        if (moLichSu)
+        {
+            HienLichSu(true);
+
+            // Vào đây để tra thì con trỏ đặt ở bảng lịch sử, không phải ô tiền: bấm phím mũi tên
+            // là đi trong danh sách luôn. Khách chưa trả lần nào thì bảng rỗng, để yên con trỏ ở
+            // ô tiền như thường.
+            if (_nguonLichSu.Count > 0)
+            {
+                ActiveControl = _luoiLichSu;
+            }
+
+            _lblTrangThai.Text = _nguonLichSu.Count == 0
+                ? "Khách chưa trả lần nào. Gõ số tiền ở trên rồi bấm GHI là ghi lần thu đầu tiên."
+                : $"{_nguonLichSu.Count} lần đã thu, gần nhất ở trên cùng. "
+                    + "Ghi nhầm thì chọn dòng rồi bấm \"Xoá lần thu đã chọn\".";
+        }
     }
 
     private KhachHang? Khach => _kho.TimKhach(_khachId);
@@ -280,11 +303,14 @@ public sealed class ThuTienForm : Form
     private void CapNhatNutLichSu()
     {
         var soLan = _nguonLichSu.Count;
-        _btnLichSu.Enabled = soLan > 0;
-        _btnLichSu.Text = soLan == 0
-            ? "Khách chưa có lần thu tiền nào"
-            : _khoiLichSu.Visible
-                ? "Đóng danh sách các lần đã thu"
+
+        // Còn bấm được khi danh sách đang mở dù rỗng — mở bằng "Xem lịch sử thu tiền" từ màn
+        // khác thì vẫn phải đóng lại được, khoá nút là kẹt luôn cái khối rỗng giữa màn hình.
+        _btnLichSu.Enabled = soLan > 0 || _khoiLichSu.Visible;
+        _btnLichSu.Text = _khoiLichSu.Visible
+            ? "Đóng danh sách các lần đã thu"
+            : soLan == 0
+                ? "Khách chưa có lần thu tiền nào"
                 : $"Xem {soLan} lần đã thu trước đây";
     }
 

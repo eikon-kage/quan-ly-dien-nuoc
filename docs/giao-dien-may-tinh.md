@@ -82,13 +82,21 @@ thực tế chỉ hai nút đầu là dùng hằng ngày. Nay mỗi khu giữ ng
 
 | Ở đâu | Để ngoài | Trong nút ⋯ |
 | --- | --- | --- |
-| Trang chủ, chân bảng khách | Mở đơn hàng · Thu tiền | sửa khách · xoá khách |
-| Đơn hàng, dải tiêu đề | năm · hoá đơn · + Hoá đơn mới · In / xem trước | thu tiền · trả cho hoá đơn · chốt (mở lại) · sửa mã · xoá hoá đơn · bảng giá riêng · nhắc nợ · hoàn tác · làm lại · Excel vào/ra |
+| Trang chủ, chân bảng khách | Mở đơn hàng · Thu tiền · Lịch sử thu tiền · Sửa khách hàng · Xoá khách hàng | *(không còn nút ⋯)* |
+| Đơn hàng, dải tiêu đề | năm · hoá đơn · + Hoá đơn mới · In / xem trước | thu tiền · xem lịch sử thu tiền · hoàn hàng · chốt (mở lại) · sửa mã / ngày · xoá hoá đơn · bảng giá riêng · hoàn tác · Excel vào/ra |
 | Đơn hàng, hàng nhập hàng | + Thêm dòng · − Trả lại | *(không còn)* |
 | Đơn hàng, thanh tổng tiền | Nhập nhiều dòng | chèn dòng · chọn tất cả dòng · chuyển lên/xuống · xoá dòng đã chọn |
-| Sổ công nợ | Mở đơn hàng · Thu tiền | soạn tin nhắc nợ · xuất Excel |
+| Sổ công nợ | Mở đơn hàng · Thu tiền | xem lịch sử thu tiền · soạn tin nhắc nợ · xuất Excel |
 | Sao lưu | Sao lưu ngay | xuất Excel · mở thư mục · khôi phục |
 | Xem trước hoá đơn | In hoá đơn · trang trước/sau | phóng to · thu nhỏ · vừa màn hình |
+
+**Chân bảng khách ở trang chủ là ngoại lệ: bày hết nút ra, bỏ hẳn nút ⋯.** Chỗ ấy chỉ có ba việc
+giấu bên trong (lịch sử thu tiền, sửa khách, xoá khách) mà lại là màn hình mở suốt ngày — giấu đi
+thì chủ cửa hàng phải bấm thử mới biết trong đó có gì. Đổi lại hàng nút dài ra, nên dải ấy
+**tự xuống hàng và tự cao theo chữ** (`FlowLayoutPanel.WrapContents`, dải nền `AutoSize`): cửa sổ
+kéo hẹp hay máy đặt cỡ hiển thị 125% thì nút cuối tụt xuống hàng dưới, chứ không lấn sang đè lên
+dòng tổng kết và thanh phân trang bên phải. Mấy màn còn lại vẫn giữ nút ⋯ vì menu dài hơn hẳn —
+riêng màn đơn hàng là mười việc, bày hết ra thì không màn hình nào chứa nổi.
 
 Ba chấm **vẽ bằng ba hình tròn**, không dùng ký tự "⋯": phông Segoe UI thiếu nhiều ký tự ký
 hiệu, thiếu là Windows in ra ô vuông rỗng. Trỏ chuột vào nút thì hiện chú thích ("Việc khác

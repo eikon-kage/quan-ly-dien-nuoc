@@ -184,6 +184,8 @@ public sealed class CongNoForm : Form
         // Soạn tin và xuất Excel không phải việc hằng ngày: gom vào nút ba chấm cho hàng nút
         // dưới bảng còn lại đúng hai việc hay làm là mở đơn và thu tiền.
         var viecKhac = Theme.NutBaCham("Việc khác với khách đang chọn", 52)
+            .Viec("Xem lịch sử thu tiền", () => ThuTienCuaKhach(moLichSu: true))
+            .Ngan()
             .Viec("Soạn tin nhắc nợ", SoanTinNhac)
             .Ngan()
             .Viec("Xuất sổ công nợ ra Excel", XuatExcel);
@@ -368,15 +370,18 @@ public sealed class CongNoForm : Form
         Nap();
     }
 
-    private void ThuTienCuaKhach()
+    /// <param name="moLichSu">Mở sẵn danh sách các lần đã thu, cho mục "Xem lịch sử thu tiền".</param>
+    private void ThuTienCuaKhach(bool moLichSu = false)
     {
         if (DangChon is not { } dong)
         {
-            HopThoai.CanhBao(this, "Hãy chọn khách hàng vừa đưa tiền.");
+            HopThoai.CanhBao(this, moLichSu
+                ? "Hãy chọn khách hàng muốn xem lịch sử thu tiền."
+                : "Hãy chọn khách hàng vừa đưa tiền.");
             return;
         }
 
-        using var form = new ThuTienForm(dong.Khach.Id);
+        using var form = new ThuTienForm(dong.Khach.Id, moLichSu);
         form.ShowDialog(this);
         Nap();
         _lblTrangThai.Text = $"Đã cập nhật tiền của {dong.Khach.Ten}.";

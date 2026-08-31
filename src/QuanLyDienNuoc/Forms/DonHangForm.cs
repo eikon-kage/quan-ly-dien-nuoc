@@ -246,7 +246,10 @@ public sealed class DonHangForm : Form
             // Một mục duy nhất cho việc khách trả tiền: "Trả cho hoá đơn này" trước đây mở một
             // cửa sổ riêng với đúng ba ô ngày / số tiền / ghi chú y hệt màn Thu tiền, nay là ô
             // TRẢ CHO ngay trong màn ấy.
-            .Viec("Thu tiền của khách", MoThuTien, Theme.Xanh)
+            .Viec("Thu tiền của khách", () => MoThuTien(), Theme.Xanh)
+            // Xem lại đã thu những lần nào: cùng một cửa sổ, chỉ khác là mở sẵn danh sách ấy ra.
+            // Không có mục này thì muốn tra lại một lần thu phải vào màn ghi tiền rồi tự mò nút.
+            .Viec("Xem lịch sử thu tiền", () => MoThuTien(moLichSu: true))
             .Ngan()
             .Viec(
                 "Hoàn hàng cho hoá đơn này",
@@ -2620,15 +2623,17 @@ public sealed class DonHangForm : Form
         form.ShowDialog(this);
     }
 
-    private void MoThuTien()
+    private void MoThuTien(bool moLichSu = false)
     {
         if (Khach is null)
         {
             return;
         }
 
-        using var form = new ThuTienForm(_khachId);
+        using var form = new ThuTienForm(_khachId, moLichSu);
         form.ShowDialog(this);
+
+        // Nạp lại kể cả khi chỉ vào xem: xem xong có thể đã xoá một lần thu nhầm.
         NapHoaDon(_hoaDonId);
         _lblTrangThai.Text = "Đã cập nhật tiền khách trả.";
     }

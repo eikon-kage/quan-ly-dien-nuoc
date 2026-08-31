@@ -85,6 +85,9 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   thì gõ một số tiền, phần mềm chia sẵn từ hoá đơn cũ nhất và cho xem trước hoá đơn nào trừ
   bao nhiêu, còn lại bao nhiêu. Ghi một lần thành một phiếu thu, muốn bỏ thì xoá cả lần thu
   chứ không phải đi từng hoá đơn. Đưa thừa thì hỏi có ghi phần thừa thành trả trước không.
+- **Xem lại lịch sử thu tiền của khách**: mục *Xem lịch sử thu tiền* trong nút `⋯` (ở trang chủ,
+  màn đơn hàng và sổ công nợ) mở đúng cửa sổ thu tiền nhưng bày sẵn danh sách các lần đã thu —
+  ngày, số tiền, chia cho hoá đơn nào, ghi chú. Ghi nhầm thì chọn dòng rồi xoá cả lần thu ấy.
 - **Chốt hoá đơn**: hoá đơn đã chốt thì khoá không cho sửa, cần thì mở lại.
 - **Danh mục vật tư**: giá chung của cửa hàng, dùng khi khách chưa có giá riêng. Mỗi mặt
   hàng đặt được **nhóm** (Ống nước, Điện, Đèn…) để lọc danh mục cho gọn; gõ tên nhóm vào
