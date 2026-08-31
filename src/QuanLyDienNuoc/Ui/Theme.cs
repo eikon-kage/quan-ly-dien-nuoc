@@ -59,6 +59,9 @@ public static class Theme
 
     public static readonly Color Vien = Color.FromArgb(224, 226, 231);
 
+    /// <summary>Nền dải trạng thái mảnh ở đáy cửa sổ.</summary>
+    public static readonly Color NenTrangThai = Color.FromArgb(232, 236, 242);
+
     /// <summary>Chữ thường (grey-800).</summary>
     public static readonly Color Chu = Color.FromArgb(56, 62, 73);
 
@@ -403,9 +406,9 @@ public static class Theme
     }
 
     /// <summary>Nút việc phụ: nền trắng, viền mảnh — theo bản thiết kế, cạnh nút chính.</summary>
-    public static Button NutPhu(string chu, int rong = 180, int cao = 46)
+    public static Button NutPhu(string chu, int rong = 180, int cao = 46, bool noTheoChu = false)
     {
-        return new NutBo
+        var nut = new NutBo
         {
             Text = chu,
             Width = rong,
@@ -417,6 +420,13 @@ public static class Theme
             Cursor = Cursors.Hand,
             Margin = new Padding(0, 0, 10, 0),
         };
+
+        if (noTheoChu)
+        {
+            nut.NoTheoChu();
+        }
+
+        return nut;
     }
 
     // ---------- Nút ba chấm gom việc ----------
@@ -624,6 +634,115 @@ public static class Theme
     }
 
     /// <summary>
+    /// Nhãn cho **câu dài**: tự xuống dòng theo bề ngang đang có và tự cao theo số dòng đã
+    /// xuống. Nhãn một dòng cỡ đặt cứng thì máy đặt cỡ hiển thị to là cắt mất đuôi câu, mà
+    /// mấy câu dài trong app đúng là chỗ phải đọc hết — dải cảnh báo, dòng tổng của bảng xem
+    /// trước. Đặt vào dòng <c>AutoSize</c> của <c>TableLayoutPanel</c> hoặc panel tự cao.
+    /// </summary>
+    public static Label NhanDaiDong(string chu = "", Font? font = null, Color? mau = null)
+    {
+        return new NhanDai
+        {
+            Text = chu,
+            Font = font ?? FontThuong,
+            ForeColor = mau ?? Chu,
+            Dock = DockStyle.Top,
+            Margin = new Padding(0),
+        };
+    }
+
+    /// <summary>
+    /// Nhãn nhiều dòng: <c>AutoSize</c> một mình thì Label kéo dài mãi sang phải chứ không
+    /// xuống dòng — phải chặn bề ngang nó mới xuống. Bề ngang thật chỉ biết sau khi khung xếp
+    /// xong, nên đo lại mỗi lần khung đổi cỡ thay vì chốt một con số lúc dựng.
+    /// </summary>
+    private sealed class NhanDai : Label
+    {
+        private Control? _dangNghe;
+
+        public NhanDai()
+        {
+            AutoSize = true;
+            UseMnemonic = false;
+        }
+
+        protected override void OnParentChanged(EventArgs e)
+        {
+            base.OnParentChanged(e);
+
+            if (_dangNghe is not null)
+            {
+                _dangNghe.SizeChanged -= ChaDoiCo;
+            }
+
+            _dangNghe = Parent;
+            if (_dangNghe is not null)
+            {
+                _dangNghe.SizeChanged += ChaDoiCo;
+            }
+
+            DoLaiBeNgang();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && _dangNghe is not null)
+            {
+                _dangNghe.SizeChanged -= ChaDoiCo;
+                _dangNghe = null;
+            }
+
+            base.Dispose(disposing);
+        }
+
+        private void ChaDoiCo(object? nguon, EventArgs e) => DoLaiBeNgang();
+
+        private void DoLaiBeNgang()
+        {
+            if (Parent is not { } cha)
+            {
+                return;
+            }
+
+            var rong = cha is TableLayoutPanel bang
+                ? RongOTrongBang(bang)
+                : cha.ClientSize.Width - cha.Padding.Horizontal;
+            rong -= Margin.Horizontal;
+
+            // Chỉ đặt khi đổi thật: gán MaximumSize là xếp lại khung, gán mỗi lần khung xếp
+            // xong thì hai bên gọi nhau vòng tròn.
+            if (rong > 0 && MaximumSize.Width != rong)
+            {
+                MaximumSize = new Size(rong, 0);
+            }
+        }
+
+        /// <summary>
+        /// Bề ngang phần ô mình đang nằm trong bảng xếp. Lấy bề ngang cả bảng là sai khi bảng
+        /// có nhiều cột: nhãn ở cột phải mà đo theo cả bảng thì tưởng còn rộng chán, không
+        /// xuống dòng, rồi tràn đè lên cột bên trái.
+        /// </summary>
+        private int RongOTrongBang(TableLayoutPanel bang)
+        {
+            var o = bang.GetCellPosition(this);
+            var rongCot = bang.GetColumnWidths();
+            if (o.Column < 0 || o.Column >= rongCot.Length)
+            {
+                return bang.ClientSize.Width - bang.Padding.Horizontal;
+            }
+
+            var rong = 0;
+            var soCot = Math.Max(1, bang.GetColumnSpan(this));
+            for (var i = o.Column; i < Math.Min(rongCot.Length, o.Column + soCot); i++)
+            {
+                rong += rongCot[i];
+            }
+
+            return rong;
+        }
+    }
+
+    /// <summary>
     /// Nhãn của ô nhập. Tự vẽ chứ không để Label vẽ, vì hai chuyện:
     ///
     /// <para>
@@ -721,6 +840,200 @@ public static class Theme
         return new Font(goc.FontFamily, coNhoNhat, goc.Style);
     }
 
+    /// <summary>
+    /// Dải trạng thái mảnh ở đáy cửa sổ ("Bấm đúp vào ô để sửa · Delete xoá món đang chọn").
+    /// Tự cao theo chữ và câu tự xuống dòng khi hẹp: tám màn hình vốn chép tay dải này vào một
+    /// dòng cao cứng 30px, cỡ chữ to hơn một chút là cụt mất vế sau.
+    /// </summary>
+    /// <param name="nhan">Nhãn của màn hình, nên dựng bằng <see cref="NhanDaiDong"/> để tự xuống dòng.</param>
+    public static Control ThanhTrangThai(Label nhan)
+    {
+        nhan.Font = FontPhu;
+        nhan.ForeColor = Xam;
+        nhan.AutoSize = true;
+        nhan.Dock = DockStyle.Top;
+        nhan.Margin = new Padding(0);
+
+        var nen = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = NenTrangThai,
+            Padding = new Padding(22, 5, 22, 5),
+        };
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        nen.Controls.Add(nhan, 0, 0);
+        return nen;
+    }
+
+    /// <summary>
+    /// Câu ghi chú nhỏ neo bên phải dải nút cuối cửa sổ. Tự xuống dòng khi hẹp, chứ không phải
+    /// ô rộng cứng mấy trăm điểm ảnh rồi cụt đuôi ở máy đặt cỡ chữ to.
+    /// </summary>
+    public static Label GhiChuPhai(string chu = "")
+    {
+        var lbl = NhanDaiDong(chu, FontPhu, Xam);
+        lbl.Dock = DockStyle.None;
+        lbl.Anchor = AnchorStyles.Right;
+        lbl.TextAlign = ContentAlignment.MiddleRight;
+        lbl.Margin = new Padding(16, 0, 4, 0);
+        return lbl;
+    }
+
+    /// <summary>
+    /// Dải nút cuối cửa sổ: nút xếp từ trái, một câu ghi chú neo phải, cả dải <b>tự cao theo
+    /// chữ</b>. Trước đây mỗi màn hình tự dựng bằng <c>Panel</c> trong dòng cao cứng 84px, câu
+    /// ghi chú thì đặt ô rộng cứng — máy đặt cỡ hiển thị 125% là nút bị cắt chữ và câu ghi chú
+    /// cụt đuôi.
+    /// </summary>
+    /// <param name="ghiChuPhai">Câu ghi chú neo phải, thường là <see cref="GhiChuPhai"/>; để trống thì không có.</param>
+    /// <param name="nut">Các nút, xếp từ trái sang.</param>
+    public static TableLayoutPanel ThanhDuoi(Control? ghiChuPhai, params Control[] nut)
+    {
+        return ThanhDuoi(ghiChuPhai, false, nut);
+    }
+
+    /// <summary>
+    /// Dải nút cuối cửa sổ, chọn được nút nằm bên nào. Hộp thoại nhỏ (thêm khách, tạo hoá đơn)
+    /// vốn để nút bên phải, còn màn hình lớn để nút bên trái — giữ nguyên nếp cũ của từng chỗ.
+    /// </summary>
+    public static TableLayoutPanel ThanhDuoi(Control? ghiChuPhai, bool nutBenPhai, params Control[] nut)
+    {
+        var trai = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0),
+        };
+        trai.Controls.AddRange(nut);
+
+        var nen = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Nen,
+            Padding = new Padding(20, 10, 20, 10),
+        };
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        // Nhãn ghi chú do bên gọi đưa vào: ép `AutoSize` để nó cao đúng bằng chữ, chứ nhãn cỡ
+        // đặt tay là chỗ hay cắt chữ nhất.
+        if (ghiChuPhai is not null)
+        {
+            ghiChuPhai.AutoSize = true;
+            ghiChuPhai.Margin = new Padding(16, 0, 4, 0);
+            if (ghiChuPhai is Label nhan)
+            {
+                nhan.TextAlign = ContentAlignment.MiddleRight;
+            }
+        }
+
+        if (nutBenPhai)
+        {
+            trai.Anchor = AnchorStyles.Right;
+            nen.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            nen.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            nen.Controls.Add(trai, 1, 0);
+
+            if (ghiChuPhai is not null)
+            {
+                ghiChuPhai.Anchor = AnchorStyles.Left;
+                ghiChuPhai.Margin = new Padding(4, 0, 16, 0);
+                nen.Controls.Add(ghiChuPhai, 0, 0);
+            }
+
+            return nen;
+        }
+
+        nen.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        nen.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        nen.Controls.Add(trai, 0, 0);
+
+        if (ghiChuPhai is not null)
+        {
+            ghiChuPhai.Anchor = AnchorStyles.Right;
+            nen.Controls.Add(ghiChuPhai, 1, 0);
+        }
+
+        return nen;
+    }
+
+    /// <summary>
+    /// Một <b>hàng ô nhập</b> hoàn chỉnh: khối tự cao theo chữ, và các ô <b>tự xuống hàng dưới</b>
+    /// khi cửa sổ hẹp hoặc máy đặt cỡ chữ to.
+    ///
+    /// <para>
+    /// Trước đây mỗi màn hình tự dựng hàng ô bằng <c>FlowLayoutPanel</c> không xuống dòng, nằm
+    /// trong dòng cao cứng 96px: máy đặt cỡ hiển thị 125% là ô cuối hàng lòi ra ngoài mép cửa
+    /// sổ, còn nhãn thì bị cắt mất nửa dưới. Đi qua đây thì cả hai chuyện ấy hết.
+    /// </para>
+    /// </summary>
+    /// <param name="mauNen">Nền của cả dải — thường <see cref="ChinhNhat"/> hoặc <see cref="Trang"/>.</param>
+    /// <param name="o">Các ô, thường là <see cref="Truong"/>; xen được cả nhóm nút.</param>
+    public static Control HangO(Color mauNen, params Control[] o)
+    {
+        var nen = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = mauNen,
+            Padding = new Padding(14, 8, 14, 8),
+        };
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var hang = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = true,
+            Margin = new Padding(0),
+        };
+        hang.Controls.AddRange(o);
+
+        nen.Controls.Add(hang, 0, 0);
+        return nen;
+    }
+
+    /// <summary>
+    /// Ô nhập <b>nhiều dòng</b> có nhãn phía trên. Cao đúng số dòng chữ <b>của máy này</b>
+    /// (<c>Font.Height</c> là điểm ảnh thật ở cỡ hiển thị đang dùng), chứ không phải một con số
+    /// điểm ảnh đặt tay — máy đặt cỡ chữ to là ô ấy chứa được ít dòng hơn hẳn.
+    /// </summary>
+    public static Panel TruongNhieuDong(string nhan, TextBox o, int rong, int soDong = 3, int le = 18)
+    {
+        o.Multiline = true;
+        return Truong(nhan, o, rong, (o.Font.Height * soDong) + 14, le);
+    }
+
+    /// <summary>
+    /// Bề cao ô nhãn trong <see cref="Truong"/>. Nhãn cao 24px chứ không phải 20: chữ hoa tiếng
+    /// Việt có dấu cả trên ("Ầ") lẫn dưới ("Ị") nên cao hơn chữ hoa thường, chật một hai điểm
+    /// ảnh là cắt mất dấu — mà cắt dấu thì đọc ra chữ khác.
+    ///
+    /// <para>
+    /// 24 chỉ là mức thấp nhất: <c>FontNhan.Height</c> là chiều cao dòng chữ tính bằng điểm ảnh
+    /// <b>thật của máy này</b>, nên máy đặt cỡ hiển thị 150% thì ô nhãn cũng cao thêm theo.
+    /// </para>
+    /// </summary>
+    public static int CaoNhanTrongTruong => Math.Max(24, FontNhan.Height + 5);
+
+    /// <summary>
+    /// Chỗ ô nhập bắt đầu trong <see cref="Truong"/>, tính từ đỉnh: hết nhãn rồi cách 6px. Nút
+    /// không có nhãn mà đứng cùng hàng với ô nhập thì lùi xuống đúng bằng đây mới ngang hàng.
+    /// </summary>
+    public static int DinhOTrongTruong => CaoNhanTrongTruong + 6;
+
     /// <summary>Một ô nhập có nhãn nằm phía trên, gộp trong một panel để xếp bằng FlowLayoutPanel.</summary>
     /// <param name="cao">
     /// Chiều cao ô nhập. Để 0 là lấy mặc định (36 cho ô chữ, 34 cho nút và ô chọn ngày).
@@ -731,15 +1044,13 @@ public static class Theme
     {
         var caoO = cao > 0 ? cao : dieuKhien is TextBox { Multiline: false } ? 36 : 34;
 
-        // Nhãn cao 24px chứ không phải 20: chữ hoa tiếng Việt có dấu cả trên lẫn dưới nên cao
-        // hơn chữ hoa thường, chật một hai điểm ảnh là cắt mất dấu. Rồi cách ô nhập 6px.
-        const int CaoNhan = 24;
-        const int DinhO = CaoNhan + 6;
+        var caoNhan = CaoNhanTrongTruong;
+        var dinhO = DinhOTrongTruong;
 
         var panel = new Panel
         {
             Width = rong,
-            Height = Math.Max(66, DinhO + caoO + 4),
+            Height = Math.Max(66, dinhO + caoO + 4),
             Margin = new Padding(0, 0, le, 0),
         };
 
@@ -749,7 +1060,7 @@ public static class Theme
             Font = FontNhan,
             ForeColor = Xam,
             Location = new Point(0, 0),
-            Size = new Size(rong, CaoNhan),
+            Size = new Size(rong, caoNhan),
         };
 
         // TextBox thì bọc khung bo góc cho giống bản thiết kế; nút hay ô chọn ngày thì để
@@ -757,7 +1068,7 @@ public static class Theme
         if (dieuKhien is TextBox { Multiline: false } o)
         {
             var hop = HopO(o, rong, caoO);
-            hop.Location = new Point(0, DinhO);
+            hop.Location = new Point(0, dinhO);
             panel.Controls.Add(lbl);
             panel.Controls.Add(hop);
             return panel;
@@ -774,7 +1085,7 @@ public static class Theme
 
         // ComboBox khoá chiều cao theo cỡ chữ, kéo cao không được. Ô nào thấp hơn mức chung của
         // hàng thì đặt vào giữa, để các ô trong một hàng nhìn ngang nhau.
-        dieuKhien.Location = new Point(0, DinhO + Math.Max(0, (caoO - dieuKhien.Height) / 2));
+        dieuKhien.Location = new Point(0, dinhO + Math.Max(0, (caoO - dieuKhien.Height) / 2));
 
         panel.Controls.Add(lbl);
         panel.Controls.Add(dieuKhien);
@@ -909,6 +1220,32 @@ public static class Theme
         luoi.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         luoi.Dock = DockStyle.Fill;
 
+        // Không cột nào được hẹp hơn **chữ dài nhất trong tên cột của nó**. Cột chia theo tỷ lệ
+        // thì bảng chật là mọi cột co lại, co quá thì tên cột bị cắt giữa chừng và đọc ra cột
+        // khác ("SỐ LƯỢNG" còn thấy "SỐ", "TRANG" còn thấy "G"). Chặn theo *từ* dài nhất chứ
+        // không theo cả tên: tên hai chữ vẫn được phép xuống hai dòng như trước, chỉ cấm cắt
+        // ngang một chữ. Chật hơn nữa thì bảng hiện thanh kéo ngang — kéo vẫn hơn đọc nhầm.
+        luoi.ColumnAdded += (_, e) =>
+        {
+            var font = luoi.ColumnHeadersDefaultCellStyle.Font ?? FontNhan;
+            var rongTu = 0;
+            foreach (var tu in e.Column.HeaderText.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                rongTu = Math.Max(
+                    rongTu,
+                    TextRenderer.MeasureText(
+                        tu,
+                        font,
+                        new Size(int.MaxValue, int.MaxValue),
+                        TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine).Width);
+            }
+
+            if (rongTu > 0)
+            {
+                e.Column.MinimumWidth = Math.Max(e.Column.MinimumWidth, rongTu + 24);
+            }
+        };
+
         // Đầu bảng chỉ kẻ một vạch dưới, không kẻ dọc chia cột — đúng bản thiết kế. Phải tự vẽ
         // vì DataGridView chỉ cho chọn "kẻ kín bốn phía" hoặc "không kẻ gì".
         luoi.CellPainting += (_, e) =>
@@ -937,7 +1274,8 @@ public static class Theme
         int tyLe = 100,
         string? dinhDang = null,
         bool canPhai = false,
-        bool chiDoc = true)
+        bool chiDoc = true,
+        int toiThieu = 0)
     {
         var cot = new DataGridViewTextBoxColumn
         {
@@ -948,6 +1286,13 @@ public static class Theme
             ReadOnly = chiDoc,
             SortMode = DataGridViewColumnSortMode.NotSortable,
         };
+
+        // Cột có nội dung dài sẵn (ngày "25/02/2026", tiền triệu) thì chặn thêm bề ngang thấp
+        // nhất theo nội dung: tên cột ngắn nên `ColumnAdded` chỉ chặn được tới đó.
+        if (toiThieu > 0)
+        {
+            cot.MinimumWidth = toiThieu;
+        }
 
         if (dinhDang is not null)
         {

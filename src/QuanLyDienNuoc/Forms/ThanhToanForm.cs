@@ -18,7 +18,7 @@ public sealed class ThanhToanForm : Form
     private readonly DateTimePicker _dtNgay = new() { Format = DateTimePickerFormat.Custom, CustomFormat = Theme.DangNgay, Font = Theme.FontNhap };
     private readonly TextBox _txtSoTien = Theme.O(200);
     private readonly TextBox _txtGhiChu = Theme.O(260);
-    private readonly Label _lblTong = new();
+    private readonly Label _lblTong = Theme.NhanDaiDong();
 
     public ThanhToanForm(Guid hoaDonId)
     {
@@ -47,30 +47,42 @@ public sealed class ThanhToanForm : Form
             RowCount = 4,
             BackColor = Theme.Nen,
         };
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 96));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khung.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var hoaDon = HoaDon;
         khung.Controls.Add(
             Theme.ThanhTieuDe(
                 "THANH TOÁN",
-                hoaDon is null ? string.Empty : $"Hoá đơn {hoaDon.MaHoaDon} · mở ngày {hoaDon.NgayMo:dd/MM/yyyy}"),
+                hoaDon is null ? string.Empty : $"Hoá đơn {hoaDon.MaHoaDon} · mở ngày {hoaDon.NgayMo:dd/MM/yyyy}",
+                tuCao: true),
             0,
             0);
 
-        // Thanh nhập nhanh
-        var nenNhap = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat, Padding = new Padding(14, 8, 14, 8) };
-        var btnThem = Theme.Nut("+  GHI THANH TOÁN", Theme.Xanh, 230, 34);
+        // Thanh nhập nhanh. Nút ngồi riêng một nhóm `AutoSize` để nở theo chữ, lùi xuống đúng
+        // bằng chỗ nhãn của mấy ô bên cạnh nên vẫn ngang hàng.
+        var btnThem = Theme.Nut("+  GHI THANH TOÁN", Theme.Xanh, 230, 34, noTheoChu: true);
         btnThem.Click += (_, _) => Them();
 
-        var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
-        hang.Controls.Add(Theme.Truong("NGÀY TRẢ", _dtNgay, 160));
-        hang.Controls.Add(Theme.Truong("SỐ TIỀN", _txtSoTien, 200));
-        hang.Controls.Add(Theme.Truong("GHI CHÚ", _txtGhiChu, 260));
-        hang.Controls.Add(Theme.Truong(" ", btnThem, 230));
-        nenNhap.Controls.Add(hang);
+        var nhomNut = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, Theme.DinhOTrongTruong, 18, 0),
+        };
+        nhomNut.Controls.Add(btnThem);
+
+        var nenNhap = Theme.HangO(
+            Theme.ChinhNhat,
+            Theme.Truong("NGÀY TRẢ", _dtNgay, 170),
+            Theme.Truong("SỐ TIỀN", _txtSoTien, 200),
+            Theme.Truong("GHI CHÚ", _txtGhiChu, 260),
+            nhomNut);
 
         _txtSoTien.KeyDown += (_, e) =>
         {
@@ -86,42 +98,27 @@ public sealed class ThanhToanForm : Form
         Theme.ApDungLuoi(_luoi);
         _luoi.ReadOnly = true;
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(ThanhToan.Ngay), "NGÀY TRẢ", 120, "dd/MM/yyyy"),
-            Theme.Cot(nameof(ThanhToan.SoTien), "SỐ TIỀN", 150, "#,##0", canPhai: true),
-            Theme.Cot(nameof(ThanhToan.GhiChu), "GHI CHÚ", 260));
+            Theme.Cot(nameof(ThanhToan.Ngay), "NGÀY TRẢ", 130, "dd/MM/yyyy", toiThieu: 104),
+            Theme.Cot(nameof(ThanhToan.SoTien), "SỐ TIỀN", 150, "#,##0", canPhai: true, toiThieu: 110),
+            Theme.Cot(nameof(ThanhToan.GhiChu), "GHI CHÚ", 260, toiThieu: 140));
         _luoi.DataSource = _nguon;
 
         // Thanh dưới
-        var nenDuoi = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(0, 10, 0, 0) };
-
-        var btnXoa = Theme.NutPhu("Xoá lần trả này", 210, 46);
+        var btnXoa = Theme.NutPhu("Xoá lần trả này", 210, 46, noTheoChu: true);
         btnXoa.ForeColor = Theme.Do;
         btnXoa.Click += (_, _) => Xoa();
 
-        var btnDong = Theme.NutPhu("Đóng", 140, 46);
+        var btnDong = Theme.NutPhu("Đóng", 140, 46, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var trai = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        trai.Controls.Add(btnXoa);
-        trai.Controls.Add(btnDong);
-
-        _lblTong.Dock = DockStyle.Right;
-        _lblTong.Width = 620;
         _lblTong.Font = Theme.FontSo;
-        _lblTong.TextAlign = ContentAlignment.MiddleRight;
-
-        nenDuoi.Controls.Add(trai);
-        nenDuoi.Controls.Add(_lblTong);
 
         var vienLuoi = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 8, 20, 0), BackColor = Theme.Nen };
         vienLuoi.Controls.Add(Theme.Khung(_luoi));
 
-        var vienDuoi = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 10), BackColor = Theme.Nen };
-        vienDuoi.Controls.Add(nenDuoi);
-
         khung.Controls.Add(nenNhap, 0, 1);
         khung.Controls.Add(vienLuoi, 0, 2);
-        khung.Controls.Add(vienDuoi, 0, 3);
+        khung.Controls.Add(Theme.ThanhDuoi(_lblTong, btnXoa, btnDong), 0, 3);
         Controls.Add(khung);
 
         ActiveControl = _txtSoTien;

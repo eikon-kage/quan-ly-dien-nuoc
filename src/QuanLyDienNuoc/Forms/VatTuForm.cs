@@ -8,6 +8,9 @@ namespace QuanLyDienNuoc.Forms;
 /// <summary>Danh mục vật tư chung của cửa hàng và giá chung của từng mặt hàng.</summary>
 public sealed class VatTuForm : Form
 {
+    private const string TatCaNhom = "Tất cả nhóm";
+    private const string ChuaDatNhom = "(chưa đặt nhóm)";
+
     private readonly KhoDuLieu _kho = KhoDuLieu.Instance;
 
     private readonly DataGridView _luoi = new();
@@ -17,16 +20,21 @@ public sealed class VatTuForm : Form
     private readonly TextBox _txtTen = Theme.O(320);
     private readonly TextBox _txtDonVi = Theme.O(120);
     private readonly TextBox _txtGia = Theme.O(160);
-    private readonly Label _lblTrangThai = new();
+    private readonly ComboBox _cboNhom = new();
+    private readonly ComboBox _cboLoc = new();
+    private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     private string? _anhChupTruocKhiSua;
+
+    /// <summary>Đang dựng lại danh sách nhóm thì đừng để sự kiện của ô lọc gọi <see cref="Nap"/> lồng vào nhau.</summary>
+    private bool _dangDungOLoc;
 
     public VatTuForm()
     {
         Text = "Danh mục vật tư";
         StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(1060, 720);
-        MinimumSize = new Size(940, 620);
+        ClientSize = new Size(1160, 720);
+        MinimumSize = new Size(1000, 620);
         BackColor = Theme.Nen;
         Font = Theme.FontThuong;
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -44,31 +52,51 @@ public sealed class VatTuForm : Form
             RowCount = 5,
             BackColor = Theme.Nen,
         };
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 96));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 86));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khung.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         khung.Controls.Add(
             Theme.ThanhTieuDe(
                 "DANH MỤC VẬT TƯ",
-                "Giá chung của cửa hàng. Đặt \"mã tắt\" để lúc nhập hàng gõ tắt là ra, ví dụ o27 → Ống nhựa PVC D27."),
+                "Giá chung của cửa hàng  ·  \"mã tắt\" để gõ tắt lúc nhập hàng (o27 → Ống nhựa PVC D27)  "
+                + "·  \"nhóm\" để lọc danh mục cho gọn",
+                tuCao: true),
             0,
             0);
 
         // Thêm nhanh
-        var nenThem = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat, Padding = new Padding(14, 8, 14, 8) };
-        var btnThem = Theme.Nut("+  THÊM VẬT TƯ", Theme.Xanh, 200, 34);
+        var btnThem = Theme.Nut("+  THÊM VẬT TƯ", Theme.Xanh, 200, 34, noTheoChu: true);
         btnThem.Click += (_, _) => Them();
-        var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
-        hang.Controls.Add(Theme.Truong("TÊN HÀNG", _txtTen, 340));
-        hang.Controls.Add(Theme.Truong("ĐƠN VỊ", _txtDonVi, 130));
-        hang.Controls.Add(Theme.Truong("GIÁ CHUNG", _txtGia, 170));
-        hang.Controls.Add(Theme.Truong(" ", btnThem, 200));
-        nenThem.Controls.Add(hang);
+        _cboNhom.DropDownStyle = ComboBoxStyle.DropDown;
+        _cboNhom.Font = Theme.FontNhap;
 
-        foreach (var o in new[] { _txtTen, _txtDonVi, _txtGia })
+        // Gõ được nhóm mới, mà gõ mấy chữ đầu của nhóm đã có thì nó tự điền nốt — khỏi
+        // lệch thành "Ống nước" với "ống Nước" là hai nhóm.
+        _cboNhom.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+        _cboNhom.AutoCompleteSource = AutoCompleteSource.ListItems;
+        var nhomNut = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, Theme.DinhOTrongTruong, 18, 0),
+        };
+        nhomNut.Controls.Add(btnThem);
+
+        var nenThem = Theme.HangO(
+            Theme.ChinhNhat,
+            Theme.Truong("TÊN HÀNG", _txtTen, 340),
+            Theme.Truong("ĐƠN VỊ", _txtDonVi, 140),
+            Theme.Truong("NHÓM", _cboNhom, 190),
+            Theme.Truong("GIÁ CHUNG", _txtGia, 175),
+            nhomNut);
+
+        foreach (Control o in new Control[] { _txtTen, _txtDonVi, _txtGia, _cboNhom })
         {
             o.KeyDown += (_, e) =>
             {
@@ -83,19 +111,29 @@ public sealed class VatTuForm : Form
 
         // Tìm kiếm
         _txtTim.TextChanged += (_, _) => Nap();
-        var thanhTim = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 10, 20, 0) };
-        var traiTim = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        traiTim.Controls.Add(Theme.Truong("TÌM VẬT TƯ", _txtTim, 380));
-        thanhTim.Controls.Add(traiTim);
+        _cboLoc.DropDownStyle = ComboBoxStyle.DropDownList;
+        _cboLoc.Font = Theme.FontNhap;
+        _cboLoc.SelectedIndexChanged += (_, _) =>
+        {
+            if (!_dangDungOLoc)
+            {
+                Nap();
+            }
+        };
+        var thanhTim = Theme.HangO(
+            Theme.Nen,
+            Theme.Truong("TÌM VẬT TƯ", _txtTim, 380),
+            Theme.Truong("LỌC THEO NHÓM", _cboLoc, 230));
 
         // Lưới
         Theme.ApDungLuoi(_luoi);
         _luoi.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(VatTu.Ten), "TÊN HÀNG", 300, chiDoc: false),
+            Theme.Cot(nameof(VatTu.Ten), "TÊN HÀNG", 300, chiDoc: false, toiThieu: 150),
             Theme.Cot(nameof(VatTu.MaTat), "MÃ TẮT", 110, chiDoc: false),
+            Theme.Cot(nameof(VatTu.Nhom), "NHÓM", 150, chiDoc: false),
             Theme.Cot(nameof(VatTu.DonVi), "ĐƠN VỊ", 110, chiDoc: false),
-            Theme.Cot(nameof(VatTu.DonGiaMacDinh), "GIÁ CHUNG", 150, "#,##0", canPhai: true, chiDoc: false));
+            Theme.Cot(nameof(VatTu.DonGiaMacDinh), "GIÁ CHUNG", 150, "#,##0", canPhai: true, chiDoc: false, toiThieu: 116));
         Theme.ChoPhepGoSo(_luoi, nameof(VatTu.DonGiaMacDinh));
         _luoi.CellBeginEdit += (_, _) => _anhChupTruocKhiSua = _kho.ChupNhanh();
         _luoi.CellEndEdit += Luoi_CellEndEdit;
@@ -105,32 +143,21 @@ public sealed class VatTuForm : Form
         vienLuoi.Controls.Add(Theme.Khung(_luoi));
 
         // Thanh dưới
-        var btnXoa = Theme.NutPhu("Xoá vật tư", 170, 46);
+        var btnXoa = Theme.NutPhu("Xoá vật tư", 170, 46, noTheoChu: true);
         btnXoa.ForeColor = Theme.Do;
         btnXoa.Click += (_, _) => Xoa();
 
-        var btnDong = Theme.NutPhu("Đóng", 140, 46);
+        var btnDong = Theme.NutPhu("Đóng", 140, 46, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var traiDuoi = new FlowLayoutPanel { Dock = DockStyle.Left, AutoSize = true, WrapContents = false };
-        traiDuoi.Controls.Add(btnXoa);
-        traiDuoi.Controls.Add(btnDong);
-
-        _lblTrangThai.Dock = DockStyle.Right;
-        _lblTrangThai.Width = 520;
         _lblTrangThai.Font = Theme.FontPhu;
         _lblTrangThai.ForeColor = Theme.Xam;
-        _lblTrangThai.TextAlign = ContentAlignment.MiddleRight;
-        _lblTrangThai.Text = "Bấm đúp vào ô để sửa (kể cả mã tắt) · Ctrl+Z hoàn tác";
-
-        var nenDuoi = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 12, 20, 10) };
-        nenDuoi.Controls.Add(traiDuoi);
-        nenDuoi.Controls.Add(_lblTrangThai);
+        _lblTrangThai.Text = "Bấm đúp vào ô để sửa (kể cả mã tắt, nhóm)  ·  Ctrl+Z hoàn tác";
 
         khung.Controls.Add(nenThem, 0, 1);
         khung.Controls.Add(thanhTim, 0, 2);
         khung.Controls.Add(vienLuoi, 0, 3);
-        khung.Controls.Add(nenDuoi, 0, 4);
+        khung.Controls.Add(Theme.ThanhDuoi(_lblTrangThai, btnXoa, btnDong), 0, 4);
         Controls.Add(khung);
 
         ActiveControl = _txtTen;
@@ -140,12 +167,17 @@ public sealed class VatTuForm : Form
     {
         var dangChon = chon ?? (_luoi.CurrentRow?.DataBoundItem as VatTu)?.Id;
 
+        DungLaiDanhSachNhom();
+
         _nguon.RaiseListChangedEvents = false;
         _nguon.Clear();
 
         foreach (var vatTu in _kho.DuLieu.VatTus.OrderBy(v => v.Ten, StringComparer.CurrentCultureIgnoreCase))
         {
-            if (TimHang.Khop(vatTu.Ten, vatTu.MaTat, _txtTim.Text))
+            // Gõ vào ô tìm cũng ra theo nhóm: gõ "dien" là ra cả nhóm Điện.
+            if (KhopNhomDangLoc(vatTu)
+                && (TimHang.Khop(vatTu.Ten, vatTu.MaTat, _txtTim.Text)
+                    || TimHang.Khop(vatTu.Nhom, null, _txtTim.Text)))
             {
                 _nguon.Add(vatTu);
             }
@@ -167,6 +199,54 @@ public sealed class VatTuForm : Form
         }
     }
 
+    /// <summary>Ô lọc chỉ bày những nhóm đang có thật trong danh mục, cộng mục "chưa đặt nhóm" khi cần.</summary>
+    private void DungLaiDanhSachNhom()
+    {
+        var nhom = _kho.DuLieu.VatTus
+            .Select(v => v.Nhom.Trim())
+            .Where(n => n.Length > 0)
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        var muc = new List<string> { TatCaNhom };
+        muc.AddRange(nhom);
+        if (_kho.DuLieu.VatTus.Any(v => v.Nhom.Trim().Length == 0))
+        {
+            muc.Add(ChuaDatNhom);
+        }
+
+        if (_cboLoc.Items.Cast<string>().SequenceEqual(muc, StringComparer.Ordinal)
+            && _cboNhom.Items.Cast<string>().SequenceEqual(nhom, StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        _dangDungOLoc = true;
+
+        var dangLoc = _cboLoc.SelectedItem as string;
+        _cboLoc.Items.Clear();
+        _cboLoc.Items.AddRange(muc.Cast<object>().ToArray());
+        _cboLoc.SelectedItem = dangLoc is not null && muc.Contains(dangLoc, StringComparer.Ordinal)
+            ? dangLoc
+            : TatCaNhom;
+
+        // Ô nhóm ở hàng thêm nhanh gõ tay được, nên giữ nguyên chữ đang gõ dở.
+        var dangGo = _cboNhom.Text;
+        _cboNhom.Items.Clear();
+        _cboNhom.Items.AddRange(nhom.Cast<object>().ToArray());
+        _cboNhom.Text = dangGo;
+
+        _dangDungOLoc = false;
+    }
+
+    private bool KhopNhomDangLoc(VatTu vatTu) => (_cboLoc.SelectedItem as string) switch
+    {
+        null or TatCaNhom => true,
+        ChuaDatNhom => vatTu.Nhom.Trim().Length == 0,
+        var loc => string.Equals(vatTu.Nhom.Trim(), loc, StringComparison.CurrentCultureIgnoreCase),
+    };
+
     private void Them()
     {
         var ten = _txtTen.Text.Trim();
@@ -187,6 +267,7 @@ public sealed class VatTuForm : Form
         {
             Ten = ten,
             DonVi = _txtDonVi.Text.Trim(),
+            Nhom = _cboNhom.Text.Trim(),
             DonGiaMacDinh = So.Doc(_txtGia.Text),
         };
 
@@ -195,6 +276,8 @@ public sealed class VatTuForm : Form
         _txtTen.Clear();
         _txtDonVi.Clear();
         _txtGia.Clear();
+
+        // Ô nhóm giữ nguyên: nhập một loạt hàng cùng nhóm là chuyện thường.
         _txtTen.Focus();
 
         Nap(moi.Id);

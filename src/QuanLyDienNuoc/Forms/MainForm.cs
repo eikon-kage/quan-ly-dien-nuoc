@@ -93,7 +93,6 @@ public sealed class MainForm : Form
         _thanhBen = new ThanhBen("Sổ điện nước", "Quản lý đơn hàng");
 
         _mucTrangChu = _thanhBen.Them("Trang chủ", KieuIcon.Nha, () => { });
-        _thanhBen.Them("Sổ công nợ", KieuIcon.Tien, MoSoCongNo);
         _thanhBen.Them("Danh mục vật tư", KieuIcon.Thung, MoDanhMucVatTu);
         _thanhBen.Them("Bộ hàng thường dùng", KieuIcon.Bo, () =>
         {
@@ -135,10 +134,12 @@ public sealed class MainForm : Form
             RowCount = 4,
             BackColor = Theme.Nen,
         };
-        khu.RowStyles.Add(new RowStyle(SizeType.Absolute, 78));
-        khu.RowStyles.Add(new RowStyle(SizeType.Absolute, 74));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ thẻ khách hàng ăn phần còn lại: xem
+        // "Chữ bị cắt" trong docs/giao-dien-may-tinh.md.
+        khu.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        khu.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khu.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        khu.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        khu.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         khu.Controls.Add(TaoThanhTren(), 0, 0);
         khu.Controls.Add(TaoThanhNhacNo(), 0, 1);
@@ -150,16 +151,26 @@ public sealed class MainForm : Form
     /// <summary>Thanh trên: ô tìm khách bên trái, chọn năm và nút thêm khách bên phải.</summary>
     private Control TaoThanhTren()
     {
-        var nen = new Panel
+        // Khung xếp hai cột thay cho panel đặt tay: ô tìm bên trái, hàng nút bên phải, cả dải
+        // tự cao theo chữ. Trước đây ô tìm neo cứng ở `(24, 19)` trong dải cao cứng 78px — cỡ
+        // chữ to lên là nó thò xuống quá mép dải.
+        var nen = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             BackColor = Theme.Trang,
             Margin = new Padding(0),
-            Padding = new Padding(24, 0, 24, 0),
+            Padding = new Padding(24, 18, 24, 18),
         };
+        nen.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        nen.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         nen.Paint += (s, e) =>
         {
-            var p = (Panel)s!;
+            var p = (TableLayoutPanel)s!;
             using var but = new Pen(Theme.Vien);
             e.Graphics.DrawLine(but, 0, p.Height - 1, p.Width, p.Height - 1);
         };
@@ -173,8 +184,7 @@ public sealed class MainForm : Form
         };
 
         var hopTim = Theme.HopTim(_txtTim, "Tìm khách hàng theo tên, số điện thoại, địa chỉ", 440);
-        hopTim.Location = new Point(24, 19);
-        nen.Controls.Add(hopTim);
+        hopTim.Margin = new Padding(0);
 
         _cboNam.DropDownStyle = ComboBoxStyle.DropDownList;
         _cboNam.FlatStyle = FlatStyle.Flat;
@@ -188,11 +198,11 @@ public sealed class MainForm : Form
             }
         };
 
-        var btnThemKhach = Theme.Nut("+  Thêm khách hàng", Theme.Chinh, 220, 40);
+        var btnThemKhach = Theme.Nut("+  Thêm khách hàng", Theme.Chinh, 220, 40, noTheoChu: true);
         btnThemKhach.Click += (_, _) => ThemKhach();
 
         // Cả danh sách khách có sẵn trên Excel thì gõ lại từng người mất cả buổi.
-        var btnNhapFile = Theme.NutPhu("Nhập từ file", 170, 40);
+        var btnNhapFile = Theme.NutPhu("Nhập từ file", 170, 40, noTheoChu: true);
         btnNhapFile.ForeColor = Theme.Chinh;
         btnNhapFile.Click += (_, _) => NhapKhachTuFile();
 
@@ -207,18 +217,21 @@ public sealed class MainForm : Form
 
         var benPhai = new FlowLayoutPanel
         {
-            Dock = DockStyle.Right,
+            Anchor = AnchorStyles.Right,
             FlowDirection = FlowDirection.LeftToRight,
             AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             WrapContents = false,
             BackColor = Theme.Trang,
-            Padding = new Padding(0, 19, 0, 0),
+            Margin = new Padding(16, 0, 0, 0),
         };
         benPhai.Controls.Add(lblNam);
         benPhai.Controls.Add(_cboNam);
         benPhai.Controls.Add(btnNhapFile);
         benPhai.Controls.Add(btnThemKhach);
-        nen.Controls.Add(benPhai);
+
+        nen.Controls.Add(hopTim, 0, 0);
+        nen.Controls.Add(benPhai, 1, 0);
 
         _cboNam.Margin = new Padding(0, 2, 16, 0);
         btnNhapFile.Margin = new Padding(0, 0, 10, 0);
@@ -229,7 +242,9 @@ public sealed class MainForm : Form
     /// <summary>Dải nhắc nợ: mở phần mềm lên là thấy ai đang nợ lâu, kèm nút mở sổ công nợ.</summary>
     private Control TaoThanhNhacNo()
     {
-        _nenNhacNo.Dock = DockStyle.Fill;
+        // Cao theo chữ của máy này chứ không ăn theo dòng cao cứng 74px.
+        _nenNhacNo.Dock = DockStyle.Top;
+        _nenNhacNo.Height = Math.Max(52, Theme.FontDam.Height + 30);
         _nenNhacNo.Margin = new Padding(24, 14, 24, 0);
         // Chừa lề: nhãn bên trong tô nền đặc, phải nằm gọn trong phần thẳng của hình bo góc
         // chứ chạm vào bốn góc là lộ ra góc vuông.
@@ -255,7 +270,7 @@ public sealed class MainForm : Form
         _lblNhacNo.Font = Theme.FontDam;
         _lblNhacNo.TextAlign = ContentAlignment.MiddleLeft;
 
-        var btnSoCongNo = Theme.NutPhu("Mở sổ công nợ", 186, 40);
+        var btnSoCongNo = Theme.NutPhu("Mở sổ công nợ", 186, 40, noTheoChu: true);
         btnSoCongNo.ForeColor = Theme.Chinh;
         btnSoCongNo.Click += (_, _) => MoSoCongNo();
 
@@ -267,6 +282,14 @@ public sealed class MainForm : Form
                 Math.Max(0, _nenNhacNo.Width - btnSoCongNo.Width - 14),
                 Math.Max(0, (_nenNhacNo.Height - btnSoCongNo.Height) / 2));
         }
+
+        // Chỗ chừa bên phải đúng bằng bề ngang thật của nút: nút nở theo chữ nên ở cỡ chữ to
+        // nó rộng hơn 186px, chừa cứng 208 là chữ nhắc nợ chui xuống dưới nút.
+        _nenNhacNo.Padding = new Padding(
+            18,
+            6,
+            Math.Max(btnSoCongNo.Width, btnSoCongNo.PreferredSize.Width) + 28,
+            6);
 
         _nenNhacNo.SizeChanged += (_, _) => XepNut();
 
@@ -297,11 +320,17 @@ public sealed class MainForm : Form
 
     private Control TaoDauThe()
     {
-        var dau = new Panel { Dock = DockStyle.Top, Height = 48, BackColor = Theme.Trang };
+        var dau = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = Math.Max(48, Theme.FontTenThe.Height + 24),
+            BackColor = Theme.Trang,
+        };
 
         var lblTen = Theme.TenThe("Khách hàng");
-        lblTen.Location = new Point(2, 10);
-        dau.Controls.Add(lblTen);
+        lblTen.Dock = DockStyle.Left;
+        lblTen.TextAlign = ContentAlignment.MiddleLeft;
+        lblTen.Padding = new Padding(2, 0, 0, 0);
 
         _chkCoDon.Text = "Chỉ hiện khách có đơn trong năm";
         _chkCoDon.Font = Theme.FontThuong;
@@ -318,6 +347,7 @@ public sealed class MainForm : Form
             }
         };
         dau.Controls.Add(_chkCoDon);
+        dau.Controls.Add(lblTen);
         return dau;
     }
 
@@ -326,13 +356,13 @@ public sealed class MainForm : Form
         Theme.ApDungLuoi(_luoi);
         _luoi.ReadOnly = true;
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(DongKhach.Ten), "KHÁCH HÀNG", 200),
-            Theme.Cot(nameof(DongKhach.DienThoai), "ĐIỆN THOẠI", 110),
-            Theme.Cot(nameof(DongKhach.DiaChi), "ĐỊA CHỈ", 190),
-            Theme.Cot(nameof(DongKhach.SoHoaDon), "SỐ HĐ", 70, canPhai: true),
-            Theme.Cot(nameof(DongKhach.TongTien), "TỔNG MUA", 130, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongKhach.DaTra), "ĐÃ TRẢ", 120, "#,##0", canPhai: true),
-            Theme.Cot(nameof(DongKhach.ConLai), "CÒN NỢ", 130, "#,##0", canPhai: true));
+            Theme.Cot(nameof(DongKhach.Ten), "KHÁCH HÀNG", 200, toiThieu: 140),
+            Theme.Cot(nameof(DongKhach.DienThoai), "ĐIỆN THOẠI", 115, toiThieu: 110),
+            Theme.Cot(nameof(DongKhach.DiaChi), "ĐỊA CHỈ", 190, toiThieu: 120),
+            Theme.Cot(nameof(DongKhach.SoHoaDon), "SỐ HĐ", 75, canPhai: true),
+            Theme.Cot(nameof(DongKhach.TongTien), "TỔNG MUA", 130, "#,##0", canPhai: true, toiThieu: 110),
+            Theme.Cot(nameof(DongKhach.DaTra), "ĐÃ TRẢ", 120, "#,##0", canPhai: true, toiThieu: 110),
+            Theme.Cot(nameof(DongKhach.ConLai), "CÒN NỢ", 130, "#,##0", canPhai: true, toiThieu: 110));
 
         _luoi.DataSource = _nguon;
         _luoi.CellDoubleClick += (_, e) =>
@@ -349,12 +379,18 @@ public sealed class MainForm : Form
 
     private Control TaoChanThe()
     {
-        var nen = new Panel { Dock = DockStyle.Bottom, Height = 62, BackColor = Theme.Trang, Padding = new Padding(0, 10, 0, 0) };
+        var nen = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = Math.Max(62, Theme.FontDam.Height + 44),
+            BackColor = Theme.Trang,
+            Padding = new Padding(0, 10, 0, 0),
+        };
 
-        var btnMo = Theme.Nut("Mở đơn hàng", Theme.Chinh, 190, 42);
+        var btnMo = Theme.Nut("Mở đơn hàng", Theme.Chinh, 190, 42, noTheoChu: true);
         btnMo.Click += (_, _) => MoDonHang();
 
-        var btnThuTien = Theme.NutPhu("Thu tiền", 150, 42);
+        var btnThuTien = Theme.NutPhu("Thu tiền", 150, 42, noTheoChu: true);
         btnThuTien.ForeColor = Theme.Xanh;
         btnThuTien.Click += (_, _) => ThuTienCuaKhach();
 
@@ -381,12 +417,13 @@ public sealed class MainForm : Form
         _phanTrang.Padding = new Padding(0, 2, 16, 0);
         _phanTrang.DoiTrang += (_, _) => HienTrang();
 
+        // Tự co theo chữ chứ không ô rộng cứng 420px: câu tổng kết dài hơn thế ở cỡ chữ to là
+        // cụt mất đuôi.
         _lblTongKet.Dock = DockStyle.Right;
         _lblTongKet.TextAlign = ContentAlignment.MiddleRight;
         _lblTongKet.Font = Theme.FontThuong;
         _lblTongKet.ForeColor = Theme.Xam;
-        _lblTongKet.AutoSize = false;
-        _lblTongKet.Width = 420;
+        _lblTongKet.AutoSize = true;
         _lblTongKet.BackColor = Theme.Trang;
 
         // Thêm sau cùng là được đặt trước, tức là nằm ngoài cùng bên phải: câu tổng kết ở mép
@@ -432,7 +469,18 @@ public sealed class MainForm : Form
             _lblTrangThai.Text = $"Dữ liệu: {_kho.DuongDanFile}";
         }
 
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Margin = new Padding(0) };
+        // Dải tự cao theo chữ: hai câu này ở cỡ chữ to là cao hơn dòng cứng 30px, cắt mất
+        // nửa dưới của cả hai.
+        _lblTrangThai.AutoSize = true;
+        _lblTrangThai.Dock = DockStyle.Left;
+
+        var nen = new Panel
+        {
+            Dock = DockStyle.Top,
+            BackColor = Theme.Nen,
+            Margin = new Padding(0),
+            Height = Math.Max(30, Theme.FontPhu.Height + 12),
+        };
         nen.Controls.Add(_lblTrangThai);
         nen.Controls.Add(_lblPhimTat);
         return nen;

@@ -21,7 +21,7 @@ public sealed class BoHangForm : Form
 
     private readonly ComboBox _cboHang = new();
     private readonly TextBox _txtSoLuong = Theme.O(110);
-    private readonly Label _lblTrangThai = new();
+    private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     private string? _anhChupTruocKhiSua;
     private bool _dangNap;
@@ -59,17 +59,20 @@ public sealed class BoHangForm : Form
             RowCount = 4,
             BackColor = Theme.Nen,
         };
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ hai bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         goc.Controls.Add(
             Theme.ThanhTieuDe(
                 "BỘ HÀNG THƯỜNG DÙNG",
                 _deChon
                     ? "Chọn một bộ rồi bấm Dùng bộ này — các món sẽ được thêm vào hoá đơn đang mở."
-                    : "Gom các món hay đi cùng nhau thành một bộ để khỏi phải nhập lại từng lần."),
+                    : "Gom các món hay đi cùng nhau thành một bộ để khỏi phải nhập lại từng lần.",
+                tuCao: true),
             0,
             0);
         goc.Controls.Add(TaoThan(), 0, 1);
@@ -89,8 +92,10 @@ public sealed class BoHangForm : Form
             BackColor = Theme.Nen,
             Padding = new Padding(20, 10, 20, 6),
         };
-        than.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 360));
-        than.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        // Chia theo phần trăm chứ không cột trái cứng 360px: cỡ chữ to lên thì cả hai bảng
+        // cùng rộng thêm theo cửa sổ.
+        than.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32));
+        than.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 68));
 
         than.Controls.Add(TaoCotBo(), 0, 0);
         than.Controls.Add(TaoCotMon(), 1, 0);
@@ -107,24 +112,17 @@ public sealed class BoHangForm : Form
             BackColor = Theme.Nen,
             Margin = new Padding(0, 0, 16, 0),
         };
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        cot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         cot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        cot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var lbl = new Label
-        {
-            Text = "CÁC BỘ HÀNG",
-            Font = Theme.FontDam,
-            ForeColor = Theme.Xam,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-        };
+        var lbl = Theme.NhanDaiDong("CÁC BỘ HÀNG", Theme.FontDam, Theme.Xam);
 
         Theme.ApDungLuoi(_luoiBo);
         _luoiBo.ReadOnly = true;
         var cotSoMon = Theme.Cot("SoMon", "SỐ MÓN", 90, canPhai: true);
         cotSoMon.DataPropertyName = string.Empty;
-        _luoiBo.Columns.AddRange(Theme.Cot(nameof(BoHang.Ten), "TÊN BỘ", 240), cotSoMon);
+        _luoiBo.Columns.AddRange(Theme.Cot(nameof(BoHang.Ten), "TÊN BỘ", 240, toiThieu: 120), cotSoMon);
         _luoiBo.DataSource = _nguonBo;
         _luoiBo.SelectionChanged += (_, _) =>
         {
@@ -142,7 +140,7 @@ public sealed class BoHangForm : Form
             }
         };
 
-        var btnThem = Theme.Nut("+  Bộ mới", Theme.Chinh, 150, 44);
+        var btnThem = Theme.Nut("+  Bộ mới", Theme.Chinh, 150, 44, noTheoChu: true);
         btnThem.Click += (_, _) => ThemBo();
 
         var viecBo = Theme.NutBaCham("Việc khác với bộ đang chọn", 44)
@@ -150,7 +148,14 @@ public sealed class BoHangForm : Form
             .Ngan()
             .Viec("Xoá bộ này", XoaBo, Theme.Do);
 
-        var nut = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
+        var nut = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, 8, 0, 0),
+        };
         nut.Controls.Add(btnThem);
         nut.Controls.Add(viecBo.Nut);
 
@@ -169,38 +174,42 @@ public sealed class BoHangForm : Form
             RowCount = 4,
             BackColor = Theme.Nen,
         };
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
+        cot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        cot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         cot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        cot.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        cot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var lbl = new Label
-        {
-            Text = "CÁC MÓN TRONG BỘ  —  sửa số lượng ngay trên lưới",
-            Font = Theme.FontDam,
-            ForeColor = Theme.Xam,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleLeft,
-        };
+        var lbl = Theme.NhanDaiDong(
+            "CÁC MÓN TRONG BỘ  —  sửa số lượng ngay trên lưới",
+            Theme.FontDam,
+            Theme.Xam);
 
         _cboHang.DropDownStyle = ComboBoxStyle.DropDown;
         _cboHang.Font = Theme.FontNhap;
         _txtSoLuong.Text = "1";
 
-        var btnThemMon = Theme.Nut("+  Thêm món", Theme.Xanh, 170, 32);
+        var btnThemMon = Theme.Nut("+  Thêm món", Theme.Xanh, 170, 34, noTheoChu: true);
         btnThemMon.Click += (_, _) => ThemMon();
 
-        var thanhThem = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat, Padding = new Padding(14, 6, 14, 6) };
-        var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = true };
-        hang.Controls.Add(Theme.Truong("TÊN HÀNG", _cboHang, 330));
-        hang.Controls.Add(Theme.Truong("SỐ LƯỢNG", _txtSoLuong, 120));
-        hang.Controls.Add(Theme.Truong(" ", btnThemMon, 170));
-        thanhThem.Controls.Add(hang);
+        var nhomNut = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, Theme.DinhOTrongTruong, 18, 0),
+        };
+        nhomNut.Controls.Add(btnThemMon);
+
+        var thanhThem = Theme.HangO(
+            Theme.ChinhNhat,
+            Theme.Truong("TÊN HÀNG", _cboHang, 330),
+            Theme.Truong("SỐ LƯỢNG", _txtSoLuong, 130),
+            nhomNut);
 
         Theme.ApDungLuoi(_luoiMon);
         _luoiMon.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
         _luoiMon.Columns.AddRange(
-            Theme.Cot(nameof(DongBoHang.TenHang), "TÊN HÀNG", 320, chiDoc: false),
+            Theme.Cot(nameof(DongBoHang.TenHang), "TÊN HÀNG", 320, chiDoc: false, toiThieu: 150),
             Theme.Cot(nameof(DongBoHang.DonVi), "ĐƠN VỊ", 100, chiDoc: false),
             Theme.Cot(nameof(DongBoHang.SoLuong), "SỐ LƯỢNG", 120, "#,##0.##", canPhai: true, chiDoc: false));
         Theme.ChoPhepGoSo(_luoiMon, nameof(DongBoHang.SoLuong));
@@ -219,11 +228,18 @@ public sealed class BoHangForm : Form
         };
         _luoiMon.DataSource = _nguonMon;
 
-        var btnXoaMon = Theme.NutPhu("Xoá món (Delete)", 220, 44);
+        var btnXoaMon = Theme.NutPhu("Xoá món (Delete)", 220, 44, noTheoChu: true);
         btnXoaMon.ForeColor = Theme.Do;
         btnXoaMon.Click += (_, _) => XoaMon();
 
-        var nut = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
+        var nut = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, 8, 0, 0),
+        };
         nut.Controls.Add(btnXoaMon);
 
         cot.Controls.Add(lbl, 0, 0);
@@ -235,36 +251,23 @@ public sealed class BoHangForm : Form
 
     private Control TaoThanhDuoi()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 6, 20, 10) };
-        var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
+        var btnDong = Theme.NutPhu("Đóng", 120, 52, noTheoChu: true);
+        btnDong.Click += (_, _) => Close();
 
-        if (_deChon)
+        if (!_deChon)
         {
-            var btnDung = Theme.Nut("DÙNG BỘ NÀY", Theme.Xanh, 250, 52);
-            btnDung.Click += (_, _) => Dung();
-            hang.Controls.Add(btnDung);
+            return Theme.ThanhDuoi(null, btnDong);
         }
 
-        var btnDong = Theme.NutPhu("Đóng", 120, 52);
-        btnDong.Click += (_, _) => Close();
-        hang.Controls.Add(btnDong);
-
-        nen.Controls.Add(hang);
-        return nen;
+        var btnDung = Theme.Nut("DÙNG BỘ NÀY", Theme.Xanh, 250, 52, noTheoChu: true);
+        btnDung.Click += (_, _) => Dung();
+        return Theme.ThanhDuoi(null, btnDung, btnDong);
     }
 
     private Control TaoThanhTrangThai()
     {
-        _lblTrangThai.Dock = DockStyle.Fill;
-        _lblTrangThai.Font = Theme.FontPhu;
-        _lblTrangThai.ForeColor = Theme.Xam;
-        _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
-        _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
         _lblTrangThai.Text = "Bấm đúp vào ô để sửa · Delete xoá món đang chọn";
-
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
-        nen.Controls.Add(_lblTrangThai);
-        return nen;
+        return Theme.ThanhTrangThai(_lblTrangThai);
     }
 
     // ---------------- Nạp dữ liệu ----------------

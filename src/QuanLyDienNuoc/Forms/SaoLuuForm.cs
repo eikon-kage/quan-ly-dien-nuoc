@@ -19,7 +19,7 @@ public sealed class SaoLuuForm : Form
     private readonly CheckBox _chkTuDong = new();
     private readonly CheckBox _chkKemExcel = new();
     private readonly DataGridView _luoi = new();
-    private readonly Label _lblTrangThai = new();
+    private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     private bool _dangNap;
 
@@ -51,16 +51,19 @@ public sealed class SaoLuuForm : Form
             RowCount = 5,
             BackColor = Theme.Nen,
         };
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 190));
+        // Dòng nào có chữ thì tự cao theo chữ, chỉ bảng ăn phần còn lại: xem "Chữ bị cắt"
+        // trong docs/giao-dien-may-tinh.md.
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         goc.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 84));
-        goc.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        goc.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         goc.Controls.Add(
             Theme.ThanhTieuDe(
                 "SAO LƯU DỮ LIỆU",
-                "Mất máy hay hỏng file là mất hết. Nên để thư mục sao lưu ở USB, OneDrive hoặc Google Drive."),
+                "Mất máy hay hỏng file là mất hết  ·  nên để thư mục sao lưu ở USB hay Google Drive",
+                tuCao: true),
             0,
             0);
         goc.Controls.Add(TaoBangCaiDat(), 0, 1);
@@ -71,17 +74,28 @@ public sealed class SaoLuuForm : Form
         Controls.Add(goc);
     }
 
+    /// <summary>
+    /// Khối cài đặt sao lưu. Hai hàng ô xếp bằng <see cref="Theme.HangO"/> chứ không đặt toạ độ
+    /// cứng <c>Location = (20, 10)</c> và <c>(20, 88)</c> trong một dòng cao cứng 190px: cỡ chữ
+    /// to lên là hàng dưới đè lên hàng trên rồi cả hai cùng tràn khỏi dải xanh.
+    /// </summary>
     private Control TaoBangCaiDat()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.ChinhNhat };
+        var nen = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.ChinhNhat,
+        };
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        nen.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var btnChon = Theme.NutPhu("Chọn thư mục…", 190, 32);
-        btnChon.Margin = new Padding(0, 26, 0, 0);
+        var btnChon = Theme.NutPhu("Chọn thư mục…", 190, 34, noTheoChu: true);
+        btnChon.Margin = new Padding(0, Theme.DinhOTrongTruong, 0, 0);
         btnChon.Click += (_, _) => ChonThuMuc();
-
-        var hangTren = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Location = new Point(20, 10) };
-        hangTren.Controls.Add(Theme.Truong("THƯ MỤC SAO LƯU", _txtThuMuc, 600));
-        hangTren.Controls.Add(btnChon);
 
         _numGiuLai.Minimum = 1;
         _numGiuLai.Maximum = 365;
@@ -91,22 +105,27 @@ public sealed class SaoLuuForm : Form
         _chkTuDong.Text = "Tự sao lưu mỗi ngày khi mở phần mềm";
         _chkTuDong.Font = Theme.FontThuong;
         _chkTuDong.AutoSize = true;
-        _chkTuDong.Margin = new Padding(0, 30, 24, 0);
+        _chkTuDong.Margin = new Padding(0, Theme.DinhOTrongTruong + 4, 24, 0);
         _chkTuDong.CheckedChanged += (_, _) => LuuCaiDat();
 
         _chkKemExcel.Text = "Kèm file Excel (mở xem được không cần phần mềm)";
         _chkKemExcel.Font = Theme.FontThuong;
         _chkKemExcel.AutoSize = true;
-        _chkKemExcel.Margin = new Padding(0, 30, 0, 0);
+        _chkKemExcel.Margin = new Padding(0, Theme.DinhOTrongTruong + 4, 0, 0);
         _chkKemExcel.CheckedChanged += (_, _) => LuuCaiDat();
 
-        var hangDuoi = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Location = new Point(20, 88) };
-        hangDuoi.Controls.Add(Theme.Truong("GIỮ LẠI BAO NHIÊU BẢN", _numGiuLai, 200));
-        hangDuoi.Controls.Add(_chkTuDong);
-        hangDuoi.Controls.Add(_chkKemExcel);
-
-        nen.Controls.Add(hangTren);
-        nen.Controls.Add(hangDuoi);
+        nen.Controls.Add(
+            Theme.HangO(Theme.ChinhNhat, Theme.Truong("THƯ MỤC SAO LƯU", _txtThuMuc, 600), btnChon),
+            0,
+            0);
+        nen.Controls.Add(
+            Theme.HangO(
+                Theme.ChinhNhat,
+                Theme.Truong("GIỮ LẠI BAO NHIÊU BẢN", _numGiuLai, 220),
+                _chkTuDong,
+                _chkKemExcel),
+            0,
+            1);
         return nen;
     }
 
@@ -115,11 +134,11 @@ public sealed class SaoLuuForm : Form
         Theme.ApDungLuoi(_luoi);
         _luoi.ReadOnly = true;
         _luoi.Columns.AddRange(
-            Theme.Cot(nameof(DongLuoi.Luc), "SAO LƯU LÚC", 150, "dd/MM/yyyy HH:mm"),
-            Theme.Cot(nameof(DongLuoi.SoKhach), "SỐ KHÁCH", 90, canPhai: true),
-            Theme.Cot(nameof(DongLuoi.KichThuoc), "DUNG LƯỢNG", 110, canPhai: true),
-            Theme.Cot(nameof(DongLuoi.CoExcel), "CÓ EXCEL", 90),
-            Theme.Cot(nameof(DongLuoi.DuongDan), "FILE", 420));
+            Theme.Cot(nameof(DongLuoi.Luc), "SAO LƯU LÚC", 155, "dd/MM/yyyy HH:mm", toiThieu: 150),
+            Theme.Cot(nameof(DongLuoi.SoKhach), "SỐ KHÁCH", 95, canPhai: true),
+            Theme.Cot(nameof(DongLuoi.KichThuoc), "DUNG LƯỢNG", 115, canPhai: true),
+            Theme.Cot(nameof(DongLuoi.CoExcel), "CÓ EXCEL", 95),
+            Theme.Cot(nameof(DongLuoi.DuongDan), "FILE", 420, toiThieu: 160));
 
         _luoi.DataSource = _nguon;
         _luoi.CellDoubleClick += (_, e) =>
@@ -137,9 +156,7 @@ public sealed class SaoLuuForm : Form
 
     private Control TaoThanhDuoi()
     {
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Nen, Padding = new Padding(20, 8, 20, 10) };
-
-        var btnSaoLuu = Theme.Nut("SAO LƯU NGAY", Theme.Xanh, 230, 52);
+        var btnSaoLuu = Theme.Nut("SAO LƯU NGAY", Theme.Xanh, 230, 52, noTheoChu: true);
         btnSaoLuu.Click += (_, _) => SaoLuuNgay();
 
         // Chỉ để ngoài việc bấm hằng tuần là sao lưu. Khôi phục thì mấy năm mới dùng một
@@ -150,30 +167,16 @@ public sealed class SaoLuuForm : Form
             .Ngan()
             .Viec("Khôi phục bản đã chọn", KhoiPhuc, Theme.Do);
 
-        var btnDong = Theme.NutPhu("Đóng", 120, 52);
+        var btnDong = Theme.NutPhu("Đóng", 120, 52, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var hang = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = false, WrapContents = false };
-        hang.Controls.Add(btnSaoLuu);
-        hang.Controls.Add(viecKhac.Nut);
-        hang.Controls.Add(btnDong);
-
-        nen.Controls.Add(hang);
-        return nen;
+        return Theme.ThanhDuoi(null, btnSaoLuu, viecKhac.Nut, btnDong);
     }
 
     private Control TaoThanhTrangThai()
     {
-        _lblTrangThai.Dock = DockStyle.Fill;
-        _lblTrangThai.Font = Theme.FontPhu;
-        _lblTrangThai.ForeColor = Theme.Xam;
-        _lblTrangThai.TextAlign = ContentAlignment.MiddleLeft;
-        _lblTrangThai.Padding = new Padding(22, 0, 0, 0);
         _lblTrangThai.Text = $"Dữ liệu đang dùng: {_kho.DuongDanFile}";
-
-        var nen = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(232, 236, 242) };
-        nen.Controls.Add(_lblTrangThai);
-        return nen;
+        return Theme.ThanhTrangThai(_lblTrangThai);
     }
 
     // ---------------- Nạp / lưu cài đặt ----------------

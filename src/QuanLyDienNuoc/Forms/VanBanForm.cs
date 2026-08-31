@@ -27,9 +27,10 @@ public sealed class VanBanForm : Form
             RowCount = 3,
             BackColor = Theme.Nen,
         };
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
+        // Dòng có chữ thì tự cao theo chữ: xem "Chữ bị cắt" trong docs/giao-dien-may-tinh.md.
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         khung.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        khung.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
+        khung.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         _o.Multiline = true;
         _o.ScrollBars = ScrollBars.Vertical;
@@ -42,24 +43,15 @@ public sealed class VanBanForm : Form
         var vien = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 10, 20, 6), BackColor = Theme.Nen };
         vien.Controls.Add(Theme.Khung(_o));
 
-        var btnChep = Theme.Nut("CHÉP VÀO BỘ NHỚ", Theme.Chinh, 260, 48);
+        var btnChep = Theme.Nut("CHÉP VÀO BỘ NHỚ", Theme.Chinh, 260, 48, noTheoChu: true);
         btnChep.Click += (_, _) => Chep();
 
-        var btnDong = Theme.NutPhu("Đóng", 120, 48);
+        var btnDong = Theme.NutPhu("Đóng", 120, 48, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
-        var hang = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            WrapContents = false,
-            Padding = new Padding(20, 6, 20, 10),
-        };
-        hang.Controls.Add(btnChep);
-        hang.Controls.Add(btnDong);
-
-        khung.Controls.Add(Theme.ThanhTieuDe(tieuDe.ToUpperInvariant(), phuDe), 0, 0);
+        khung.Controls.Add(Theme.ThanhTieuDe(tieuDe.ToUpperInvariant(), phuDe, tuCao: true), 0, 0);
         khung.Controls.Add(vien, 0, 1);
-        khung.Controls.Add(hang, 0, 2);
+        khung.Controls.Add(Theme.ThanhDuoi(null, btnChep, btnDong), 0, 2);
         Controls.Add(khung);
     }
 

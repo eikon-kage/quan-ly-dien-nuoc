@@ -174,18 +174,33 @@ public sealed class InHoaDon : PrintDocument
 
     private float VePhanDau(Graphics g, Rectangle khung, Brush but, Brush butMo)
     {
-        using var canhGiua = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        // Phần đầu của mẫu giấy là hai khối ô gộp, khối nào cũng căn giữa ô gộp của nó chứ không
+        // dán vào lề: nửa trái (gộp cột TT → ĐVT) là tên cửa hàng, địa chỉ, điện thoại; nửa phải
+        // (gộp cột SỐ LƯỢNG → THÀNH TIỀN) là số tài khoản ngân hàng. Cắt đôi đúng ở mốc cột của
+        // bảng bên dưới nên phần đầu thẳng hàng với bảng, y như khi mở file Excel xuất ra.
+        using var canhGiua = new StringFormat
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+            FormatFlags = StringFormatFlags.NoWrap,
+            Trimming = StringTrimming.EllipsisCharacter,
+        };
 
-        var rongPhai = khung.Width * 0.46f;
-        var traiPhai = khung.Left + khung.Width - rongPhai;
+        var mocCot = TinhMocCot(khung);
+        var giuaTo = mocCot[MauHoaDon.CotSoLuong];
+        var rongTrai = giuaTo - khung.Left;
+        var rongPhai = khung.Left + khung.Width - giuaTo;
         float y = khung.Top;
 
-        g.DrawString(_cuaHang.Ten, _fontTenCuaHang, but, khung.Left, y);
-        g.DrawString(_cuaHang.NganhNghe1, _fontNho, but, new RectangleF(traiPhai, y, rongPhai, 20f), canhGiua);
+        RectangleF OTrai(float cao) => new(khung.Left, y, rongTrai, cao);
+        RectangleF OPhai(float cao) => new(giuaTo, y, rongPhai, cao);
+
+        g.DrawString(_cuaHang.Ten, _fontTenCuaHang, but, OTrai(24f), canhGiua);
+        g.DrawString(_cuaHang.NganhNghe1, _fontNho, but, OPhai(24f), canhGiua);
         y += 24f;
 
-        g.DrawString(_cuaHang.DiaChi, _fontNho, but, khung.Left, y);
-        g.DrawString(_cuaHang.NganhNghe2, _fontNho, but, new RectangleF(traiPhai, y, rongPhai, 18f), canhGiua);
+        g.DrawString(_cuaHang.DiaChi, _fontNho, but, OTrai(20f), canhGiua);
+        g.DrawString(_cuaHang.NganhNghe2, _fontNho, but, OPhai(20f), canhGiua);
         y += 20f;
 
         // Tên tờ giấy: hoá đơn hoàn hàng phải thấy ngay từ trên cùng, không thể để khách với
@@ -193,15 +208,21 @@ public sealed class InHoaDon : PrintDocument
         var tieuDe = _hoaDon.LaHoanHang ? "HOÁ ĐƠN HOÀN HÀNG" : _cuaHang.TieuDe;
         var phuDe = _hoaDon.LaHoanHang ? "(Khách trả lại hàng)" : _cuaHang.PhuDe;
 
-        // Mẫu giấy mới không có ô tên tờ, dòng này chỉ là tên chủ tài khoản ngân hàng — in cỡ
-        // chữ thường như hai dòng trên. Chỉ tên tờ thật (mẫu cũ, hoặc tờ hoàn hàng) mới in to.
-        var fontDongTieuDe = _hoaDon.LaHoanHang || _cuaHang.CoTenTo ? _fontTieuDe : _fontNho;
+        // Mẫu giấy mới không có ô tên tờ, hai dòng này chỉ là tên chủ tài khoản ngân hàng với số
+        // điện thoại — in cỡ chữ thường, mực đen như hai dòng trên. Chỉ tên tờ thật (mẫu cũ, hoặc
+        // tờ hoàn hàng) mới in to kèm phụ đề nghiêng.
+        var laTenToThat = _hoaDon.LaHoanHang || _cuaHang.CoTenTo;
 
-        g.DrawString(_cuaHang.DienThoai, _fontNho, but, khung.Left, y);
-        g.DrawString(tieuDe, fontDongTieuDe, but, new RectangleF(traiPhai, y - 2f, rongPhai, 30f), canhGiua);
+        g.DrawString(_cuaHang.DienThoai, _fontNho, but, OTrai(30f), canhGiua);
+        g.DrawString(tieuDe, laTenToThat ? _fontTieuDe : _fontNho, but, OPhai(30f), canhGiua);
         y += 32f;
 
-        g.DrawString(phuDe, _fontPhuDe, butMo, new RectangleF(traiPhai, y - 6f, rongPhai, 18f), canhGiua);
+        g.DrawString(
+            phuDe,
+            laTenToThat ? _fontPhuDe : _fontNho,
+            laTenToThat ? butMo : but,
+            new RectangleF(giuaTo, y - 6f, rongPhai, 18f),
+            canhGiua);
 
         g.DrawString($"Tên khách hàng: {_khach.Ten}", _fontThuong, but, khung.Left, y);
         y += 22f;
@@ -307,17 +328,20 @@ public sealed class InHoaDon : PrintDocument
 
             RectangleF O(int cot) => new(mocCot[cot] + 4f, y, mocCot[cot + 1] - mocCot[cot] - 8f, caoDong);
 
-            // Mốc ngày chiếm riêng một dòng ở cột TT, y như tờ giấy chủ cửa hàng viết tay và y
-            // như file Excel xuất ra — tờ in với file xuất phải là cùng một tờ.
+            var ct = dong[i].Hang;
+
+            // Mốc ngày ghi vào ô số thứ tự của dòng hàng đầu tiên lấy hôm ấy, y như tờ giấy chủ
+            // cửa hàng viết tay và y như file Excel xuất ra — tờ in với file xuất phải là cùng
+            // một tờ. Ngày in đậm cho nổi lên giữa cột số.
             if (dong[i].Moc is { } moc)
             {
                 g.DrawString($"{moc.Day}/{moc.Month}", _fontBangDam, but, O(0), canhGiua);
-                continue;
+            }
+            else
+            {
+                g.DrawString(dong[i].SoThuTu.ToString(), _fontBang, but, O(0), canhGiua);
             }
 
-            var ct = dong[i].Hang!;
-
-            g.DrawString(dong[i].SoThuTu.ToString(), _fontBang, but, O(0), canhGiua);
             g.DrawString(ct.TenHang, _fontBang, but, O(1), canhTrai);
             g.DrawString(ct.DonVi, _fontBang, but, O(2), canhGiua);
             g.DrawString(So.Luong(ct.SoLuong * dau), _fontBang, but, O(3), canhPhai);
@@ -357,7 +381,7 @@ public sealed class InHoaDon : PrintDocument
         var dau = _hoaDon.DauInRaGiay;
         var tien = (laTrangCuoi
             ? _hoaDon.TongTien
-            : dong.Where(d => d.Hang is not null).Sum(d => d.Hang!.ThanhTien)) * dau;
+            : dong.Sum(d => d.Hang.ThanhTien)) * dau;
         g.DrawString(
             (laTrangCuoi, _hoaDon.LaHoanHang) switch
             {

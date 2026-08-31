@@ -17,8 +17,8 @@ namespace QuanLyDienNuoc.Ui;
 /// </summary>
 public sealed class ThanhPhanTrang : Panel
 {
-    private readonly Button _nutTruoc = Theme.NutPhu("Trang trước", 150, 38);
-    private readonly Button _nutSau = Theme.NutPhu("Trang sau", 140, 38);
+    private readonly Button _nutTruoc = Theme.NutPhu("Trang trước", 150, 38, noTheoChu: true);
+    private readonly Button _nutSau = Theme.NutPhu("Trang sau", 140, 38, noTheoChu: true);
     private readonly Label _nhan = new();
 
     private int _tongDong;
@@ -28,9 +28,10 @@ public sealed class ThanhPhanTrang : Panel
         AutoSize = true;
         Margin = new Padding(0);
 
-        _nhan.AutoSize = false;
-        _nhan.Width = 300;
-        _nhan.Height = 38;
+        // Tự co theo chữ chứ không ô rộng cứng 300px: câu "Trang 2/7 · 148 dòng" ở cỡ chữ to
+        // là dài hơn thế rồi cụt đuôi.
+        _nhan.AutoSize = true;
+        _nhan.MinimumSize = new Size(0, 38);
         _nhan.Font = Theme.FontThuong;
         _nhan.ForeColor = Theme.Xam;
         _nhan.TextAlign = ContentAlignment.MiddleRight;

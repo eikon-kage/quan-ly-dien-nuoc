@@ -338,11 +338,11 @@ public class NhapNhieuTrangTests : IDisposable
     }
 
     [Fact]
-    public void Xuat_ToNhieuNgay_CotSoThuTuVanConDuSo()
+    public void Xuat_ToNhieuNgay_MocNgayNamTrenDongHangDauTienCuaNgayDo()
     {
-        // Chỗ này là lỗi cũ: mốc ngày ghi thẳng vào ô số thứ tự của dòng hàng, nên tờ của khách
-        // mối — mỗi ngày lấy một ít — có gần như cả cột TT là ngày, chẳng còn số thứ tự nào.
-        // Giờ mốc đứng riêng một dòng: dòng hàng giữ số của nó, mà nhập lại vẫn ra đúng ngày.
+        // Đúng lối chủ cửa hàng viết tay: ngày ghi vào ô số thứ tự của món đầu tiên lấy hôm ấy,
+        // các món tiếp theo của ngày ấy mới ghi số. Mốc không chiếm riêng một dòng nào của tờ,
+        // và nhập lại vẫn ra đúng ngày của từng dòng.
         var khach = new KhachHang { Ten = "Ông Mẫu" };
         var hoaDon = new HoaDon();
         DateTime[] ngay =
@@ -364,8 +364,9 @@ public class NhapNhieuTrangTests : IDisposable
         // Tờ một trang thì giữ đúng tên người dùng đặt, không thêm " - trang 1".
         Assert.Equal(new[] { fileRa }, daGhi.ToArray());
 
+        // Dòng 1 và 3 in ngày thay cho số thứ tự của chúng, nên cột TT nhảy 1/3 → 2 → 12/4 → 4.
         Assert.Equal(
-            new[] { "1/3", "1", "2", "12/4", "3", "4", "2/5", "5" },
+            new[] { "1/3", "2", "12/4", "4", "2/5" },
             CotSoThuTu(fileRa, MauHoaDon.Trang1));
 
         var trang = DocHoaDon.Doc(fileRa, new DateTime(2026, 1, 1), namChon: 2026).Trang.Single();
