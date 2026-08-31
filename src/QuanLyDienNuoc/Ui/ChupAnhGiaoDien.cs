@@ -187,11 +187,15 @@ public static class ChupAnhGiaoDien
         Form? form = null;
         try
         {
+            // Cố tình đặt bề ngang hẹp nhất trong các màn hình đang dùng (màn Thu tiền: 190px,
+            // chữ 14pt) — đây là chỗ chữ ngày từng bị cắt cụt chữ số đầu. Ô tự nới ra cho đủ.
             var o = new OChonNgay { Font = Theme.FontNhapTo, Value = new DateTime(2026, 8, 3) };
-            var truong = Theme.Truong("NGÀY LẤY HÀNG", o, 220, 40);
+            var truong = Theme.Truong("NGÀY LẤY HÀNG", o, 190, 40);
             truong.Location = new Point(24, 18);
+            Ghi($"Ô chọn ngày: xin 190px, cần tối thiểu {o.RongToiThieu}px, khung ra {truong.Width}px");
 
             var lich = new BangLich { Font = Theme.FontNhapTo, NgayChon = new DateTime(2026, 8, 3) };
+
             lich.Size = lich.CoVua();
             lich.Location = new Point(24, truong.Bottom + 4);
 
@@ -202,7 +206,7 @@ public static class ChupAnhGiaoDien
                 Location = new Point(0, 0),
                 BackColor = Theme.Nen,
                 ShowInTaskbar = false,
-                ClientSize = new Size(lich.Right + 24, lich.Bottom + 24),
+                ClientSize = new Size(Math.Max(lich.Right, truong.Right) + 24, lich.Bottom + 24),
             };
             form.Controls.Add(truong);
             form.Controls.Add(lich);

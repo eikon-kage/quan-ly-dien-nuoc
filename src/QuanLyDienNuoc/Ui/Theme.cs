@@ -1044,6 +1044,11 @@ public static class Theme
     {
         var caoO = cao > 0 ? cao : dieuKhien is TextBox { Multiline: false } ? 36 : 34;
 
+        // Ô nào tự biết mình cần rộng bao nhiêu thì nghe theo nó, đừng ép hẹp lại: ô chọn ngày
+        // đo chỗ cho "00/00/0000" theo cỡ chữ đang dùng, ép hẹp là Windows cắt cụt chữ số đầu.
+        // Khung nở ra thì các ô đứng sau trong hàng dịch sang phải, không đè lên nhau.
+        rong = Math.Max(rong, dieuKhien.MinimumSize.Width);
+
         var caoNhan = CaoNhanTrongTruong;
         var dinhO = DinhOTrongTruong;
 

@@ -3,33 +3,39 @@ using System.Drawing.Drawing2D;
 namespace QuanLyDienNuoc.Ui;
 
 /// <summary>
-/// Ô chọn ngày của phần mềm: gõ ngày bằng bàn phím như cũ, còn bảng lịch bung ra là
-/// <see cref="BangLich"/> tự vẽ nên chữ luôn tiếng Việt.
+/// Ô chọn ngày của phần mềm: gõ ngày bằng bàn phím, hoặc bấm nút lịch bung
+/// <see cref="BangLich"/> ra chọn. Chữ trên ô và trong lịch đều tiếng Việt trên mọi máy.
 /// <para>
-/// Dùng thay cho <see cref="DateTimePicker"/> trần. Ô gõ bên trong vẫn là DateTimePicker của
-/// Windows (gõ ngày, tháng, năm từng phần, mũi tên lên xuống chỉnh nhanh — quen tay rồi thì
-/// nhanh hơn bấm lịch nhiều), nhưng bật <see cref="DateTimePicker.ShowUpDown"/> để <b>tắt hẳn
-/// bảng lịch của Windows</b>: bảng ấy viết tên tháng, tên thứ theo cài đặt Region của máy, máy
-/// cài Windows tiếng Anh là hiện "August 2026 — S M T W T F S".
+/// Không dùng <see cref="DateTimePicker"/> của Windows, vì hai chỗ hỏng:
 /// </para>
+/// <list type="number">
+/// <item>bảng lịch bung ra lấy tên tháng, tên thứ theo <b>cài đặt Region của máy</b> chứ không
+/// theo ngôn ngữ phần mềm đặt — máy cài Windows tiếng Anh là hiện "August 2026 — S M T W T F S";</item>
+/// <item>ô gõ của nó viết chữ <b>dính sát viền trái</b>, không có lề. Ở cỡ chữ to của phần mềm
+/// (chủ cửa hàng có tuổi) thì chữ số đầu của ngày trông như bị cắt cụt, mà nới ô rộng ra cũng
+/// không đỡ: chỗ thừa rơi hết về bên phải.</item>
+/// </list>
 /// <para>
-/// Bên phải là nút lịch, bấm vào bung tờ lịch tiếng Việt. Bấm F4 hoặc Alt+↓ cũng bung.
+/// Nên ruột ô là <see cref="TextBox"/> thường, đặt trong khung bo góc do ô tự vẽ — giống hệt các
+/// ô nhập khác trong phần mềm. Gõ kiểu gì cũng nhận (<c>3/8</c>, <c>3-8-26</c>, <c>31082026</c>),
+/// xem <see cref="NgayViet"/>. Phím ↑↓ chỉnh từng ngày, PageUp/PageDown chỉnh từng tháng,
+/// F4 hoặc Alt+↓ bung lịch.
 /// </para>
 /// </summary>
 public sealed class OChonNgay : Control
 {
-    private readonly DateTimePicker _o = new()
+    private readonly TextBox _o = new()
     {
-        Format = DateTimePickerFormat.Custom,
-        CustomFormat = Theme.DangNgay,
-
-        // BẮT BUỘC giữ true: đây là cách duy nhất tắt được bảng lịch tiếng Anh của Windows.
-        ShowUpDown = true,
+        BorderStyle = BorderStyle.None,
+        BackColor = Theme.Trang,
+        ForeColor = Theme.Chu,
     };
 
     private readonly BangLich _lich = new();
 
     private CuaSoLich? _cuaSo;
+    private DateTime _ngay = DateTime.Today;
+    private bool _dangDatChu;
     private bool _troTrenNut;
     private DateTime _lucThuLich = DateTime.MinValue;
 
@@ -38,11 +44,30 @@ public sealed class OChonNgay : Control
 
     public OChonNgay()
     {
-        SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+        SetStyle(
+            ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
+            | ControlStyles.UserPaint | ControlStyles.ResizeRedraw,
+            true);
+
         Height = 34;
         Width = 190;
+        BackColor = Theme.Trang;
 
-        _o.ValueChanged += (_, e) => ValueChanged?.Invoke(this, e);
+        DatChu();
+        DoiRongToiThieu();
+
+        _o.Leave += (_, _) =>
+        {
+            DocChuDaGo();
+            Invalidate();
+        };
+        _o.Enter += (_, _) =>
+        {
+            // Vào ô là bôi đen sẵn: gõ đè lên luôn, khỏi phải xoá chữ cũ.
+            _o.SelectAll();
+            Invalidate();
+        };
+        _o.KeyDown += KhiGoPhim;
         Controls.Add(_o);
 
         _lich.DaChon += (_, ngay) =>
@@ -61,23 +86,48 @@ public sealed class OChonNgay : Control
     /// <summary>Ngày đang chọn.</summary>
     public DateTime Value
     {
-        get => _o.Value;
-        set => _o.Value = value;
+        get => _ngay;
+        set
+        {
+            var moi = value.Date;
+            if (moi == _ngay)
+            {
+                // Vẫn viết lại chữ: có thể người dùng đang gõ dở một chữ không đọc được.
+                DatChu();
+                return;
+            }
+
+            _ngay = moi;
+            DatChu();
+            ValueChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
-    /// <summary>Bảng lịch có đang bung ra không — dùng cho ảnh chụp giao diện.</summary>
+    /// <summary>Bảng lịch có đang bung ra không.</summary>
     public bool DangMoLich => _cuaSo is { Visible: true };
 
-    /// <summary>Bề ngang phần nút lịch bên phải ô gõ.</summary>
-    private int RongNut => Math.Max(34, Font.Height + 12);
+    /// <summary>Bề ngang phần nút lịch bên phải, nằm trong khung.</summary>
+    private int RongNut => Math.Max(30, Font.Height + 8);
 
-    private Rectangle ONut => new(Width - RongNut, 0, RongNut, Height);
+    private Rectangle ONut => new(Width - RongNut - 2, 1, RongNut, Height - 2);
+
+    /// <summary>Lề trái của chữ trong khung — đúng bằng lề của các ô nhập khác.</summary>
+    private const int LeChu = 10;
+
+    /// <summary>
+    /// Bề ngang hẹp nhất mà chữ ngày còn đủ chỗ: lề trái, chữ "00/00/0000" theo đúng cỡ chữ
+    /// đang dùng, rồi tới nút lịch. Phải đo chứ không đặt số cứng — máy đặt cỡ hiển thị 125%
+    /// thì chữ nở ra mà bề ngang ghi trong từng màn hình thì không.
+    /// </summary>
+    public int RongToiThieu =>
+        LeChu + TextRenderer.MeasureText("00/00/0000", Font).Width + 8 + RongNut + 4;
 
     protected override void OnFontChanged(EventArgs e)
     {
         base.OnFontChanged(e);
         _o.Font = Font;
         _lich.Font = Font;
+        DoiRongToiThieu();
         XepCho();
     }
 
@@ -87,53 +137,148 @@ public sealed class OChonNgay : Control
         XepCho();
     }
 
+    /// <summary>
+    /// Khoá bề ngang hẹp nhất vào <see cref="Control.MinimumSize"/>: màn hình nào đặt ô hẹp hơn
+    /// thì ô tự giữ lại đủ rộng, và <c>Theme.Truong</c> nới khung có nhãn theo.
+    /// </summary>
+    private void DoiRongToiThieu() => MinimumSize = new Size(RongToiThieu, 0);
+
     private void XepCho()
     {
-        _o.Bounds = new Rectangle(0, 0, Math.Max(0, Width - RongNut - 2), Height);
+        // TextBox một dòng cao theo cỡ chữ, kéo cao không được — đặt nó vào giữa khung.
+        var rong = Math.Max(0, Width - LeChu - RongNut - 6);
+        _o.Bounds = new Rectangle(LeChu, Math.Max(1, (Height - _o.Height) / 2), rong, _o.Height);
+    }
 
-        // DateTimePicker có lúc không chịu cao bằng ô (Windows khoá theo cỡ chữ). Thấp hơn thì
-        // đặt vào giữa, không thì nó nằm dính mép trên, lệch hẳn so với ô nhập bên cạnh.
-        if (_o.Height < Height)
+    // ---------- Chữ trong ô ----------
+
+    private void DatChu()
+    {
+        _dangDatChu = true;
+        _o.Text = NgayViet.Viet(_ngay);
+        _o.SelectionStart = _o.TextLength;
+        _dangDatChu = false;
+    }
+
+    /// <summary>
+    /// Đọc chữ vừa gõ. Gõ sai thì trả ô về ngày cũ chứ không đoán bừa — vào sổ sai ngày thì
+    /// đến cuối tháng đối chiếu mới lòi ra, lúc ấy không ai nhớ hôm ấy lấy hàng gì.
+    /// </summary>
+    private void DocChuDaGo()
+    {
+        if (_dangDatChu)
         {
-            _o.Top = (Height - _o.Height) / 2;
+            return;
+        }
+
+        if (NgayViet.TryDoc(_o.Text, _ngay, out var ngay))
+        {
+            Value = ngay;
+            return;
+        }
+
+        DatChu();
+    }
+
+    private void KhiGoPhim(object? nguoiGui, KeyEventArgs e)
+    {
+        switch (e.KeyCode)
+        {
+            case Keys.Enter:
+                // Không đặt Handled: nhiều màn hình lấy Enter làm phím ghi sổ, nuốt mất là
+                // gõ xong ngày rồi bấm Enter không thấy gì xảy ra.
+                DocChuDaGo();
+                _o.SelectAll();
+                return;
+
+            case Keys.Escape:
+                DatChu();
+                return;
+
+            // ↑↓ chỉnh từng ngày, PageUp/PageDown chỉnh từng tháng — giữ đúng thói quen của ô
+            // ngày cũ, vốn có cặp nút ↑↓ của Windows.
+            case Keys.Up:
+                DoiNgay(1);
+                e.Handled = true;
+                return;
+
+            case Keys.Down when e.Alt:
+                BatTatLich();
+                e.Handled = true;
+                return;
+
+            case Keys.Down:
+                DoiNgay(-1);
+                e.Handled = true;
+                return;
+
+            case Keys.PageUp:
+                DoiThang(-1);
+                e.Handled = true;
+                return;
+
+            case Keys.PageDown:
+                DoiThang(1);
+                e.Handled = true;
+                return;
+
+            case Keys.F4:
+                BatTatLich();
+                e.Handled = true;
+                return;
         }
     }
 
-    protected override void OnBackColorChanged(EventArgs e)
+    private void DoiNgay(int so)
     {
-        base.OnBackColorChanged(e);
-        Invalidate();
+        DocChuDaGo();
+        Value = _ngay.AddDays(so);
+        _o.SelectAll();
     }
 
-    // ---------- Nút lịch ----------
+    private void DoiThang(int so)
+    {
+        DocChuDaGo();
+        Value = LichViet.DoiThang(_ngay, so);
+        _o.SelectAll();
+    }
+
+    // ---------- Khung và nút lịch ----------
 
     protected override void OnPaint(PaintEventArgs e)
     {
-        base.OnPaint(e);
-
         var g = e.Graphics;
+        g.Clear(Parent?.BackColor ?? Theme.Nen);
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        var khung = ONut;
-        khung.Inflate(-1, -1);
+        var khung = new Rectangle(0, 0, Width - 1, Height - 1);
         if (khung.Width <= 0 || khung.Height <= 0)
         {
             return;
         }
 
+        // Khung trắng bo góc, viền sáng lên lúc đang gõ — y như Theme.HopO của các ô nhập khác.
         using (var duong = Theme.DuongBo(khung, Theme.Bo))
         {
-            using var to = new SolidBrush(_troTrenNut || DangMoLich ? Theme.ChinhNhat : Theme.Trang);
+            using var to = new SolidBrush(Theme.Trang);
             g.FillPath(to, duong);
-            using var but = new Pen(_troTrenNut || DangMoLich ? Theme.Chinh : Theme.Vien);
+            using var but = new Pen(_o.Focused ? Theme.Chinh : Theme.Vien);
             g.DrawPath(but, duong);
         }
 
-        VeHinhLich(g, khung);
+        var oNut = ONut;
+        if (_troTrenNut || DangMoLich)
+        {
+            using var duong = Theme.DuongBo(Rectangle.Inflate(oNut, -2, -3), Theme.Bo);
+            using var to = new SolidBrush(Theme.ChinhNhat);
+            g.FillPath(to, duong);
+        }
+
+        VeHinhLich(g, oNut, _troTrenNut || DangMoLich ? Theme.Chinh : Theme.Xam);
     }
 
-    /// <summary>Hình tờ lịch nhỏ trên mặt nút: khung, gáy trên và ba dòng kẻ.</summary>
-    private static void VeHinhLich(Graphics g, Rectangle khung)
+    /// <summary>Hình tờ lịch nhỏ trên mặt nút: khung, gáy trên và hai cái móc treo.</summary>
+    private static void VeHinhLich(Graphics g, Rectangle khung, Color mau)
     {
         var canh = Math.Min(khung.Width, khung.Height) - 14;
         if (canh < 8)
@@ -147,11 +292,9 @@ public sealed class OChonNgay : Control
             canh,
             canh);
 
-        using var but = new Pen(Theme.Chu, 1.4F);
+        using var but = new Pen(mau, 1.4F);
         g.DrawRectangle(but, to);
         g.DrawLine(but, to.Left, to.Top + (canh / 3), to.Right, to.Top + (canh / 3));
-
-        // Hai cái móc treo lịch.
         g.DrawLine(but, to.Left + (canh / 4), to.Top - 3, to.Left + (canh / 4), to.Top + 2);
         g.DrawLine(but, to.Right - (canh / 4), to.Top - 3, to.Right - (canh / 4), to.Top + 2);
     }
@@ -184,23 +327,25 @@ public sealed class OChonNgay : Control
     {
         base.OnMouseDown(e);
 
-        if (e.Button == MouseButtons.Left && ONut.Contains(e.Location))
+        if (e.Button != MouseButtons.Left)
+        {
+            return;
+        }
+
+        if (ONut.Contains(e.Location))
         {
             BatTatLich();
+            return;
         }
+
+        // Bấm vào chỗ trống trong khung cũng là bấm vào ô gõ.
+        _o.Focus();
     }
 
-    protected override bool ProcessCmdKey(ref Message m, Keys phim)
+    protected override void OnGotFocus(EventArgs e)
     {
-        // F4 và Alt+↓ là thói quen bung danh sách của Windows; ô ngày cũ cũng mở lịch bằng hai
-        // phím này nên giữ nguyên.
-        if (phim is Keys.F4 or (Keys.Alt | Keys.Down))
-        {
-            BatTatLich();
-            return true;
-        }
-
-        return base.ProcessCmdKey(ref m, phim);
+        base.OnGotFocus(e);
+        _o.Focus();
     }
 
     // ---------- Bung / đóng tờ lịch ----------
@@ -222,9 +367,11 @@ public sealed class OChonNgay : Control
     /// <summary>Bung tờ lịch ngay dưới ô, không đủ chỗ thì lật lên trên.</summary>
     public void MoLich()
     {
+        DocChuDaGo();
+
         _lich.Font = Font;
         _lich.Size = _lich.CoVua();
-        _lich.NgayChon = Value.Date;
+        _lich.NgayChon = _ngay;
 
         if (_cuaSo is null)
         {

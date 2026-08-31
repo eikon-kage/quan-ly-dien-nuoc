@@ -48,7 +48,7 @@ Lấy đúng biến màu của bộ thiết kế, khai báo ở [`Ui/Theme.cs`](
 | `Theme.ApDungLuoi` | Theme.cs | bảng kiểu mới: đầu bảng trắng, kẻ dòng mảnh |
 | `Theme.ThanhTieuDe` | Theme.cs | dải tiêu đề đầu mỗi cửa sổ con: nền trắng, kẻ một vạch dưới |
 | `ThanhBen` | ThanhBen.cs | thanh bên trái của màn hình chính, kèm hình vẽ nét |
-| `OChonNgay` | OChonNgay.cs | ô chọn ngày: gõ bằng bàn phím, bấm nút lịch thì bung tờ lịch tiếng Việt |
+| `OChonNgay` | OChonNgay.cs | ô chọn ngày: ô nhập bo góc có lề, bấm nút lịch thì bung tờ lịch tiếng Việt |
 | `BangLich` | BangLich.cs | tờ lịch tháng tự vẽ, chữ tiếng Việt (xem mục dưới) |
 
 Mười lăm cửa sổ con không phải sửa gì: chúng dựng bằng đúng các hàm trên, đổi ở `Theme.cs` là
@@ -356,21 +356,29 @@ Danh sách vẫn hiện bình thường; muốn lấy một dòng thì bấm chu
 
 ## Ô chọn ngày: vì sao phải tự vẽ lấy tờ lịch
 
-`DateTimePicker` của WinForms có hai phần, và **hai phần lấy ngôn ngữ ở hai chỗ khác nhau**:
+`DateTimePicker` của WinForms hỏng **hai chỗ**, và cả hai đều không vá được từ bên ngoài:
 
-- phần ô gõ — phần mềm ép `CustomFormat = "dd/MM/yyyy"` ([`Theme.DangNgay`](../src/QuanLyDienNuoc/Ui/Theme.cs))
-  nên luôn viết kiểu Việt;
-- phần **bảng lịch bung ra** — Windows tự vẽ, lấy tên tháng và tên thứ theo *cài đặt Region của
-  máy*, **không** theo ngôn ngữ phần mềm đặt trong `Program.cs`. Máy cài Windows tiếng Anh thì
-  chủ cửa hàng bấm mũi tên là thấy "August 2026 — S M T W T F S".
+1. **Bảng lịch bung ra** do Windows tự vẽ, lấy tên tháng và tên thứ theo *cài đặt Region của
+   máy*, **không** theo ngôn ngữ phần mềm đặt trong `Program.cs`. Máy cài Windows tiếng Anh thì
+   chủ cửa hàng bấm mũi tên là thấy "August 2026 — S M T W T F S". Đặt `CultureInfo` hay gọi
+   `SetThreadLocale` đều không chắc đổi được bảng ấy.
+2. **Ô gõ viết chữ dính sát viền trái**, không có lề — mà lề thì không đặt được, `DateTimePicker`
+   không có `Padding` cũng không bỏ được viền của nó. Ở cỡ chữ to của phần mềm, chữ số đầu của
+   ngày trông như bị cắt cụt. Nới ô rộng ra cũng vô ích: chữ căn trái nên chỗ thừa rơi hết về
+   bên phải.
 
-Đặt `CultureInfo` hay gọi `SetThreadLocale` đều không chắc đổi được bảng ấy, nên phần mềm **tự vẽ
-lấy tờ lịch**:
+Nên phần mềm **thay hẳn cả ô lẫn lịch**:
 
-- [`OChonNgay`](../src/QuanLyDienNuoc/Ui/OChonNgay.cs) — ô chọn ngày dùng ở 7 màn hình. Bên trong
-  vẫn là `DateTimePicker` để giữ lối gõ quen tay (gõ từng phần ngày/tháng/năm, mũi tên ↑↓ chỉnh
-  nhanh), nhưng bật `ShowUpDown = true` — **đây là cách duy nhất tắt hẳn bảng lịch của Windows**.
-  Bên phải là nút hình tờ lịch, bấm vào (hoặc `F4`, `Alt+↓`) thì bung tờ lịch tự vẽ.
+- [`OChonNgay`](../src/QuanLyDienNuoc/Ui/OChonNgay.cs) — ô chọn ngày dùng ở 6 màn hình. Ruột là
+  `TextBox` thường đặt trong khung bo góc do ô tự vẽ, **lề trái 10px giống mọi ô nhập khác**;
+  bên phải, nằm trong khung, là nút hình tờ lịch. Bề ngang tối thiểu `RongToiThieu` được **đo**
+  theo cỡ chữ đang dùng (`TextRenderer.MeasureText`) rồi khoá vào `MinimumSize`, nên máy đặt cỡ
+  hiển thị 125% thì ô nở theo — `Theme.Truong` nới khung có nhãn theo `MinimumSize` của ô.
+- [`NgayViet`](../src/QuanLyDienNuoc.Core/Ui/NgayViet.cs) — đọc chữ người dùng gõ. Gõ kiểu gì
+  cũng nhận: `3/8`, `03/08`, `3-8-26`, `3.8.2026`, `3\8`, `3108`, `31082026`; thiếu năm thì lấy
+  năm của ngày đang chọn. Gõ sai (`31/2`, `29/2/2026`) thì **trả ô về ngày cũ chứ không đoán
+  bừa**. Phím: `↑↓` chỉnh từng ngày, `PageUp/PageDown` chỉnh từng tháng, `F4` hoặc `Alt+↓` bung
+  lịch, `Esc` bỏ chữ vừa gõ. Test: [`NgayVietTests`](../tests/QuanLyDienNuoc.Tests/NgayVietTests.cs).
 - [`BangLich`](../src/QuanLyDienNuoc/Ui/BangLich.cs) — tờ lịch: "Tháng 8, 2026", cột `T2 T3 T4 T5
   T6 T7 CN` bắt đầu từ thứ hai như lịch treo tường, cột chủ nhật màu đỏ, ngày đang chọn tô đặc,
   hôm nay viền xanh, chân bảng có dòng "Hôm nay: Thứ hai, 31/08/2026" bấm được. Lật tháng bằng
@@ -378,7 +386,8 @@ lấy tờ lịch**:
   `Enter` chọn, `Esc` bỏ.
 - [`LichViet`](../src/QuanLyDienNuoc.Core/Ui/LichViet.cs) — phần tính toán (xếp 42 ô của tháng,
   tên thứ, tên tháng) để ở Core, **không dính WinForms**, nên chạy được `dotnet test` trên máy
-  Mac: xem [`LichVietTests`](../tests/QuanLyDienNuoc.Tests/LichVietTests.cs).
+  Mac: xem [`LichVietTests`](../tests/QuanLyDienNuoc.Tests/LichVietTests.cs). Cách đọc ngày gõ
+  tay cũng vậy — cả hai phần khó của ô ngày đều test được mà không cần máy Windows.
 
 Mọi số đo của tờ lịch tính theo `Font.Height` nên máy đặt cỡ hiển thị 125% hay 150% thì lịch nở
 theo, không vỡ chữ. Ảnh `21-lich-chon-ngay.png` trong [`docs/anh-giao-dien/`](anh-giao-dien/) là
