@@ -19,6 +19,7 @@ OK  15-nhat-ky.png  (1600x950)
 OK  16-tin-nhac-no.png  (1600x950)
 OK  17-cham-cong.png  (1600x950)
 Đã xuất Excel toàn bộ dữ liệu: D:\a\quan-ly-dien-nuoc\quan-ly-dien-nuoc/anh-giao-dien\toan-bo-du-lieu.xlsx
+Ô chọn ngày: xin 190px, cần tối thiểu 161px, khung ra 190px
 OK  21-lich-chon-ngay.png  (401x487)
 OK  22-tong-hop-ngay.png  (1600x950)
 OK  22b-anh-bang-ke-gui-zalo.png  (1000x673, 3 dòng hàng)
