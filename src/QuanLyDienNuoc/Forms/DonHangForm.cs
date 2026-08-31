@@ -215,7 +215,11 @@ public sealed class DonHangForm : Form
             return;
         }
 
-        _luoiCT.CurrentCell = dongThat[dongThat.Count / 2].Cells[1];
+        // Chèn cạnh **dòng cuối** chứ không phải dòng giữa: đặt con trỏ vào ô chèn là lưới cuộn
+        // tới đấy, nên một khung ảnh thấy được cả hai dòng vàng — dòng chèn và dòng ở cuối bảng.
+        // Chèn ở giữa bảng dài thì dòng vàng cuối rơi xuống dưới mép khung, ảnh không chứng minh
+        // được điều cần xem.
+        _luoiCT.CurrentCell = dongThat[^1].Cells[1];
         ChenDongTrong(chenDuoi: false);
     }
 
