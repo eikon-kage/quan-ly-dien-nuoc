@@ -142,7 +142,7 @@ public sealed class BangGiaForm : Form
             {
                 VT = vatTu,
                 Ten = vatTu.Ten,
-                Nhom = vatTu.Nhom,
+                Nhom = _kho.TenNhom(vatTu),
                 DonVi = vatTu.DonVi,
                 GiaChung = vatTu.DonGiaMacDinh,
                 GiaRieng = giaRieng,

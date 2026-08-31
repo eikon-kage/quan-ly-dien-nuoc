@@ -22,6 +22,22 @@ public sealed class VatTuForm : Form
     private readonly TextBox _txtGia = Theme.O(160);
     private readonly ComboBox _cboNhom = new();
     private readonly ComboBox _cboLoc = new();
+    private readonly ComboBox _cboGan = new();
+
+    /// <summary>Cột NHÓM là ô chọn; danh sách nhóm dựng lại mỗi lần nạp lưới.</summary>
+    private readonly DataGridViewComboBoxColumn _cotNhom = new()
+    {
+        Name = "colNhomId",
+        DataPropertyName = nameof(VatTu.NhomId),
+        HeaderText = "NHÓM",
+        FillWeight = 150,
+        MinimumWidth = 120,
+        SortMode = DataGridViewColumnSortMode.NotSortable,
+        FlatStyle = FlatStyle.Flat,
+        DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing,
+        DisplayMember = nameof(MucNhom.Ten),
+        ValueMember = nameof(MucNhom.Id),
+    };
     private readonly Label _lblTrangThai = Theme.NhanDaiDong();
 
     private string? _anhChupTruocKhiSua;
@@ -72,13 +88,10 @@ public sealed class VatTuForm : Form
         // Thêm nhanh
         var btnThem = Theme.Nut("+  THÊM VẬT TƯ", Theme.Xanh, 200, 34, noTheoChu: true);
         btnThem.Click += (_, _) => Them();
-        _cboNhom.DropDownStyle = ComboBoxStyle.DropDown;
+        // Chọn nhóm trong danh sách chứ không gõ tay: nhóm mới thì tạo ở màn "Quản lý nhóm",
+        // để khỏi lỡ gõ lệch ra hai nhóm gần giống nhau.
+        _cboNhom.DropDownStyle = ComboBoxStyle.DropDownList;
         _cboNhom.Font = Theme.FontNhap;
-
-        // Gõ được nhóm mới, mà gõ mấy chữ đầu của nhóm đã có thì nó tự điền nốt — khỏi
-        // lệch thành "Ống nước" với "ống Nước" là hai nhóm.
-        _cboNhom.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-        _cboNhom.AutoCompleteSource = AutoCompleteSource.ListItems;
         var nhomNut = new FlowLayoutPanel
         {
             AutoSize = true,
@@ -120,10 +133,26 @@ public sealed class VatTuForm : Form
                 Nap();
             }
         };
+        // Gắn nhóm cho cả loạt hàng đang chọn — nhanh hơn sửa từng ô một.
+        _cboGan.DropDownStyle = ComboBoxStyle.DropDownList;
+        _cboGan.Font = Theme.FontNhap;
+        var btnGan = Theme.Nut("GẮN CHO HÀNG ĐANG CHỌN", Theme.Chinh, 240, 34, noTheoChu: true);
+        btnGan.Click += (_, _) => GanNhom();
+        var ganNut = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Margin = new Padding(0, Theme.DinhOTrongTruong, 18, 0),
+        };
+        ganNut.Controls.Add(btnGan);
+
         var thanhTim = Theme.HangO(
             Theme.Nen,
             Theme.Truong("TÌM VẬT TƯ", _txtTim, 380),
-            Theme.Truong("LỌC THEO NHÓM", _cboLoc, 230));
+            Theme.Truong("LỌC THEO NHÓM", _cboLoc, 230),
+            Theme.Truong("GẮN NHÓM", _cboGan, 230),
+            ganNut);
 
         // Lưới
         Theme.ApDungLuoi(_luoi);
@@ -131,12 +160,41 @@ public sealed class VatTuForm : Form
         _luoi.Columns.AddRange(
             Theme.Cot(nameof(VatTu.Ten), "TÊN HÀNG", 300, chiDoc: false, toiThieu: 150),
             Theme.Cot(nameof(VatTu.MaTat), "MÃ TẮT", 110, chiDoc: false),
-            Theme.Cot(nameof(VatTu.Nhom), "NHÓM", 150, chiDoc: false),
+            _cotNhom,
             Theme.Cot(nameof(VatTu.DonVi), "ĐƠN VỊ", 110, chiDoc: false),
             Theme.Cot(nameof(VatTu.DonGiaMacDinh), "GIÁ CHUNG", 150, "#,##0", canPhai: true, chiDoc: false, toiThieu: 116));
         Theme.ChoPhepGoSo(_luoi, nameof(VatTu.DonGiaMacDinh));
+        _luoi.MultiSelect = true;
         _luoi.CellBeginEdit += (_, _) => _anhChupTruocKhiSua = _kho.ChupNhanh();
         _luoi.CellEndEdit += Luoi_CellEndEdit;
+
+        // Ô chọn nhóm: chọn xong là ghi luôn vào sổ, khỏi phải bấm sang ô khác mới lưu.
+        _luoi.CurrentCellDirtyStateChanged += (_, _) =>
+        {
+            if (_luoi.IsCurrentCellDirty && _luoi.CurrentCell is DataGridViewComboBoxCell)
+            {
+                _luoi.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            }
+        };
+        _luoi.CellValueChanged += (_, e) =>
+        {
+            if (e.RowIndex >= 0 && _luoi.Columns[e.ColumnIndex] == _cotNhom)
+            {
+                GhiNhanSua("Đổi nhóm của mặt hàng");
+            }
+        };
+
+        // Vào ô nhóm là bung sẵn danh sách, đỡ một cú bấm.
+        _luoi.EditingControlShowing += (_, e) =>
+        {
+            if (e.Control is ComboBox cbo && _luoi.CurrentCell is DataGridViewComboBoxCell)
+            {
+                BeginInvoke(() => cbo.DroppedDown = true);
+            }
+        };
+
+        // Nhóm vừa bị xoá ở màn bên kia thì ô để trống, không bung hộp lỗi của Windows.
+        _luoi.DataError += (_, e) => e.ThrowException = false;
         _luoi.DataSource = _nguon;
 
         var vienLuoi = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 6, 20, 0), BackColor = Theme.Nen };
@@ -146,6 +204,9 @@ public sealed class VatTuForm : Form
         var btnXoa = Theme.NutPhu("Xoá vật tư", 170, 46, noTheoChu: true);
         btnXoa.ForeColor = Theme.Do;
         btnXoa.Click += (_, _) => Xoa();
+
+        var btnNhom = Theme.NutPhu("Quản lý nhóm…", 200, 46, noTheoChu: true);
+        btnNhom.Click += (_, _) => MoQuanLyNhom();
 
         var btnDong = Theme.NutPhu("Đóng", 140, 46, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
@@ -157,7 +218,7 @@ public sealed class VatTuForm : Form
         khung.Controls.Add(nenThem, 0, 1);
         khung.Controls.Add(thanhTim, 0, 2);
         khung.Controls.Add(vienLuoi, 0, 3);
-        khung.Controls.Add(Theme.ThanhDuoi(_lblTrangThai, btnXoa, btnDong), 0, 4);
+        khung.Controls.Add(Theme.ThanhDuoi(_lblTrangThai, btnNhom, btnXoa, btnDong), 0, 4);
         Controls.Add(khung);
 
         ActiveControl = _txtTen;
@@ -177,7 +238,7 @@ public sealed class VatTuForm : Form
             // Gõ vào ô tìm cũng ra theo nhóm: gõ "dien" là ra cả nhóm Điện.
             if (KhopNhomDangLoc(vatTu)
                 && (TimHang.Khop(vatTu.Ten, vatTu.MaTat, _txtTim.Text)
-                    || TimHang.Khop(vatTu.Nhom, null, _txtTim.Text)))
+                    || TimHang.Khop(_kho.TenNhom(vatTu), null, _txtTim.Text)))
             {
                 _nguon.Add(vatTu);
             }
@@ -199,53 +260,106 @@ public sealed class VatTuForm : Form
         }
     }
 
-    /// <summary>Ô lọc chỉ bày những nhóm đang có thật trong danh mục, cộng mục "chưa đặt nhóm" khi cần.</summary>
+    /// <summary>
+    /// Dựng lại mọi ô chọn nhóm theo danh sách nhóm hiện có: ô lọc, ô nhóm ở hàng thêm nhanh,
+    /// ô gắn hàng loạt và cột NHÓM trong lưới. Thứ đang chọn còn thì giữ nguyên.
+    /// </summary>
     private void DungLaiDanhSachNhom()
     {
-        var nhom = _kho.DuLieu.VatTus
-            .Select(v => v.Nhom.Trim())
-            .Where(n => n.Length > 0)
-            .Distinct(StringComparer.CurrentCultureIgnoreCase)
-            .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
+        var nhom = _kho.NhomTheoTen();
 
-        var muc = new List<string> { TatCaNhom };
-        muc.AddRange(nhom);
-        if (_kho.DuLieu.VatTus.Any(v => v.Nhom.Trim().Length == 0))
-        {
-            muc.Add(ChuaDatNhom);
-        }
+        var mucChon = new List<MucNhom> { new() { Ten = ChuaDatNhom } };
+        mucChon.AddRange(nhom.Select(n => new MucNhom { Id = n.Id, Ten = n.Ten }));
 
-        if (_cboLoc.Items.Cast<string>().SequenceEqual(muc, StringComparer.Ordinal)
-            && _cboNhom.Items.Cast<string>().SequenceEqual(nhom, StringComparer.Ordinal))
+        var mucLoc = new List<MucNhom> { new() { TatCa = true, Ten = TatCaNhom } };
+        mucLoc.AddRange(nhom.Select(n => new MucNhom { Id = n.Id, Ten = n.Ten }));
+        mucLoc.Add(new MucNhom { Ten = ChuaDatNhom });
+
+        // Nạp lại lưới sau mỗi chữ gõ vào ô tìm, mà danh sách nhóm thì hầu như không đổi:
+        // giữ nguyên các ô chọn cho khỏi nhấp nháy và khỏi mất nhóm đang chọn.
+        if (_cotNhom.DataSource is List<MucNhom> dangCo
+            && dangCo.Select(m => (m.Id, m.Ten)).SequenceEqual(mucChon.Select(m => (m.Id, m.Ten))))
         {
             return;
         }
 
         _dangDungOLoc = true;
 
-        var dangLoc = _cboLoc.SelectedItem as string;
-        _cboLoc.Items.Clear();
-        _cboLoc.Items.AddRange(muc.Cast<object>().ToArray());
-        _cboLoc.SelectedItem = dangLoc is not null && muc.Contains(dangLoc, StringComparer.Ordinal)
-            ? dangLoc
-            : TatCaNhom;
+        DatMuc(_cboLoc, mucLoc);
+        DatMuc(_cboNhom, mucChon);
+        DatMuc(_cboGan, mucChon);
 
-        // Ô nhóm ở hàng thêm nhanh gõ tay được, nên giữ nguyên chữ đang gõ dở.
-        var dangGo = _cboNhom.Text;
-        _cboNhom.Items.Clear();
-        _cboNhom.Items.AddRange(nhom.Cast<object>().ToArray());
-        _cboNhom.Text = dangGo;
+        // Cột trong lưới phải gán lại nguồn, không thì ô chọn còn bày nhóm đã xoá.
+        _cotNhom.DataSource = mucChon;
+        _cotNhom.DisplayMember = nameof(MucNhom.Ten);
+        _cotNhom.ValueMember = nameof(MucNhom.Id);
 
         _dangDungOLoc = false;
     }
 
-    private bool KhopNhomDangLoc(VatTu vatTu) => (_cboLoc.SelectedItem as string) switch
+    /// <summary>Đổ lại danh sách nhóm vào một ô chọn, cố giữ nhóm ô đó đang chọn.</summary>
+    private static void DatMuc(ComboBox o, List<MucNhom> muc)
     {
-        null or TatCaNhom => true,
-        ChuaDatNhom => vatTu.Nhom.Trim().Length == 0,
-        var loc => string.Equals(vatTu.Nhom.Trim(), loc, StringComparison.CurrentCultureIgnoreCase),
+        var dangChon = o.SelectedItem as MucNhom;
+
+        o.Items.Clear();
+        o.Items.AddRange(muc.Cast<object>().ToArray());
+        o.SelectedItem = muc.FirstOrDefault(m => m.Id == dangChon?.Id && m.TatCa == dangChon?.TatCa) ?? muc[0];
+    }
+
+    private bool KhopNhomDangLoc(VatTu vatTu) => _cboLoc.SelectedItem switch
+    {
+        MucNhom { TatCa: true } => true,
+        MucNhom muc => vatTu.NhomId == muc.Id,
+        _ => true,
     };
+
+    /// <summary>Gắn nhóm đang chọn ở ô GẮN NHÓM cho mọi dòng đang chọn trong lưới.</summary>
+    private void GanNhom()
+    {
+        var hang = _luoi.SelectedRows
+            .Cast<DataGridViewRow>()
+            .Select(r => r.DataBoundItem)
+            .OfType<VatTu>()
+            .ToList();
+
+        if (hang.Count == 0)
+        {
+            HopThoai.CanhBao(this, "Hãy chọn mặt hàng trong bảng trước (giữ Ctrl hoặc Shift để chọn nhiều dòng).");
+            return;
+        }
+
+        if (_cboGan.SelectedItem is not MucNhom muc)
+        {
+            HopThoai.CanhBao(this, "Hãy chọn nhóm muốn gắn.");
+            return;
+        }
+
+        var vao = muc.Id is null ? "về chưa đặt nhóm" : $"vào nhóm \"{muc.Ten}\"";
+        var moTa = hang.Count == 1
+            ? $"Gắn \"{hang[0].Ten}\" {vao}"
+            : $"Gắn {hang.Count} mặt hàng {vao}";
+
+        _kho.ThucHien(moTa, () =>
+        {
+            foreach (var vatTu in hang)
+            {
+                vatTu.NhomId = muc.Id;
+            }
+        }, phatSuKien: false);
+
+        Nap(hang[0].Id);
+        _lblTrangThai.Text = $"Đã {char.ToLowerInvariant(moTa[0])}{moTa[1..]}. Bấm Ctrl+Z để hoàn tác.";
+    }
+
+    private void MoQuanLyNhom()
+    {
+        using var form = new NhomHangForm();
+        form.ShowDialog(this);
+
+        // Vừa thêm/đổi tên/xoá nhóm bên kia thì mọi ô chọn nhóm ở đây phải bày lại.
+        Nap();
+    }
 
     private void Them()
     {
@@ -267,7 +381,7 @@ public sealed class VatTuForm : Form
         {
             Ten = ten,
             DonVi = _txtDonVi.Text.Trim(),
-            Nhom = _cboNhom.Text.Trim(),
+            NhomId = (_cboNhom.SelectedItem as MucNhom)?.Id,
             DonGiaMacDinh = So.Doc(_txtGia.Text),
         };
 
@@ -313,7 +427,10 @@ public sealed class VatTuForm : Form
         _lblTrangThai.Text = $"Đã xoá \"{vatTu.Ten}\". Bấm Ctrl+Z để lấy lại.";
     }
 
-    private void Luoi_CellEndEdit(object? sender, DataGridViewCellEventArgs e)
+    private void Luoi_CellEndEdit(object? sender, DataGridViewCellEventArgs e) => GhiNhanSua("Sửa danh mục vật tư");
+
+    /// <summary>Ghi một bước hoàn tác nếu ô vừa sửa có đổi gì thật.</summary>
+    private void GhiNhanSua(string moTa)
     {
         var anhChup = _anhChupTruocKhiSua;
         _anhChupTruocKhiSua = null;
@@ -323,8 +440,21 @@ public sealed class VatTuForm : Form
             return;
         }
 
-        _kho.GhiNhan(anhChup, "Sửa danh mục vật tư", phatSuKien: false);
+        _kho.GhiNhan(anhChup, moTa, phatSuKien: false);
         _lblTrangThai.Text = "Đã lưu thay đổi. Bấm Ctrl+Z nếu muốn quay lại.";
+    }
+
+    /// <summary>Một mục trong ô chọn nhóm: nhóm thật, mục "chưa đặt nhóm", hay mục "tất cả nhóm" của ô lọc.</summary>
+    private sealed class MucNhom
+    {
+        public Guid? Id { get; init; }
+
+        public string Ten { get; init; } = string.Empty;
+
+        /// <summary>Chỉ ô lọc có mục này; nó không phải một nhóm nên đừng lẫn với "chưa đặt nhóm".</summary>
+        public bool TatCa { get; init; }
+
+        public override string ToString() => Ten;
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)

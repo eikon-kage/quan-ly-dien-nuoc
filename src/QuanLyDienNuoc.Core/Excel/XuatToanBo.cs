@@ -214,13 +214,17 @@ public static class XuatToanBo
             var r = sheet.CreateRow(dong++);
             Chu(r, 0, vatTu.Ten, kieu);
             Chu(r, 1, vatTu.MaTat, kieu);
-            Chu(r, 2, vatTu.Nhom, kieu);
+            Chu(r, 2, TenNhom(duLieu, vatTu), kieu);
             Chu(r, 3, vatTu.DonVi, kieu);
             Tien(r, 4, vatTu.DonGiaMacDinh, kieu);
         }
 
         ChotDong(sheet, dong, 5);
     }
+
+    private static string TenNhom(DuLieuApp duLieu, VatTu vatTu) => vatTu.NhomId is { } nhomId
+        ? duLieu.NhomHangs.FirstOrDefault(n => n.Id == nhomId)?.Ten ?? string.Empty
+        : string.Empty;
 
     private static void TrangBangGiaRieng(IWorkbook wb, BoKieu kieu, DuLieuApp duLieu)
     {

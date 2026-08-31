@@ -53,16 +53,19 @@ public sealed class KhoDuLieuTests : IDisposable
     {
         _kho.Nap();
 
-        Assert.All(_kho.DuLieu.VatTus, v => Assert.NotEqual(string.Empty, v.Nhom));
-        Assert.Contains(_kho.DuLieu.VatTus, v => v.Ten == "Ống nhựa PVC D27" && v.Nhom == "Ống nước");
-        Assert.Contains(_kho.DuLieu.VatTus, v => v.Ten == "Aptomat 1 pha 20A" && v.Nhom == "Điện");
+        Assert.All(_kho.DuLieu.VatTus, v => Assert.NotNull(v.NhomId));
+        Assert.Contains(_kho.DuLieu.VatTus, v => v.Ten == "Ống nhựa PVC D27" && _kho.TenNhom(v) == "Ống nước");
+        Assert.Contains(_kho.DuLieu.VatTus, v => v.Ten == "Aptomat 1 pha 20A" && _kho.TenNhom(v) == "Điện");
+        Assert.All(_kho.DuLieu.NhomHangs, n => Assert.NotEqual(string.Empty, n.Ten));
     }
 
     [Fact]
     public void Nap_DocLaiDungNhomVatTuDaLuu()
     {
         _kho.Nap();
-        var vatTu = new VatTu { Ten = "Bồn nước inox 1000L", DonVi = "Cái", Nhom = "Bồn nước" };
+        var nhom = new NhomHang { Ten = "Bồn nước" };
+        _kho.DuLieu.NhomHangs.Add(nhom);
+        var vatTu = new VatTu { Ten = "Bồn nước inox 1000L", DonVi = "Cái", NhomId = nhom.Id };
         _kho.DuLieu.VatTus.Add(vatTu);
         _kho.Luu();
 
@@ -70,7 +73,32 @@ public sealed class KhoDuLieuTests : IDisposable
         khoMoi.Nap();
 
         var docLai = Assert.Single(khoMoi.DuLieu.VatTus, v => v.Id == vatTu.Id);
-        Assert.Equal("Bồn nước", docLai.Nhom);
+        Assert.Equal("Bồn nước", khoMoi.TenNhom(docLai));
+    }
+
+    /// <summary>Đổi tên nhóm là mọi mặt hàng trong nhóm đổi theo, không phải sửa từng hàng.</summary>
+    [Fact]
+    public void TenNhom_DoiTenNhomThiCaNhomDoiTheo()
+    {
+        _kho.Nap();
+        var nhom = Assert.Single(_kho.DuLieu.NhomHangs, n => n.Ten == "Điện");
+        var hangTrongNhom = _kho.DuLieu.VatTus.Where(v => v.NhomId == nhom.Id).ToList();
+        Assert.NotEmpty(hangTrongNhom);
+
+        nhom.Ten = "Điện dân dụng";
+
+        Assert.All(hangTrongNhom, v => Assert.Equal("Điện dân dụng", _kho.TenNhom(v)));
+    }
+
+    /// <summary>Nhóm bị xoá mà mặt hàng còn giữ mã cũ thì chỉ là không có nhóm, không nổ.</summary>
+    [Fact]
+    public void TenNhom_NhomDaXoaThiTraVeChuoiRong()
+    {
+        _kho.Nap();
+        var vatTu = _kho.DuLieu.VatTus[0];
+        vatTu.NhomId = Guid.NewGuid();
+
+        Assert.Equal(string.Empty, _kho.TenNhom(vatTu));
     }
 
     /// <summary>Sổ của bản cũ không có trường nhóm: đọc lên phải để trống, không được ném lỗi.</summary>
@@ -94,7 +122,8 @@ public sealed class KhoDuLieuTests : IDisposable
 
         var vatTu = Assert.Single(_kho.DuLieu.VatTus);
         Assert.Equal("Ống nhựa PVC D21", vatTu.Ten);
-        Assert.Equal(string.Empty, vatTu.Nhom);
+        Assert.Null(vatTu.NhomId);
+        Assert.Empty(_kho.DuLieu.NhomHangs);
     }
 
     [Fact]

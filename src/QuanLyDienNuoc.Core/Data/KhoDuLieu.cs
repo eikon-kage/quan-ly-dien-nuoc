@@ -338,6 +338,19 @@ public sealed class KhoDuLieu
     public VatTu? TimVatTuTheoTen(string ten) => DuLieu.VatTus
         .FirstOrDefault(v => string.Equals(v.Ten, ten.Trim(), StringComparison.CurrentCultureIgnoreCase));
 
+    public NhomHang? TimNhom(Guid? id) => id is { } ma ? DuLieu.NhomHangs.FirstOrDefault(n => n.Id == ma) : null;
+
+    public NhomHang? TimNhomTheoTen(string ten) => DuLieu.NhomHangs
+        .FirstOrDefault(n => string.Equals(n.Ten, ten.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+    /// <summary>Tên nhóm của mặt hàng, chuỗi rỗng nếu hàng chưa đặt nhóm hoặc nhóm đã bị xoá.</summary>
+    public string TenNhom(VatTu vatTu) => TimNhom(vatTu.NhomId)?.Ten ?? string.Empty;
+
+    /// <summary>Các nhóm hàng, xếp theo tên — thứ tự chung của mọi ô chọn nhóm.</summary>
+    public List<NhomHang> NhomTheoTen() => DuLieu.NhomHangs
+        .OrderBy(n => n.Ten, StringComparer.CurrentCultureIgnoreCase)
+        .ToList();
+
     /// <summary>Mọi hoá đơn của khách, tính cả các năm trước — dùng để tra giá lần trước và nhắc nợ.</summary>
     public List<HoaDon> HoaDonCuaKhach(Guid khachId) => DuLieu.HoaDons
         .Where(h => h.KhachHangId == khachId)
@@ -366,25 +379,37 @@ public sealed class KhoDuLieu
 
     private void TaoDanhMucMau()
     {
-        void Them(string ten, string donVi, decimal gia, string nhom) =>
-            DuLieu.VatTus.Add(new VatTu { Ten = ten, DonVi = donVi, DonGiaMacDinh = gia, Nhom = nhom });
+        Guid Nhom(string ten)
+        {
+            var nhom = new NhomHang { Ten = ten };
+            DuLieu.NhomHangs.Add(nhom);
+            return nhom.Id;
+        }
 
-        Them("Ống nhựa PVC D21", "Cây", 32000, "Ống nước");
-        Them("Ống nhựa PVC D27", "Cây", 45000, "Ống nước");
-        Them("Ống nhựa PVC D34", "Cây", 62000, "Ống nước");
-        Them("Co nối PVC D21", "Cái", 4000, "Ống nước");
-        Them("Tê PVC D21", "Cái", 5000, "Ống nước");
-        Them("Keo dán ống 100g", "Lọ", 25000, "Ống nước");
-        Them("Van khoá nước D21", "Cái", 55000, "Ống nước");
-        Them("Vòi rửa inox", "Cái", 250000, "Thiết bị nước");
-        Them("Dây điện Cadivi 2x1.5", "Mét", 12000, "Điện");
-        Them("Dây điện Cadivi 2x2.5", "Mét", 18000, "Điện");
-        Them("Ống ruột gà D20", "Mét", 6000, "Điện");
-        Them("Ổ cắm đôi 3 chấu", "Cái", 65000, "Điện");
-        Them("Công tắc đơn", "Cái", 32000, "Điện");
-        Them("Aptomat 1 pha 20A", "Cái", 95000, "Điện");
-        Them("Bóng đèn LED bulb 9W", "Bóng", 45000, "Đèn");
-        Them("Máng đèn LED 1m2", "Bộ", 130000, "Đèn");
+        var ongNuoc = Nhom("Ống nước");
+        var thietBiNuoc = Nhom("Thiết bị nước");
+        var dien = Nhom("Điện");
+        var den = Nhom("Đèn");
+
+        void Them(string ten, string donVi, decimal gia, Guid nhomId) =>
+            DuLieu.VatTus.Add(new VatTu { Ten = ten, DonVi = donVi, DonGiaMacDinh = gia, NhomId = nhomId });
+
+        Them("Ống nhựa PVC D21", "Cây", 32000, ongNuoc);
+        Them("Ống nhựa PVC D27", "Cây", 45000, ongNuoc);
+        Them("Ống nhựa PVC D34", "Cây", 62000, ongNuoc);
+        Them("Co nối PVC D21", "Cái", 4000, ongNuoc);
+        Them("Tê PVC D21", "Cái", 5000, ongNuoc);
+        Them("Keo dán ống 100g", "Lọ", 25000, ongNuoc);
+        Them("Van khoá nước D21", "Cái", 55000, ongNuoc);
+        Them("Vòi rửa inox", "Cái", 250000, thietBiNuoc);
+        Them("Dây điện Cadivi 2x1.5", "Mét", 12000, dien);
+        Them("Dây điện Cadivi 2x2.5", "Mét", 18000, dien);
+        Them("Ống ruột gà D20", "Mét", 6000, dien);
+        Them("Ổ cắm đôi 3 chấu", "Cái", 65000, dien);
+        Them("Công tắc đơn", "Cái", 32000, dien);
+        Them("Aptomat 1 pha 20A", "Cái", 95000, dien);
+        Them("Bóng đèn LED bulb 9W", "Bóng", 45000, den);
+        Them("Máng đèn LED 1m2", "Bộ", 130000, den);
     }
 
     private sealed record BuocLichSu(string AnhChup, string MoTa);

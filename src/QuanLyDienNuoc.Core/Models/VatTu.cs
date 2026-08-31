@@ -9,8 +9,8 @@ public sealed class VatTu
 
     public string DonVi { get; set; } = string.Empty;
 
-    /// <summary>Nhóm hàng do cửa hàng tự đặt ("Ống nước", "Điện"), để lọc danh mục cho gọn.</summary>
-    public string Nhom { get; set; } = string.Empty;
+    /// <summary>Nhóm hàng trong <see cref="DuLieuApp.NhomHangs"/>; để trống là hàng chưa đặt nhóm.</summary>
+    public Guid? NhomId { get; set; }
 
     /// <summary>Gõ tắt do cửa hàng tự đặt: gõ "o27" ở ô tên hàng là ra "Ống nhựa PVC D27".</summary>
     public string MaTat { get; set; } = string.Empty;
