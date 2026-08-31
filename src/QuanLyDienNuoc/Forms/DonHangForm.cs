@@ -182,6 +182,29 @@ public sealed class DonHangForm : Form
     /// </summary>
     private void ChenDongTrongDeChupAnh()
     {
+        // Hoá đơn mở ra sẵn có thể là tờ đã chốt (hay tờ hoàn hàng) — lưới ấy không sửa được nên
+        // chẳng có dòng vàng nào. Tìm tờ còn sửa được mà bày.
+        if (_luoiCT.ReadOnly)
+        {
+            var viTriMo = -1;
+            for (var i = 0; i < _cboHoaDon.Items.Count; i++)
+            {
+                if (_cboHoaDon.Items[i] is DongHoaDon dongCbo
+                    && dongCbo.HD is { DaChot: false, LaHoanHang: false })
+                {
+                    viTriMo = i;
+                    break;
+                }
+            }
+
+            if (viTriMo < 0)
+            {
+                return;
+            }
+
+            _cboHoaDon.SelectedIndex = viTriMo;
+        }
+
         var dongThat = _luoiCT.Rows
             .Cast<DataGridViewRow>()
             .Where(h => h.DataBoundItem is ChiTietHoaDon dong && !LaDongNhap(dong))
