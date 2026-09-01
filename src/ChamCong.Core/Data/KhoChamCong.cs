@@ -127,7 +127,8 @@ public sealed class KhoChamCong
     /// Chấm một buổi cho thợ. Chấm lại buổi đã chấm thì sửa số công chứ không thêm dòng mới.
     /// Tiền một công được chụp lại theo giá hiện tại của thợ.
     /// </summary>
-    public BuoiCong Cham(Guid thoId, DateTime ngay, BuoiLam buoi, decimal soCong = 1m, string ghiChu = "")
+    public BuoiCong Cham(
+        Guid thoId, DateTime ngay, BuoiLam buoi, decimal soCong = BuoiCong.CongMotBuoi, string ghiChu = "")
     {
         if (soCong <= 0m)
         {

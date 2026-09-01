@@ -16,7 +16,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 function soCuaTho() {
   const them = themTho(duLieuRong(), 'Anh Tuấn', 300_000, '2026-08-01');
   let duLieu = cham(them.duLieu, them.tho.id, '2026-08-03', 'Sang');
-  duLieu = cham(duLieu, them.tho.id, '2026-08-03', 'Chieu', 0.5);
+  duLieu = cham(duLieu, them.tho.id, '2026-08-03', 'Chieu', 0.25);
   duLieu = themUng(duLieu, them.tho.id, '2026-08-04', 500_000, 'mua xăng');
 
   return catSo(duLieu, them.tho.id, 'tho', '2026-08-01', '2026-08-19', '2026-08-19T08:00:00Z');
@@ -42,10 +42,10 @@ describe('nội dung trang', () => {
 
     expect(trang.ten).toBe('Sổ công');
     expect(trang.dongs).toEqual([
-      ['2026-08-03', 'Thứ Hai', 'Sáng', 1],
-      ['2026-08-03', 'Thứ Hai', 'Chiều', 0.5],
+      ['2026-08-03', 'Thứ Hai', 'Sáng', 0.5],
+      ['2026-08-03', 'Thứ Hai', 'Chiều', 0.25],
     ]);
-    expect(trang.dongTong).toEqual(['Tổng cộng', null, null, 1.5]);
+    expect(trang.dongTong).toEqual(['Tổng cộng', null, null, 0.75]);
   });
 
   test('sổ trống thì không có dòng tổng — cộng số không có gì là vô nghĩa', () => {

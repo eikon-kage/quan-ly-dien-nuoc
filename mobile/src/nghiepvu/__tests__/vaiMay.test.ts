@@ -101,7 +101,7 @@ describe('kết nạp sau khi đã tự chấm', () => {
     const sau = ketNap(duLieu, 'idThat', HOM_NAY, false, idTuTao);
 
     expect(sau.thos.map((t) => t.id)).toEqual(['idThat']);
-    expect(dangCham(sau, 'idThat', '2026-08-12', 'Sang')?.soCong).toBe(1);
+    expect(dangCham(sau, 'idThat', '2026-08-12', 'Sang')?.soCong).toBe(0.5);
     expect(sau.buoiCongs).toHaveLength(2);
     expect(sau.buoiCongs.every((b) => b.thoId === 'idThat')).toBe(true);
     // Ngày vào làm giữ nguyên, kẻo buổi cũ rơi ra ngoài mốc lương đầu tiên.

@@ -116,7 +116,7 @@ test('hôm nay đứng riêng một thẻ, bấm một lần là chấm', () => 
   fireEvent.press(screen.getAllByText('Sáng')[0]);
 
   const moi = capNhat.mock.calls[0][0] as DuLieuChamCong;
-  expect(dangCham(moi, thoId, HOM_NAY, 'Sang')?.soCong).toBe(1);
+  expect(dangCham(moi, thoId, HOM_NAY, 'Sang')?.soCong).toBe(0.5);
 });
 
 test('bấm lại vào buổi đã chấm là bỏ chấm', () => {
@@ -136,28 +136,28 @@ test('bấm lại vào buổi đã chấm là bỏ chấm', () => {
  * chuyện thật, mà máy thợ chỉ cho chọn nửa hay cả thì thợ chấm sai rồi chờ chủ sửa hộ.
  */
 describe('sửa số công một buổi', () => {
-  test('bấm giữ ra mấy mức có sẵn, chọn nửa công là ghi 0,5', () => {
+  test('bấm giữ ra mấy mức có sẵn, chọn nửa buổi là ghi 0,25', () => {
     const { duLieu, thoId, caiDat } = kho();
     const capNhat = dung(duLieu, caiDat);
 
     fireEvent(screen.getAllByText('Sáng')[0], 'longPress');
-    fireEvent.press(screen.getByText('Nửa công (0,5)'));
+    fireEvent.press(screen.getByText('Nửa buổi (0,25 công)'));
 
     const moi = capNhat.mock.calls[0][0] as DuLieuChamCong;
-    expect(dangCham(moi, thoId, HOM_NAY, 'Sang')?.soCong).toBe(0.5);
+    expect(dangCham(moi, thoId, HOM_NAY, 'Sang')?.soCong).toBe(0.25);
   });
 
-  test('gõ được số lẻ như bên chủ: 0,25 công', () => {
+  test('gõ được số lẻ như bên chủ: 0,3 công', () => {
     const { duLieu, thoId, caiDat } = kho();
     const capNhat = dung(duLieu, caiDat);
 
     fireEvent(screen.getAllByText('Sáng')[0], 'longPress');
     fireEvent.press(screen.getByText('Gõ số công khác'));
-    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,75'), '0,25');
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,5'), '0,3');
     fireEvent.press(screen.getByText('Ghi'));
 
     const moi = capNhat.mock.calls[0][0] as DuLieuChamCong;
-    expect(dangCham(moi, thoId, HOM_NAY, 'Sang')?.soCong).toBe(0.25);
+    expect(dangCham(moi, thoId, HOM_NAY, 'Sang')?.soCong).toBe(0.3);
   });
 
   test('gõ số lớn quá thì chặn lại, cùng mức chặn với máy chủ', () => {
@@ -166,10 +166,10 @@ describe('sửa số công một buổi', () => {
 
     fireEvent(screen.getAllByText('Sáng')[0], 'longPress');
     fireEvent.press(screen.getByText('Gõ số công khác'));
-    // Gõ "10" thay vì "1,0" là lỗi hay gặp.
-    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,75'), '10');
+    // Gõ "5" thay vì "0,5" là lỗi hay gặp.
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,5'), '5');
 
-    expect(screen.getByText('Nhiều nhất 5 công một buổi.')).toBeTruthy();
+    expect(screen.getByText('Nhiều nhất 2,5 công một buổi.')).toBeTruthy();
     fireEvent.press(screen.getByText('Ghi'));
     expect(capNhat).not.toHaveBeenCalled();
   });
@@ -299,8 +299,8 @@ describe('nhìn tổng quan', () => {
 
     expect(screen.getByText('Công tuần này')).toBeTruthy();
     expect(screen.getByText('Công tháng này')).toBeTruthy();
-    // Chấm đúng một buổi hôm nay: cả tuần này lẫn tháng này đều là 1 công.
-    expect(screen.getAllByText('1 công').length).toBeGreaterThanOrEqual(2);
+    // Chấm đúng một buổi hôm nay: cả tuần này lẫn tháng này đều là nửa công.
+    expect(screen.getAllByText('0,5 công').length).toBeGreaterThanOrEqual(2);
   });
 
   test('mấy ngày trước gom theo tuần, mỗi tuần một thẻ có tổng riêng', () => {
@@ -319,7 +319,7 @@ describe('nhìn tổng quan', () => {
     fireEvent.press(screen.getByLabelText(`${Ngay.thuVaNgay(HOM_QUA)} Sáng chưa chấm`));
 
     const moi = capNhat.mock.calls[0][0] as DuLieuChamCong;
-    expect(dangCham(moi, thoId, HOM_QUA, 'Sang')?.soCong).toBe(1);
+    expect(dangCham(moi, thoId, HOM_QUA, 'Sang')?.soCong).toBe(0.5);
   });
 });
 
@@ -374,7 +374,7 @@ describe('xuất sổ của tôi ra Excel', () => {
     expect(so).toEqual(
       expect.objectContaining({ thoId, nguon: 'tho', tuNgay: BAT_DAU, denNgay: HOM_NAY }),
     );
-    expect(so.dongs).toEqual([{ ngay: HOM_NAY, buoi: 'Sang', soCong: 1 }]);
+    expect(so.dongs).toEqual([{ ngay: HOM_NAY, buoi: 'Sang', soCong: 0.5 }]);
     // Không có một khoá nào mang tiền trong gói gửi đi.
     expect(JSON.stringify(so)).not.toMatch(/300000|tienMotCong|mocLuong/);
   });

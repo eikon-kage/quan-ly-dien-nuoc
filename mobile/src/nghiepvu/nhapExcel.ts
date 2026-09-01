@@ -17,7 +17,7 @@
  *   - **Để trống** — không đụng tới buổi ấy. Nhập file chỉ có tuần này thì tuần trước
  *     trong máy vẫn nguyên.
  *   - **0, "n", "nghỉ", "-"** — nói rõ là nghỉ, buổi đã chấm trong máy sẽ bị bỏ chấm.
- *   - **Số công, hoặc "x"** — chấm buổi ấy.
+ *   - **Số công, hoặc "x"** — chấm buổi ấy. Cả buổi là 0,5 công, tức cả ngày một công.
  *
  * Đọc và dựng file mẫu để chung một file: hai việc phải dùng **đúng một bộ cột**, tách
  * ra hai nơi thì sớm muộn sửa một bên quên bên kia, và người dùng điền theo file mẫu
@@ -25,7 +25,7 @@
  */
 
 import { docFileExcel, timTrang, TrangDaDoc } from './docXlsx';
-import { BuoiLam, DuLieuChamCong } from './kieu';
+import { BuoiLam, CONG_MOT_BUOI, DuLieuChamCong } from './kieu';
 import { banGhiChuaChot } from './ky';
 import * as Ngay from './ngayViet';
 import { CONG_TOI_DA, docSoCong, docTien } from './nhapSo';
@@ -175,14 +175,14 @@ function docCong(o: O | undefined): number | typeof KHONG_DUNG_TOI | { loi: stri
       return 0;
     }
     if (o < 0 || o > CONG_TOI_DA) {
-      return { loi: `số công phải từ 0 tới ${CONG_TOI_DA}` };
+      return { loi: `số công phải từ 0 tới ${Ngay.soCong(CONG_TOI_DA)}` };
     }
     return Math.round(o * 100) / 100;
   }
 
   const sach = khongDau(chu(o));
   if (CHU_LA_CONG.includes(sach)) {
-    return 1;
+    return CONG_MOT_BUOI;
   }
   if (CHU_LA_NGHI.includes(sach)) {
     return 0;
@@ -193,7 +193,7 @@ function docCong(o: O | undefined): number | typeof KHONG_DUNG_TOI | { loi: stri
     return { loi: `không hiểu ô công "${chu(o)}"` };
   }
   if (so > CONG_TOI_DA) {
-    return { loi: `số công phải từ 0 tới ${CONG_TOI_DA}` };
+    return { loi: `số công phải từ 0 tới ${Ngay.soCong(CONG_TOI_DA)}` };
   }
   return so;
 }
@@ -520,8 +520,8 @@ function trangHuongDan(
   dongs.push(
     [''],
     ['Cột Sáng và cột Chiều:'],
-    ['  • Đi làm cả buổi thì điền 1, hoặc gõ chữ x.'],
-    ['  • Làm nửa buổi thì điền 0,5.'],
+    ['  • Đi làm cả buổi thì gõ chữ x, hoặc điền 0,5 — cả ngày là một công.'],
+    ['  • Làm nửa buổi thì điền 0,25.'],
     ['  • Nghỉ thì điền 0, hoặc gõ chữ n.'],
     ['  • ĐỂ TRỐNG nghĩa là "không đụng tới" — buổi ấy trong máy vẫn giữ nguyên.'],
     [''],

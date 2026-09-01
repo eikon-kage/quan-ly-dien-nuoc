@@ -47,8 +47,8 @@ describe('màn hình báo cáo một thợ', () => {
 
     dung(duLieu, thoId, '2026-08-03');
 
-    expect(screen.getByText('2 công')).toBeTruthy();
-    expect(screen.getAllByText('600.000 đ').length).toBeGreaterThan(0);
+    expect(screen.getByText('1 công')).toBeTruthy();
+    expect(screen.getAllByText('300.000 đ').length).toBeGreaterThan(0);
   });
 
   test('vẽ tờ lịch cả tháng, ngày nào cũng có một ô', () => {
@@ -69,7 +69,7 @@ describe('màn hình báo cáo một thợ', () => {
 
     dung(duLieu, thoId, '2026-08-04');
 
-    expect(screen.getByLabelText('03/08 Thứ Hai, đi làm 2 công')).toBeTruthy();
+    expect(screen.getByLabelText('03/08 Thứ Hai, đi làm 1 công')).toBeTruthy();
     expect(screen.getByLabelText('04/08 Thứ Ba, nghỉ')).toBeTruthy();
   });
 
@@ -95,12 +95,12 @@ describe('màn hình báo cáo một thợ', () => {
 
   test('ngày đi thiếu công thì ghi rõ mấy công lên ô', () => {
     let { duLieu, thoId } = khoCoTho();
-    duLieu = datCong(duLieu, thoId, '2026-08-03', 'Sang', 0.5);
+    duLieu = datCong(duLieu, thoId, '2026-08-03', 'Sang', 0.25);
 
     dung(duLieu, thoId, '2026-08-03');
 
-    expect(screen.getByText('0,5')).toBeTruthy();
-    expect(screen.getByLabelText('03/08 Thứ Hai, đi làm 0,5 công')).toBeTruthy();
+    expect(screen.getByText('0,25')).toBeTruthy();
+    expect(screen.getByLabelText('03/08 Thứ Hai, đi làm 0,25 công')).toBeTruthy();
   });
 
   test('ngày đi đủ cả ngày chỉ có dấu tích, không ghi số', () => {
@@ -110,11 +110,11 @@ describe('màn hình báo cáo một thợ', () => {
 
     dung(duLieu, thoId, '2026-08-03');
 
-    // Trong ô ngày 3 chỉ có mỗi số 3 — không ghi thêm "2" công, vì đi đủ là chuyện
+    // Trong ô ngày 3 chỉ có mỗi số 3 — không ghi thêm "1" công, vì đi đủ là chuyện
     // thường ngày, ghi vào thì cả tháng chi chít số.
-    const o = screen.getByLabelText('03/08 Thứ Hai, đi làm 2 công');
+    const o = screen.getByLabelText('03/08 Thứ Hai, đi làm 1 công');
     expect(within(o).getByText('3')).toBeTruthy();
-    expect(within(o).queryByText('2')).toBeNull();
+    expect(within(o).queryByText('1')).toBeNull();
   });
 
   test('liệt kê từng lần ứng tiền kèm ngày và ghi chú', () => {
@@ -152,11 +152,11 @@ describe('màn hình báo cáo một thợ', () => {
     duLieu = cham(duLieu, thoId, '2026-08-20', 'Sang');
 
     dung(duLieu, thoId, '2026-08-31');
-    expect(screen.getByText('2 công')).toBeTruthy();
+    expect(screen.getByText('1 công')).toBeTruthy();
 
     chonNgay('Đến', '15/08', 'Thứ Bảy');
 
-    expect(screen.getByText('1 công')).toBeTruthy();
+    expect(screen.getByText('0,5 công')).toBeTruthy();
     expect(screen.getByText('01/08 → 15/08')).toBeTruthy();
     // Ngày 20 rơi ra ngoài khoảng nên thành ô trắng, không tính là đi làm cũng không là nghỉ.
     expect(screen.getByLabelText('20/08 Thứ Năm, chưa tính')).toBeTruthy();
@@ -219,6 +219,6 @@ describe('màn hình báo cáo một thợ', () => {
 
     dung(duLieu, thoId);
 
-    expect(screen.getByText('−200.000 đ')).toBeTruthy();
+    expect(screen.getByText('−350.000 đ')).toBeTruthy();
   });
 });

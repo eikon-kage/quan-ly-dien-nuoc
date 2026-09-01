@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ngayTrongThang } from '../nghiepvu/baoCao';
+import { CAC_BUOI, CONG_MOT_BUOI } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { Co, HeSoChuToiDaLuoi, Mau, PhongChu, Tuoi } from './thietKe';
 
@@ -16,8 +17,8 @@ import { Co, HeSoChuToiDaLuoi, Mau, PhongChu, Tuoi } from './thietKe';
  * Chủ Nhật kiểu Mỹ.
  */
 
-/** Một ngày đi đủ cả ngày là hai công: một sáng, một chiều. */
-const CONG_CA_NGAY = 2;
+/** Một ngày đi đủ cả ngày là một công: nửa sáng, nửa chiều. Xem `CONG_MOT_BUOI`. */
+const CONG_CA_NGAY = CONG_MOT_BUOI * CAC_BUOI.length;
 
 /**
  * Ngày đi làm, khai theo **hình dáng** chứ không nhận thẳng `NgayCong` của báo cáo: tờ lịch

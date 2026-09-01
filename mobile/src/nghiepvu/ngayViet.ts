@@ -152,9 +152,15 @@ export function gioPhut(iso: string): string {
   return `${hai(luc.getDate())}/${hai(luc.getMonth() + 1)}, ${hai(luc.getHours())}:${hai(luc.getMinutes())}`;
 }
 
-/** Số công viết gọn: 1 công ra "1", nửa công ra "0,5". */
+/**
+ * Số công viết gọn: một ngày đi đủ ra "1", một buổi ra "0,5", nửa buổi ra "0,25".
+ *
+ * Giữ tới hai chữ số thập phân chứ không một: từ ngày một buổi chỉ còn nửa công
+ * (`CONG_MOT_BUOI`), nửa buổi là 0,25 — làm tròn một chữ số thì con số ấy hiện lên thành
+ * "0,3", đọc như sổ ghi sai.
+ */
 export function soCong(so: number): string {
-  return String(Math.round(so * 10) / 10).replace('.', ',');
+  return String(Math.round(so * 100) / 100).replace('.', ',');
 }
 
 /**

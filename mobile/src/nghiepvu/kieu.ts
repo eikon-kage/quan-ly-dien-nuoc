@@ -11,6 +11,25 @@ export type BuoiLam = 'Sang' | 'Chieu';
 export const CAC_BUOI: BuoiLam[] = ['Sang', 'Chieu'];
 
 /**
+ * Một buổi đi làm đầy đủ là bằng này công — **một ngày đi đủ cả sáng lẫn chiều là một
+ * công**, không phải hai.
+ *
+ * Đó là cách cả nghề nói và cũng là cách tiền được tính: `Tho.mocLuong.tienMotCong` là
+ * tiền của **một ngày công** (300.000 đ một công), nên đếm mỗi buổi một công thì cuối kỳ
+ * thợ nào cũng thành tiền gấp đôi. Sổ vẫn ghi theo *buổi* vì buổi mới là thứ được chấm —
+ * chỉ có giá trị của một buổi là nửa công.
+ */
+export const CONG_MOT_BUOI = 0.5;
+
+/**
+ * Bản luật đang dùng để đếm công, ghi kèm trong sổ để biết sổ đọc lên viết theo luật nào.
+ *
+ * Không có, hay bằng 1: sổ viết hồi mỗi buổi còn tính **một** công, tức một ngày hai công.
+ * Bằng 2: một ngày đi đủ là một công, xem `CONG_MOT_BUOI`.
+ */
+export const BAN_LUAT_CONG = 2;
+
+/**
  * Một mốc tiền công: từ ngày này trở đi thợ được trả bằng này một công.
  * Tăng lương là thêm một mốc mới chứ không sửa đè lên mốc cũ — nhờ vậy bảng lương
  * các tháng trước vẫn tính đúng theo giá của lúc đó.
@@ -41,7 +60,7 @@ export interface BuoiCong {
   thoId: string;
   ngay: string;
   buoi: BuoiLam;
-  /** Bình thường là 1. Về sớm thì 0,5; làm thêm thì 1,5. */
+  /** Bình thường là `CONG_MOT_BUOI` (0,5). Về sớm thì 0,25; làm thêm thì 0,75. */
   soCong: number;
   /**
    * Giá riêng chỉ cho buổi này, dùng khi có ngoại lệ (việc nặng trả thêm chẳng hạn).
@@ -144,10 +163,22 @@ export interface DuLieuChamCong {
   ghiChuNgays: GhiChuNgay[];
   /** Các kỳ đã quyết toán, xếp theo thứ tự chốt — kỳ mới nhất nằm cuối. */
   kyLuongs: KyLuong[];
+  /**
+   * Sổ này đếm công theo bản luật nào. Xem `BAN_LUAT_CONG`. Để trống nghĩa là sổ cũ,
+   * `chuanHoa` sẽ đổi sang luật mới rồi điền vào.
+   */
+  banLuatCong?: number;
 }
 
 export function duLieuRong(): DuLieuChamCong {
-  return { thos: [], buoiCongs: [], ungTiens: [], ghiChuNgays: [], kyLuongs: [] };
+  return {
+    thos: [],
+    buoiCongs: [],
+    ungTiens: [],
+    ghiChuNgays: [],
+    kyLuongs: [],
+    banLuatCong: BAN_LUAT_CONG,
+  };
 }
 
 /**
@@ -208,14 +239,45 @@ function chuyenDoiTho(tho: ThoBanCu): Tho {
  */
 export function chuanHoa(daDoc: unknown): DuLieuChamCong {
   const khoi = (daDoc ?? {}) as Partial<DuLieuChamCong> & { thos?: ThoBanCu[] };
+  const kyLuongs = khoi.kyLuongs ?? [];
   return {
     thos: (khoi.thos ?? []).map(chuyenDoiTho),
-    buoiCongs: khoi.buoiCongs ?? [],
+    buoiCongs: doiSangLuatMoi(khoi.buoiCongs ?? [], kyLuongs, khoi.banLuatCong),
     ungTiens: khoi.ungTiens ?? [],
     // Bản trước chưa có ghi chú ngày: sổ cũ không mất gì, chỉ là chưa ai ghi chú.
     ghiChuNgays: khoi.ghiChuNgays ?? [],
     // Máy đã cài bản trước chưa có quyết toán: coi như chưa chốt kỳ nào, mọi thứ đang
     // nằm trong kỳ đầu tiên. Không mất gì cả.
-    kyLuongs: khoi.kyLuongs ?? [],
+    kyLuongs,
+    banLuatCong: BAN_LUAT_CONG,
   };
+}
+
+/**
+ * Chuyển buổi công của sổ cũ sang luật *một ngày một công*: chia đôi số công đã ghi.
+ *
+ * **Chỉ đụng vào buổi chưa nằm trong kỳ đã chốt.** Buổi đã chốt là bản ghi của một lần đã
+ * trả tiền: `KyLuong.dongs` chụp lại tổng công và số tiền của lúc ấy và không tính lại bao
+ * giờ nữa, nên chia đôi buổi cũ chỉ làm sổ nói khác tờ quyết toán đã in đưa thợ, mà đồng
+ * tiền thì đã sang tay rồi. Phần chưa chốt thì ngược lại: nó còn đang được nhân với
+ * `tienMotCong` để ra bảng lương kỳ này, nên phải sang luật mới cùng với những buổi sắp
+ * chấm — không thì nửa kỳ tính gấp đôi nửa kỳ kia.
+ *
+ * Cờ `banLuatCong` khiến việc này chỉ chạy đúng một lần: sổ đã đổi rồi thì lần mở app sau
+ * không chia đôi lần nữa. Mà chuyển là đọc-ghi cả sổ nên bản sao lưu cũ khôi phục về vẫn
+ * được đổi đúng, còn bản mới sao lưu ra đã mang cờ mới thì để nguyên.
+ */
+function doiSangLuatMoi(
+  buoiCongs: BuoiCong[],
+  kyLuongs: KyLuong[],
+  banLuatCu: number | undefined,
+): BuoiCong[] {
+  if (banLuatCu === BAN_LUAT_CONG) {
+    return buoiCongs;
+  }
+
+  const daChot = new Set(kyLuongs.flatMap((ky) => ky.buoiCongIds ?? []));
+  return buoiCongs.map((buoi) =>
+    daChot.has(buoi.id) ? buoi : { ...buoi, soCong: buoi.soCong / 2 },
+  );
 }

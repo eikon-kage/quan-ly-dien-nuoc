@@ -63,6 +63,8 @@ describe('cách viết ngày, số công và số tiền hiện lên màn hình'
   test.each([
     [1, '1'],
     [0.5, '0,5'],
+    [0.25, '0,25'],
+    [0.75, '0,75'],
     [1.5, '1,5'],
     [3, '3'],
   ])('soCong(%s) ra %s', (so, mongDoi) => {

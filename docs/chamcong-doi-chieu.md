@@ -91,7 +91,7 @@ Không cộng vào thì cùng một sổ chủ mà đọc ra hai con số khác 
 thợ chấm bù xong thấy tổng của chủ tự nhảy lên là đúng chỗ nghi ngờ nhau.
 
 Đổi lại, hai tổng ấy **không trừ cho nhau ra được**, nên ngay dưới chúng phải có câu chỉ ra
-phần chưa đối chiếu được: *"Trong đó, sổ chủ có 2 công ở 2 buổi mà sổ tôi chưa có ngày ấy"*.
+phần chưa đối chiếu được: *"Trong đó, sổ chủ có 1 công ở 2 buổi mà sổ tôi chưa có ngày ấy"*.
 Tách theo chiều chứ không gộp một con số: chiều chủ-có-mình-trống thì chấm bù được ngay, chiều
 ngược lại thì chỉ còn cách đợi — hai việc khác hẳn nhau.
 
@@ -137,10 +137,11 @@ Máy thợ chỉ có **một màn hình**, không thanh tab: cả máy chỉ là
 theo đúng thứ tự thợ cần:
 
 1. **Thẻ *Hôm nay*** với hai ô chấm cao gấp rưỡi — chín phần mười lần mở app là để chấm cho
-   hôm nay, nên nó là thứ to nhất màn hình. Chạm là một công, chạm lại là bỏ chấm, **bấm giữ**
-   ra mấy mức có sẵn (1 / 0,5 / 1,5) kèm đường *Gõ số công khác* — cùng hộp nhập, cùng cách
-   đọc số ("0,25", "0.25" đều hiểu) và cùng mức chặn 5 công một buổi như máy chủ. Hai bên gõ
-   ra hai kiểu số thì đối chiếu báo lệch mà chẳng ai sai.
+   hôm nay, nên nó là thứ to nhất màn hình. Chạm là nửa công — cả ngày đi đủ mới là một
+   công — chạm lại là bỏ chấm, **bấm giữ** ra mấy mức có sẵn (0,5 / 0,25 / 0,75) kèm đường
+   *Gõ số công khác* — cùng hộp nhập, cùng cách đọc số ("0,25", "0.25" đều hiểu) và cùng mức
+   chặn 2,5 công một buổi như máy chủ. Hai bên gõ ra hai kiểu số thì đối chiếu báo lệch mà
+   chẳng ai sai.
 2. **Dải *Chưa nối nhóm*** — chỉ hiện khi máy chưa vào nhóm, và bấm vào là ra thẳng ô dán mã
    mời. Chưa vào nhóm thì thợ chấm mà sổ nằm im trong máy, chủ không thấy gì: đó là việc gấp
    nhất sau chấm công, không thể là một dòng chữ xám cuối trang. Trước đây đường vào duy nhất

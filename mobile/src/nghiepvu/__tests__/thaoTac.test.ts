@@ -1,4 +1,4 @@
-import { DuLieuChamCong, duLieuRong } from '../kieu';
+import { CONG_MOT_BUOI, DuLieuChamCong, duLieuRong } from '../kieu';
 import {
   boCham,
   cham,
@@ -21,14 +21,15 @@ function khoCoTho(ten = 'Anh Tuấn', tienMotCong = 300_000) {
 }
 
 describe('chấm công', () => {
-  test('mỗi buổi một dòng, mặc định một công', () => {
+  test('mỗi buổi một dòng, mặc định nửa công — cả ngày mới là một công', () => {
     const { duLieu, tho } = khoCoTho();
 
     let sau: DuLieuChamCong = cham(duLieu, tho.id, NGAY_LAM, 'Sang');
     sau = cham(sau, tho.id, NGAY_LAM, 'Chieu');
 
     expect(sau.buoiCongs).toHaveLength(2);
-    expect(sau.buoiCongs.every((b) => b.soCong === 1)).toBe(true);
+    expect(sau.buoiCongs.every((b) => b.soCong === CONG_MOT_BUOI)).toBe(true);
+    expect(sau.buoiCongs.reduce((tong, b) => tong + b.soCong, 0)).toBe(1);
   });
 
   test('chấm lại cùng buổi thì sửa dòng cũ chứ không thêm dòng mới', () => {

@@ -24,7 +24,7 @@ public class KhoChamCongTests : IDisposable
     }
 
     [Fact]
-    public void Cham_MoiBuoiMotDong_MacDinhMotCong()
+    public void Cham_MoiBuoiMotDong_MacDinhNuaCong()
     {
         var kho = TaoKho();
         var tho = kho.ThemTho("Anh Tuấn", tienMotCong: 300_000);
@@ -33,7 +33,9 @@ public class KhoChamCongTests : IDisposable
         kho.Cham(tho.Id, NgayLam, BuoiLam.Chieu);
 
         Assert.Equal(2, kho.DuLieu.BuoiCongs.Count);
-        Assert.All(kho.DuLieu.BuoiCongs, b => Assert.Equal(1m, b.SoCong));
+        Assert.All(kho.DuLieu.BuoiCongs, b => Assert.Equal(BuoiCong.CongMotBuoi, b.SoCong));
+        // Hai buổi nửa công, cộng lại đúng một công một ngày.
+        Assert.Equal(1m, kho.DuLieu.BuoiCongs.Sum(b => b.SoCong));
     }
 
     [Fact]

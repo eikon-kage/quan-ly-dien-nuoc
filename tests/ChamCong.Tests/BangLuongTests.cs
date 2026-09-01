@@ -19,7 +19,7 @@ public class BangLuongTests
         Tho tho,
         DateTime ngay,
         BuoiLam buoi,
-        decimal soCong = 1m,
+        decimal soCong = BuoiCong.CongMotBuoi,
         decimal? tienMotCong = null)
     {
         duLieu.BuoiCongs.Add(new BuoiCong
@@ -43,10 +43,11 @@ public class BangLuongTests
 
         var dong = Assert.Single(BangLuong.Thang(duLieu, 2026, 8));
 
-        Assert.Equal(2m, dong.CongSang);
-        Assert.Equal(1m, dong.CongChieu);
-        Assert.Equal(3m, dong.TongCong);
-        Assert.Equal(900_000m, dong.TienCong);
+        Assert.Equal(1m, dong.CongSang);
+        Assert.Equal(0.5m, dong.CongChieu);
+        // Một ngày rưỡi đi làm là một công rưỡi.
+        Assert.Equal(1.5m, dong.TongCong);
+        Assert.Equal(450_000m, dong.TienCong);
     }
 
     [Fact]
@@ -60,8 +61,8 @@ public class BangLuongTests
 
         var bang = BangLuong.Thang(duLieu, 2026, 8);
 
-        Assert.Equal(250_000m, bang.Single(d => d.Tho.Id == binh.Id).TienCong);
-        Assert.Equal(300_000m, bang.Single(d => d.Tho.Id == tuan.Id).TienCong);
+        Assert.Equal(125_000m, bang.Single(d => d.Tho.Id == binh.Id).TienCong);
+        Assert.Equal(150_000m, bang.Single(d => d.Tho.Id == tuan.Id).TienCong);
     }
 
     [Fact]
@@ -75,8 +76,8 @@ public class BangLuongTests
         tho.TienMotCong = 350_000;
         Cham(duLieu, tho, new DateTime(2026, 8, 3), BuoiLam.Sang);
 
-        Assert.Equal(300_000m, Assert.Single(BangLuong.Thang(duLieu, 2026, 7)).TienCong);
-        Assert.Equal(350_000m, Assert.Single(BangLuong.Thang(duLieu, 2026, 8)).TienCong);
+        Assert.Equal(150_000m, Assert.Single(BangLuong.Thang(duLieu, 2026, 7)).TienCong);
+        Assert.Equal(175_000m, Assert.Single(BangLuong.Thang(duLieu, 2026, 8)).TienCong);
     }
 
     [Fact]
@@ -92,7 +93,8 @@ public class BangLuongTests
             TienMotCong = null,
         });
 
-        Assert.Equal(300_000m, Assert.Single(BangLuong.Thang(duLieu, 2026, 8)).TienCong);
+        // Buổi để mặc định là nửa công, nên một buổi ra nửa ngày tiền.
+        Assert.Equal(150_000m, Assert.Single(BangLuong.Thang(duLieu, 2026, 8)).TienCong);
     }
 
     [Fact]
@@ -100,13 +102,13 @@ public class BangLuongTests
     {
         var duLieu = new DuLieuChamCong();
         var tho = ThemTho(duLieu, "Anh Tuấn", 300_000);
-        Cham(duLieu, tho, new DateTime(2026, 8, 3), BuoiLam.Sang, soCong: 0.5m);
-        Cham(duLieu, tho, new DateTime(2026, 8, 3), BuoiLam.Chieu, soCong: 1.5m);
+        Cham(duLieu, tho, new DateTime(2026, 8, 3), BuoiLam.Sang, soCong: 0.25m);
+        Cham(duLieu, tho, new DateTime(2026, 8, 3), BuoiLam.Chieu, soCong: 0.75m);
 
         var dong = Assert.Single(BangLuong.Thang(duLieu, 2026, 8));
 
-        Assert.Equal(2m, dong.TongCong);
-        Assert.Equal(600_000m, dong.TienCong);
+        Assert.Equal(1m, dong.TongCong);
+        Assert.Equal(300_000m, dong.TienCong);
     }
 
     [Fact]
@@ -121,7 +123,7 @@ public class BangLuongTests
         var dong = Assert.Single(BangLuong.Thang(duLieu, 2026, 8));
 
         Assert.Equal(200_000m, dong.DaUng);
-        Assert.Equal(400_000m, dong.ConLai);
+        Assert.Equal(100_000m, dong.ConLai);
     }
 
     [Fact]
@@ -132,7 +134,7 @@ public class BangLuongTests
         Cham(duLieu, tho, new DateTime(2026, 8, 3), BuoiLam.Sang);
         duLieu.UngTiens.Add(new UngTien { ThoId = tho.Id, Ngay = new DateTime(2026, 8, 5), SoTien = 500_000 });
 
-        Assert.Equal(-200_000m, Assert.Single(BangLuong.Thang(duLieu, 2026, 8)).ConLai);
+        Assert.Equal(-350_000m, Assert.Single(BangLuong.Thang(duLieu, 2026, 8)).ConLai);
     }
 
     [Fact]
@@ -145,7 +147,7 @@ public class BangLuongTests
         Cham(duLieu, tho, new DateTime(2026, 8, 31), BuoiLam.Sang);
         Cham(duLieu, tho, new DateTime(2026, 9, 1), BuoiLam.Sang);
 
-        Assert.Equal(2m, Assert.Single(BangLuong.Thang(duLieu, 2026, 8)).TongCong);
+        Assert.Equal(1m, Assert.Single(BangLuong.Thang(duLieu, 2026, 8)).TongCong);
     }
 
     [Fact]

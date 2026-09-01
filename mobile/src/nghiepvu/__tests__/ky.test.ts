@@ -38,7 +38,7 @@ function kho(): { duLieu: DuLieuChamCong; tuan: string; binh: string } {
   return { duLieu, tuan: themTuan.tho.id, binh: themBinh.tho.id };
 }
 
-/** Chấm cả ngày cho một thợ: sáng một công, chiều một công. */
+/** Chấm cả ngày cho một thợ: sáng nửa công, chiều nửa công — cả ngày là một công. */
 function chamCaNgay(duLieu: DuLieuChamCong, thoId: string, ngay: string): DuLieuChamCong {
   return cham(cham(duLieu, thoId, ngay, 'Sang'), thoId, ngay, 'Chieu');
 }
@@ -55,9 +55,9 @@ describe('kỳ đang mở', () => {
     const ky = kyHienTai(duLieu, '2026-07-10');
 
     expect(ky.dongs).toHaveLength(1);
-    expect(ky.dongs[0].tongCong).toBe(2);
-    expect(ky.dongs[0].tienCong).toBe(600_000);
-    expect(ky.tongPhaiTra).toBe(600_000);
+    expect(ky.dongs[0].tongCong).toBe(1);
+    expect(ky.dongs[0].tienCong).toBe(300_000);
+    expect(ky.tongPhaiTra).toBe(300_000);
     expect(ky.chotDuoc).toBe(true);
   });
 
@@ -132,14 +132,14 @@ describe('quyết toán', () => {
     expect(ky.dongs).toHaveLength(1);
     expect(ky.dongs[0]).toMatchObject({
       tenTho: 'Anh Tuấn',
-      congSang: 1,
-      congChieu: 1,
-      tongCong: 2,
-      tienCong: 600_000,
+      congSang: 0.5,
+      congChieu: 0.5,
+      tongCong: 1,
+      tienCong: 300_000,
       daUng: 200_000,
       noKyTruoc: 0,
-      phaiTra: 400_000,
-      daTra: 400_000,
+      phaiTra: 100_000,
+      daTra: 100_000,
       chuyenKySau: 0,
     });
     expect(ky.tuNgay).toBe('2026-07-02');
@@ -152,13 +152,13 @@ describe('quyết toán', () => {
 
     duLieu = quyetToan(duLieu, { denNgay: '2026-07-10' });
 
-    expect(kyGanNhat(duLieu)!.dongs[0].daTra).toBe(600_000);
+    expect(kyGanNhat(duLieu)!.dongs[0].daTra).toBe(300_000);
     expect(kyGanNhat(duLieu)!.dongs[0].chuyenKySau).toBe(0);
   });
 
   test('thợ ứng quá tay thì mặc định không phải trả thêm đồng nào', () => {
     let { duLieu, tuan } = kho();
-    duLieu = cham(duLieu, tuan, '2026-07-02', 'Sang');
+    duLieu = chamCaNgay(duLieu, tuan, '2026-07-02');
     duLieu = themUng(duLieu, tuan, '2026-07-03', 500_000);
 
     const dong = dongCua(duLieu, tuan)!;
@@ -200,7 +200,7 @@ describe('trả thiếu thì chuyển sang kỳ sau', () => {
 
     duLieu = quyetToan(duLieu, {
       denNgay: '2026-07-10',
-      daTra: new Map([[tuan, 400_000]]),
+      daTra: new Map([[tuan, 100_000]]),
     });
 
     expect(kyGanNhat(duLieu)!.dongs[0].chuyenKySau).toBe(200_000);
@@ -210,7 +210,7 @@ describe('trả thiếu thì chuyển sang kỳ sau', () => {
   test('thợ chỉ còn mỗi khoản nợ, kỳ sau chưa đi làm buổi nào, vẫn hiện ra', () => {
     let { duLieu, tuan } = kho();
     duLieu = chamCaNgay(duLieu, tuan, '2026-07-02');
-    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 400_000]]) });
+    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 100_000]]) });
 
     const ky = kyHienTai(duLieu, '2026-07-20');
 
@@ -224,44 +224,44 @@ describe('trả thiếu thì chuyển sang kỳ sau', () => {
   test('nợ cộng vào tiền công của kỳ sau', () => {
     let { duLieu, tuan } = kho();
     duLieu = chamCaNgay(duLieu, tuan, '2026-07-02');
-    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 400_000]]) });
+    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 100_000]]) });
 
     duLieu = chamCaNgay(duLieu, tuan, '2026-07-15');
     const dong = dongCua(duLieu, tuan, '2026-07-20')!;
 
-    expect(dong.tienCong).toBe(600_000);
+    expect(dong.tienCong).toBe(300_000);
     expect(dong.noKyTruoc).toBe(200_000);
-    expect(dong.conLai).toBe(800_000);
+    expect(dong.conLai).toBe(500_000);
   });
 
   test('trả dư thì kỳ sau trừ lại', () => {
     let { duLieu, tuan } = kho();
     duLieu = chamCaNgay(duLieu, tuan, '2026-07-02');
-    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 700_000]]) });
+    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 400_000]]) });
 
     expect(noDauKy(duLieu).get(tuan)).toBe(-100_000);
 
     duLieu = chamCaNgay(duLieu, tuan, '2026-07-15');
-    expect(dongCua(duLieu, tuan, '2026-07-20')!.conLai).toBe(500_000);
+    expect(dongCua(duLieu, tuan, '2026-07-20')!.conLai).toBe(200_000);
   });
 
   test('nợ không cộng dồn hai lần qua ba kỳ', () => {
     let { duLieu, tuan } = kho();
 
-    // Kỳ 1: làm 600.000, trả 400.000 → nợ 200.000.
+    // Kỳ 1: làm 300.000, trả 100.000 → nợ 200.000.
     duLieu = chamCaNgay(duLieu, tuan, '2026-07-02');
-    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 400_000]]) });
+    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 100_000]]) });
 
-    // Kỳ 2: làm 600.000 nữa, cộng nợ cũ là 800.000, trả 300.000 → nợ 500.000.
+    // Kỳ 2: làm 300.000 nữa, cộng nợ cũ là 500.000, trả 300.000 → nợ 200.000.
     duLieu = chamCaNgay(duLieu, tuan, '2026-07-15');
     duLieu = quyetToan(duLieu, { denNgay: '2026-07-20', daTra: new Map([[tuan, 300_000]]) });
 
     expect(kyGanNhat(duLieu)!.dongs[0].noKyTruoc).toBe(200_000);
-    expect(kyGanNhat(duLieu)!.dongs[0].phaiTra).toBe(800_000);
-    expect(kyGanNhat(duLieu)!.dongs[0].chuyenKySau).toBe(500_000);
+    expect(kyGanNhat(duLieu)!.dongs[0].phaiTra).toBe(500_000);
+    expect(kyGanNhat(duLieu)!.dongs[0].chuyenKySau).toBe(200_000);
 
-    // Kỳ 3 chỉ mang đúng 500.000, không phải 700.000.
-    expect(dongCua(duLieu, tuan, '2026-07-25')!.conLai).toBe(500_000);
+    // Kỳ 3 chỉ mang đúng 200.000, không phải 400.000.
+    expect(dongCua(duLieu, tuan, '2026-07-25')!.conLai).toBe(200_000);
   });
 });
 
@@ -276,8 +276,8 @@ describe('chấm bù ngày đã nằm trong kỳ đã chốt', () => {
 
     const ky = kyHienTai(duLieu, '2026-07-11');
     expect(ky.dongs).toHaveLength(1);
-    expect(ky.dongs[0].tongCong).toBe(1);
-    expect(ky.dongs[0].tienCong).toBe(300_000);
+    expect(ky.dongs[0].tongCong).toBe(0.5);
+    expect(ky.dongs[0].tienCong).toBe(150_000);
     // Đầu kỳ lùi về đúng ngày chấm bù, không bỏ nó ra ngoài khoảng đang hiện.
     expect(khoangKyHienTai(duLieu, '2026-07-11').tuNgay).toBe('2026-07-05');
   });
@@ -290,7 +290,7 @@ describe('chấm bù ngày đã nằm trong kỳ đã chốt', () => {
     duLieu = cham(duLieu, tuan, '2026-07-05', 'Sang');
 
     // Tờ quyết toán là bản chụp, chốt xong là đóng.
-    expect(kyGanNhat(duLieu)!.dongs[0].tienCong).toBe(600_000);
+    expect(kyGanNhat(duLieu)!.dongs[0].tienCong).toBe(300_000);
     expect(banGhiCuaKy(duLieu, kyGanNhat(duLieu)!).buoiCongs).toHaveLength(2);
   });
 
@@ -301,10 +301,10 @@ describe('chấm bù ngày đã nằm trong kỳ đã chốt', () => {
 
     // `cham` sửa đè lên bản ghi cũ, giữ nguyên id — nên buổi này vẫn nằm trong kỳ đã chốt
     // và không nhảy sang kỳ mới. Số tiền đã trả không tự nhiên đổi sau lưng người dùng.
-    duLieu = datCong(duLieu, tuan, '2026-07-02', 'Sang', 0.5);
+    duLieu = datCong(duLieu, tuan, '2026-07-02', 'Sang', 0.25);
 
     expect(kyHienTai(duLieu, '2026-07-11').dongs).toEqual([]);
-    expect(kyGanNhat(duLieu)!.dongs[0].tienCong).toBe(600_000);
+    expect(kyGanNhat(duLieu)!.dongs[0].tienCong).toBe(300_000);
   });
 });
 
@@ -322,7 +322,7 @@ describe('bỏ chốt', () => {
     expect(duLieu.kyLuongs).toEqual([]);
     expect(sau.tongPhaiTra).toBe(truoc.tongPhaiTra);
     expect(sau.dongs).toHaveLength(truoc.dongs.length);
-    expect(sau.dongs[0].tienCong).toBe(600_000);
+    expect(sau.dongs[0].tienCong).toBe(300_000);
     expect(sau.dongs[0].daUng).toBe(200_000);
   });
 
@@ -365,11 +365,11 @@ describe('xem lại các kỳ', () => {
     duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[binh, 0]]) });
 
     expect(tongCuaKy(kyGanNhat(duLieu)!)).toEqual({
-      tongCong: 3,
-      tienCong: 850_000,
+      tongCong: 1.5,
+      tienCong: 425_000,
       daUng: 100_000,
-      daTra: 500_000,
-      chuyenKySau: 250_000,
+      daTra: 200_000,
+      chuyenKySau: 125_000,
     });
   });
 
@@ -411,34 +411,34 @@ describe('chi tiết một thợ trong kỳ', () => {
 
     // Ngày 2 đã trả tiền rồi nên không đếm lại, dù nó nằm trong khoảng ngày đang xem.
     expect(baoCao.ngayCongs.map((d) => d.ngay)).toEqual(['2026-07-05']);
-    expect(baoCao.tienCong).toBe(300_000);
+    expect(baoCao.tienCong).toBe(150_000);
   });
 
   test('kỳ đang mở cộng cả nợ kỳ trước vào số còn phải trả', () => {
     let { duLieu, tuan } = kho();
     duLieu = chamCaNgay(duLieu, tuan, '2026-07-02');
-    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 400_000]]) });
+    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 100_000]]) });
     duLieu = cham(duLieu, tuan, '2026-07-15', 'Sang');
 
     const baoCao = baoCaoKyHienTai(duLieu, tuan, '2026-07-20')!;
 
-    expect(baoCao.tienCong).toBe(300_000);
+    expect(baoCao.tienCong).toBe(150_000);
     expect(baoCao.noKyTruoc).toBe(200_000);
-    expect(baoCao.conLai).toBe(500_000);
+    expect(baoCao.conLai).toBe(350_000);
   });
 
   test('xem hẹp hơn cả kỳ thì bỏ nợ kỳ trước ra, kẻo con số dưới đáy vô nghĩa', () => {
     let { duLieu, tuan } = kho();
     duLieu = chamCaNgay(duLieu, tuan, '2026-07-02');
-    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 400_000]]) });
+    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10', daTra: new Map([[tuan, 100_000]]) });
     duLieu = cham(duLieu, tuan, '2026-07-15', 'Sang');
     duLieu = cham(duLieu, tuan, '2026-07-16', 'Sang');
 
     const hep = baoCaoKyHienTai(duLieu, tuan, '2026-07-20', '2026-07-16', '2026-07-16')!;
 
-    expect(hep.tienCong).toBe(300_000);
+    expect(hep.tienCong).toBe(150_000);
     expect(hep.noKyTruoc).toBe(0);
-    expect(hep.conLai).toBe(300_000);
+    expect(hep.conLai).toBe(150_000);
   });
 
   test('kỳ đã chốt mở lại được đúng những ngày của nó', () => {
@@ -451,7 +451,7 @@ describe('chi tiết một thợ trong kỳ', () => {
     const baoCao = baoCaoTrongKy(duLieu, kyGanNhat(duLieu)!, tuan)!;
 
     expect(baoCao.ngayCongs.map((d) => d.ngay)).toEqual(['2026-07-02', '2026-07-04']);
-    expect(baoCao.tienCong).toBe(900_000);
+    expect(baoCao.tienCong).toBe(450_000);
     // Ngày nghỉ cắt ở ngày chốt kỳ, không chạy tới hôm nay.
     expect(baoCao.ngayNghis.every((ngay) => ngay <= '2026-07-10')).toBe(true);
   });

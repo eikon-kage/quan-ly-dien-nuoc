@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { chiaSeSoCong } from '../nghiepvu/chiaSeExcel';
 import { doiChieu } from '../nghiepvu/doiChieu';
-import { BuoiLam, CAC_BUOI, DuLieuChamCong } from '../nghiepvu/kieu';
+import { BuoiLam, CAC_BUOI, CONG_MOT_BUOI, DuLieuChamCong } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { CONG_TOI_DA, docSoCong } from '../nghiepvu/nhapSo';
 import { soCuaMay } from '../nghiepvu/soCong';
@@ -195,7 +195,9 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
     if (ma === 'nghi') {
       capNhat(boCham(duLieu, thoId, ngay, buoi));
     } else {
-      const soCong = ma === 'nua' ? 0.5 : ma === 'ruoi' ? 1.5 : 1;
+      // Một buổi đi đủ là nửa công, vì cả ngày mới là một công — xem `CONG_MOT_BUOI`.
+      const soCong =
+        ma === 'nua' ? CONG_MOT_BUOI / 2 : ma === 'ruoi' ? CONG_MOT_BUOI * 1.5 : CONG_MOT_BUOI;
       capNhat(cham(duLieu, thoId, ngay, buoi, soCong));
     }
     datDangSua(null);
@@ -531,9 +533,9 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
         <HopChon
           tieuDe={`${Ngay.thuVaNgay(dangSua.ngay)} — buổi ${dangSua.buoi === 'Sang' ? 'sáng' : 'chiều'}`}
           luaChon={[
-            { ma: 'ca', nhan: 'Cả công (1)', icon: 'check' },
-            { ma: 'nua', nhan: 'Nửa công (0,5)', icon: 'clock' },
-            { ma: 'ruoi', nhan: 'Công rưỡi (1,5)', icon: 'plus-circle' },
+            { ma: 'ca', nhan: 'Cả buổi (0,5 công)', icon: 'check' },
+            { ma: 'nua', nhan: 'Nửa buổi (0,25 công)', icon: 'clock' },
+            { ma: 'ruoi', nhan: 'Buổi rưỡi (0,75 công)', icon: 'plus-circle' },
             { ma: 'goSo', nhan: 'Gõ số công khác', icon: 'edit-3' },
             { ma: 'nghi', nhan: 'Nghỉ buổi này', icon: 'x-circle', nguyHiem: true },
           ]}
@@ -548,7 +550,7 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
         <HopNhapSo
           tieuDe={`${Ngay.thuVaNgay(dangSua.ngay)} — buổi ${dangSua.buoi === 'Sang' ? 'sáng' : 'chiều'}`}
           moTa="Buổi này mấy công?"
-          goiY="Ví dụ 0,75"
+          goiY="Ví dụ 0,5"
           giaTriDau={
             dangCham(duLieu, thoId, dangSua.ngay, dangSua.buoi) !== undefined
               ? Ngay.soCong(dangCham(duLieu, thoId, dangSua.ngay, dangSua.buoi)?.soCong ?? 0)
@@ -557,7 +559,7 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
           doc={docSoCong}
           hienLai={(so) => `${Ngay.soCong(so)} công`}
           banPhim="decimal-pad"
-          loi={(so) => (so > CONG_TOI_DA ? `Nhiều nhất ${CONG_TOI_DA} công một buổi.` : null)}
+          loi={(so) => (so > CONG_TOI_DA ? `Nhiều nhất ${Ngay.soCong(CONG_TOI_DA)} công một buổi.` : null)}
           onGhi={ghiSoCong}
           onDong={() => {
             datGoSoCong(false);
@@ -622,7 +624,7 @@ function OCham({
       accessibilityLabel={`${ngayNhan !== undefined ? `${ngayNhan} ` : ''}${nhan} ${
         daCham ? 'có đi làm' : 'chưa chấm'
       }`}
-      accessibilityHint="Bấm để đổi, bấm giữ để chọn nửa công"
+      accessibilityHint="Bấm để đổi, bấm giữ để chọn nửa buổi"
     >
       <Feather
         name={daCham ? 'check-circle' : 'circle'}
@@ -633,7 +635,7 @@ function OCham({
         style={[kieu.chuOCham, to && kieu.chuOChamTo, { color: daCham ? Mau.chu : Mau.xam }]}
       >
         {nhan}
-        {daCham && soCong !== 1 ? `  ${Ngay.soCong(soCong)}` : ''}
+        {daCham && soCong !== CONG_MOT_BUOI ? `  ${Ngay.soCong(soCong)}` : ''}
       </Text>
     </Pressable>
   );

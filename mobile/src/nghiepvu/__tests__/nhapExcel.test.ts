@@ -77,7 +77,8 @@ describe('đọc file người dùng điền', () => {
     expect(doc.lois).toEqual([]);
     expect(doc.dongs).toEqual([
       { soDong: 2, ngay: '2026-08-03', congSang: 1, congChieu: 1, ung: null, ghiChu: '' },
-      { soDong: 3, ngay: '2026-08-04', congSang: 1, congChieu: 0.5, ung: 500000, ghiChu: 'về sớm' },
+      // Chữ "x" là đi làm cả buổi, tức nửa công — cả ngày mới là một công.
+      { soDong: 3, ngay: '2026-08-04', congSang: 0.5, congChieu: 0.5, ung: 500000, ghiChu: 'về sớm' },
       { soDong: 4, ngay: '2026-08-05', congSang: 1.5, congChieu: 0, ung: 300000, ghiChu: '' },
     ]);
   });
@@ -120,7 +121,7 @@ describe('đọc file người dùng điền', () => {
     expect(doc.lois).toEqual([
       { soDong: 3, ly: 'ngày "hôm kia" không đọc được' },
       { soDong: 4, ly: 'cột Sáng: không hiểu ô công "hai công"' },
-      { soDong: 5, ly: 'cột Sáng: số công phải từ 0 tới 5' },
+      { soDong: 5, ly: 'cột Sáng: số công phải từ 0 tới 2,5' },
     ]);
   });
 

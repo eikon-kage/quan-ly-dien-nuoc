@@ -55,10 +55,10 @@ describe('màn hình quyết toán', () => {
     expect(screen.getByText('Anh Tuấn')).toBeTruthy();
     expect(screen.getByText('Anh Bình')).toBeTruthy();
 
-    // Tuấn: 2 công 600.000 trừ 200.000 đã ứng còn 400.000. Bình: 1 công 250.000.
+    // Tuấn: 1 công 300.000 trừ 200.000 đã ứng còn 100.000. Bình: nửa công 125.000.
     expect(screen.getByText('Tổng phải trả').parent).toBeTruthy();
-    expect(screen.getAllByText('400.000 đ').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('250.000 đ').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('100.000 đ').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('125.000 đ').length).toBeGreaterThan(0);
   });
 
   test('điền sẵn là trả đủ, bấm một nút là xong', () => {
@@ -68,8 +68,8 @@ describe('màn hình quyết toán', () => {
     fireEvent.press(screen.getByText('Chốt kỳ, đã trả tiền'));
 
     const ky = kyGanNhat(moiNhat())!;
-    expect(ky.dongs.find((d) => d.thoId === tuan)?.daTra).toBe(400_000);
-    expect(ky.dongs.find((d) => d.thoId === binh)?.daTra).toBe(250_000);
+    expect(ky.dongs.find((d) => d.thoId === tuan)?.daTra).toBe(100_000);
+    expect(ky.dongs.find((d) => d.thoId === binh)?.daTra).toBe(125_000);
     expect(ky.dongs.every((d) => d.chuyenKySau === 0)).toBe(true);
     expect(daDong()).toBe(true);
   });
@@ -99,7 +99,7 @@ describe('màn hình quyết toán', () => {
 
     const dongBinh = kyGanNhat(moiNhat())!.dongs.find((d) => d.thoId === binh)!;
     expect(dongBinh.daTra).toBe(0);
-    expect(dongBinh.chuyenKySau).toBe(250_000);
+    expect(dongBinh.chuyenKySau).toBe(125_000);
     // Vẫn nằm trong tờ quyết toán chứ không biến mất khỏi sổ.
     expect(kyGanNhat(moiNhat())!.dongs).toHaveLength(2);
   });
@@ -108,15 +108,15 @@ describe('màn hình quyết toán', () => {
     const { duLieu, tuan } = kho();
     const { moiNhat } = dung(duLieu);
 
-    fireEvent.press(screen.getByLabelText('Anh Tuấn thực trả 400.000 đ, chạm để sửa'));
-    fireEvent.changeText(screen.getByLabelText('Ví dụ 2000000'), '300000');
+    fireEvent.press(screen.getByLabelText('Anh Tuấn thực trả 100.000 đ, chạm để sửa'));
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 2000000'), '60000');
     fireEvent.press(screen.getByText('Ghi'));
 
     expect(screen.getAllByText('Còn nợ, chuyển kỳ sau')).toHaveLength(2);
-    expect(screen.getByLabelText('Anh Tuấn thực trả 300.000 đ, chạm để sửa')).toBeTruthy();
+    expect(screen.getByLabelText('Anh Tuấn thực trả 60.000 đ, chạm để sửa')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Chốt kỳ, đã trả tiền'));
-    expect(kyGanNhat(moiNhat())!.dongs.find((d) => d.thoId === tuan)?.chuyenKySau).toBe(100_000);
+    expect(kyGanNhat(moiNhat())!.dongs.find((d) => d.thoId === tuan)?.chuyenKySau).toBe(40_000);
   });
 
   test('bấm Khoản khác mở đúng hộp nhập, ghi xong thì viên đó sáng', () => {
@@ -139,7 +139,7 @@ describe('màn hình quyết toán', () => {
     fireEvent.press(screen.getByText('Chốt kỳ, đã trả tiền'));
     const dongBinh = kyGanNhat(moiNhat())!.dongs.find((d) => d.thoId === binh)!;
     expect(dongBinh.daTra).toBe(100_000);
-    expect(dongBinh.chuyenKySau).toBe(150_000);
+    expect(dongBinh.chuyenKySau).toBe(25_000);
   });
 
   test('kỳ trước còn nợ thì kỳ này hiện thành một dòng riêng', () => {
@@ -150,8 +150,8 @@ describe('màn hình quyết toán', () => {
     dung(duLieu);
 
     expect(screen.getByText('Nợ kỳ trước')).toBeTruthy();
-    // 300.000 công mới cộng 400.000 nợ cũ.
-    expect(screen.getByLabelText('Anh Tuấn thực trả 700.000 đ, chạm để sửa')).toBeTruthy();
+    // 150.000 công mới cộng 100.000 nợ cũ.
+    expect(screen.getByLabelText('Anh Tuấn thực trả 250.000 đ, chạm để sửa')).toBeTruthy();
   });
 
   test('nói trước là chốt xong vẫn bỏ ra được', () => {

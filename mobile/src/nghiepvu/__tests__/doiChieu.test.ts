@@ -58,7 +58,7 @@ describe('catSo', () => {
 
     const so = catSo(duLieu, tuan, 'chu', '2026-08-01', '2026-08-31', TAO_LUC);
 
-    expect(so.dongs).toEqual([{ ngay: '2026-08-10', buoi: 'Sang', soCong: 1 }]);
+    expect(so.dongs).toEqual([{ ngay: '2026-08-10', buoi: 'Sang', soCong: 0.5 }]);
     expect(so.tenTho).toBe('Anh Tuấn');
 
     // Không tin vào mắt mình mà đọc từng trường: soát cả gói xem có số tiền nào lọt ra.
@@ -87,14 +87,14 @@ describe('catSo', () => {
     duLieu = quyetToan(duLieu, {
       denNgay: '2026-08-10',
       chotLuc: '2026-08-10T18:00:00.000Z',
-      daTra: new Map([[tuan, 300_000]]),
+      daTra: new Map([[tuan, 150_000]]),
     });
     duLieu = cham(duLieu, tuan, '2026-08-11', 'Sang');
 
     const so = catSo(duLieu, tuan, 'chu', '2026-08-01', '2026-08-31', TAO_LUC);
     expect(so.dongs).toEqual([
-      { ngay: '2026-08-10', buoi: 'Sang', soCong: 1, daChot: true },
-      { ngay: '2026-08-11', buoi: 'Sang', soCong: 1 },
+      { ngay: '2026-08-10', buoi: 'Sang', soCong: 0.5, daChot: true },
+      { ngay: '2026-08-11', buoi: 'Sang', soCong: 0.5 },
     ]);
   });
 });
@@ -112,36 +112,37 @@ describe('doiChieu', () => {
     const ket = doiChieu(
       soChu(duLieu, tuan),
       soTho(tuan, [
-        { ngay: '2026-08-10', buoi: 'Sang', soCong: 1 },
-        { ngay: '2026-08-10', buoi: 'Chieu', soCong: 1 },
+        { ngay: '2026-08-10', buoi: 'Sang', soCong: 0.5 },
+        { ngay: '2026-08-10', buoi: 'Chieu', soCong: 0.5 },
       ]),
       HOM_NAY,
     );
 
     expect(ket.lechs).toEqual([]);
     expect(ket.soKhop).toBe(2);
-    expect(ket.tongCongMinh).toBe(2);
-    expect(ket.tongCongBenKia).toBe(2);
+    // Hai buổi khớp nhau là đúng một công — cả ngày đi đủ.
+    expect(ket.tongCongMinh).toBe(1);
+    expect(ket.tongCongBenKia).toBe(1);
   });
 
   it('gọi tên đúng ba loại lệch', () => {
     let { duLieu, tuan } = kho();
     duLieu = cham(duLieu, tuan, '2026-08-10', 'Sang'); // thợ không chấm
-    duLieu = cham(duLieu, tuan, '2026-08-11', 'Sang', 0.5); // hai bên lệch số công
+    duLieu = cham(duLieu, tuan, '2026-08-11', 'Sang', 0.25); // hai bên lệch số công
 
     const ket = doiChieu(
       soChu(duLieu, tuan),
       soTho(tuan, [
-        { ngay: '2026-08-11', buoi: 'Sang', soCong: 1 },
-        { ngay: '2026-08-12', buoi: 'Chieu', soCong: 1 }, // chủ không có
+        { ngay: '2026-08-11', buoi: 'Sang', soCong: 0.5 },
+        { ngay: '2026-08-12', buoi: 'Chieu', soCong: 0.5 }, // chủ không có
       ]),
       HOM_NAY,
     );
 
     expect(ket.lechs).toEqual([
-      { ngay: '2026-08-10', buoi: 'Sang', soCongMinh: 1, soCongBenKia: null, loai: 'chiMinhCo', daChot: false },
-      { ngay: '2026-08-11', buoi: 'Sang', soCongMinh: 0.5, soCongBenKia: 1, loai: 'lechSoCong', daChot: false },
-      { ngay: '2026-08-12', buoi: 'Chieu', soCongMinh: null, soCongBenKia: 1, loai: 'chiBenKiaCo', daChot: false },
+      { ngay: '2026-08-10', buoi: 'Sang', soCongMinh: 0.5, soCongBenKia: null, loai: 'chiMinhCo', daChot: false },
+      { ngay: '2026-08-11', buoi: 'Sang', soCongMinh: 0.25, soCongBenKia: 0.5, loai: 'lechSoCong', daChot: false },
+      { ngay: '2026-08-12', buoi: 'Chieu', soCongMinh: null, soCongBenKia: 0.5, loai: 'chiBenKiaCo', daChot: false },
     ]);
   });
 
@@ -153,7 +154,7 @@ describe('doiChieu', () => {
 
     const ket = doiChieu(
       soChu(duLieu, tuan),
-      soTho(tuan, [{ ngay: '2026-08-20', buoi: 'Sang', soCong: 1 }], '2026-08-15', '2026-08-31'),
+      soTho(tuan, [{ ngay: '2026-08-20', buoi: 'Sang', soCong: 0.5 }], '2026-08-15', '2026-08-31'),
       HOM_NAY,
     );
 
@@ -445,7 +446,7 @@ describe('bên không biết ngày ấy thì không tính là lệch', () => {
 
     const ket = doiChieu(
       // Máy thợ khai đúng hôm nhận vai máy, nhưng gửi kèm buổi chấm bù ngày 15.
-      soTho(tuan, [{ ngay: '2026-08-15', buoi: 'Sang', soCong: 1 }], TU_20.tuNgay, TU_20.denNgay),
+      soTho(tuan, [{ ngay: '2026-08-15', buoi: 'Sang', soCong: 0.5 }], TU_20.tuNgay, TU_20.denNgay),
       catSo(duLieu, tuan, 'chu', '2026-08-15', '2026-08-19', TAO_LUC),
       '2026-08-20',
     );
@@ -470,9 +471,9 @@ describe('bên không biết ngày ấy thì không tính là lệch', () => {
       soTho(
         tuan,
         [
-          { ngay: '2026-08-15', buoi: 'Sang', soCong: 1 },
+          { ngay: '2026-08-15', buoi: 'Sang', soCong: 0.5 },
           // Chủ quên chấm buổi này, mà nó nằm giữa khoảng chủ khai là đầy đủ.
-          { ngay: '2026-08-17', buoi: 'Sang', soCong: 1 },
+          { ngay: '2026-08-17', buoi: 'Sang', soCong: 0.5 },
         ],
         TU_20.tuNgay,
         TU_20.denNgay,
@@ -613,7 +614,7 @@ describe('buổi chỉ một bên có sổ', () => {
     duLieu = cham(duLieu, tuan, '2026-08-19', 'Sang');
 
     const ket = doiChieu(
-      soTho(tuan, [{ ngay: '2026-08-19', buoi: 'Sang', soCong: 1 }], '2026-08-01', '2026-08-20'),
+      soTho(tuan, [{ ngay: '2026-08-19', buoi: 'Sang', soCong: 0.5 }], '2026-08-01', '2026-08-20'),
       // Chủ mới nhập tới ngày 17, chưa biết gì ngày 19.
       {
         thoId: tuan,
@@ -630,7 +631,7 @@ describe('buổi chỉ một bên có sổ', () => {
     expect(ket.chuaBiets.map((l) => l.loai)).toEqual(['benKiaChuaBiet']);
     expect(() => layTheoBenKia(duLieu, tuan, ket.chuaBiets[0])).toThrow(ChuaBietKhongLayDuoc);
     // Sổ mình không bị chạm tới.
-    expect(dangCham(duLieu, tuan, '2026-08-19', 'Sang')?.soCong).toBe(1);
+    expect(dangCham(duLieu, tuan, '2026-08-19', 'Sang')?.soCong).toBe(0.5);
   });
 
   it('buổi của hôm nay vẫn là tạm gác, không thành dòng "chưa biết"', () => {

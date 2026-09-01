@@ -134,7 +134,7 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
                   placeholder="Ví dụ: 300000"
                   keyboardType="number-pad"
                 />
-                <Text style={kieu.chuPhu}>Một ngày làm đủ sáng và chiều là 2 công.</Text>
+                <Text style={kieu.chuPhu}>Một ngày làm đủ sáng và chiều là 1 công.</Text>
               </View>
             ) : (
               <View style={kieu.theLuong}>

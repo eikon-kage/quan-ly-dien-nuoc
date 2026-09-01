@@ -36,10 +36,10 @@ describe('báo cáo tháng của một thợ', () => {
     expect(ketQua.ngayCongs).toHaveLength(1);
     expect(ketQua.ngayCongs[0]).toMatchObject({
       ngay: '2026-08-03',
-      congSang: 1,
-      congChieu: 1,
-      tongCong: 2,
-      tien: 600_000,
+      congSang: 0.5,
+      congChieu: 0.5,
+      tongCong: 1,
+      tien: 300_000,
     });
   });
 
@@ -49,7 +49,7 @@ describe('báo cáo tháng của một thợ', () => {
 
     const [dong] = bao(duLieu, thoId).ngayCongs;
 
-    expect(dong.congSang).toBe(1);
+    expect(dong.congSang).toBe(0.5);
     expect(dong.congChieu).toBeNull();
   });
 
@@ -74,9 +74,9 @@ describe('báo cáo tháng của một thợ', () => {
 
     const ketQua = bao(duLieu, thoId);
 
-    expect(ketQua.ngayCongs[0].tien).toBe(300_000);
-    expect(ketQua.ngayCongs[1].tien).toBe(350_000);
-    expect(ketQua.tienCong).toBe(650_000);
+    expect(ketQua.ngayCongs[0].tien).toBe(150_000);
+    expect(ketQua.ngayCongs[1].tien).toBe(175_000);
+    expect(ketQua.tienCong).toBe(325_000);
   });
 
   test('ngày nghỉ là ngày trong kỳ mà không có công nào', () => {
@@ -135,7 +135,7 @@ describe('báo cáo tháng của một thợ', () => {
     duLieu = cham(duLieu, thoId, '2026-08-03', 'Chieu');
     duLieu = themUng(duLieu, thoId, '2026-08-05', 200_000);
 
-    expect(bao(duLieu, thoId).conLai).toBe(400_000);
+    expect(bao(duLieu, thoId).conLai).toBe(100_000);
   });
 
   test('thợ không có thật thì trả về null', () => {
@@ -153,7 +153,7 @@ describe('báo cáo theo khoảng ngày', () => {
 
     const bao = baoCaoKhoang(duLieu, thoId, '2026-08-01', '2026-08-15', '2026-08-31')!;
 
-    expect(bao.tongCong).toBe(1);
+    expect(bao.tongCong).toBe(0.5);
     expect(bao.ungTiens).toHaveLength(1);
     expect(bao.daUng).toBe(500_000);
     expect(bao.tuNgay).toBe('2026-08-01');
@@ -181,7 +181,7 @@ describe('báo cáo theo khoảng ngày', () => {
 
     const bao = baoCaoKhoang(duLieu, thoId, '2026-07-28', '2026-08-03', '2026-08-31')!;
 
-    expect(bao.tongCong).toBe(2);
+    expect(bao.tongCong).toBe(1);
     expect(bao.ngayNghis).toHaveLength(5);
   });
 });

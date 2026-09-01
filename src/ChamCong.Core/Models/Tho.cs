@@ -10,7 +10,7 @@ public sealed class Tho
     public string DienThoai { get; set; } = string.Empty;
 
     /// <summary>
-    /// Tiền công của một buổi (một công). Đây là giá đang áp dụng; các buổi đã chấm
+    /// Tiền công của một ngày (một công). Đây là giá đang áp dụng; các buổi đã chấm
     /// giữ lại giá của lúc chấm nên tăng lương không làm sai bảng lương tháng trước.
     /// </summary>
     public decimal TienMotCong { get; set; }

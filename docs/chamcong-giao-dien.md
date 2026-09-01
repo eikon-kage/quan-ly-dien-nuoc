@@ -156,9 +156,14 @@ dài (`Thứ Tư 05/08`) không còn bị bó giữa hai mũi tên.
 rồi bỏ chấm vài người nghỉ. Nhanh hơn nhiều so với bấm 16 ô. Khi cả tổ đã đủ công thì nút
 đổi thành **"Xoá hết chấm hôm nay"** viền đỏ.
 
-**Nút `[Sửa]`** mở ô chọn nửa công / công rưỡi cho từng buổi. Để riêng ra vì chín trên mười
-lần là một công tròn — không được bắt người dùng đi qua bước này mỗi ngày. Buổi nào khác 1
-công thì ô đó hiện thêm `½` hoặc `1½` để nhìn là biết.
+**Nút `[Sửa]`** mở ô chọn nửa buổi / buổi rưỡi cho từng buổi. Để riêng ra vì chín trên mười
+lần là một buổi đi đủ — không được bắt người dùng đi qua bước này mỗi ngày. Buổi nào khác
+0,5 công thì ô đó hiện thêm số công để nhìn là biết.
+
+**Một ngày đi đủ cả sáng lẫn chiều là *một* công**, nên mỗi buổi đáng nửa công. Đó là cách
+cả nghề nói, và cũng là cách tiền được tính: `300.000 đ một công` là tiền của một *ngày*
+công. Ba mức có sẵn khi sửa một buổi vì thế là `0,5` (cả buổi) / `0,25` (nửa buổi) /
+`0,75` (buổi rưỡi), còn số nào cũng gõ được.
 
 ### 2. Bảng lương
 
@@ -283,16 +288,16 @@ Bốn điều đã cân nhắc, đừng đổi mà không đọc lại:
    *chưa tính* không nền không viền, số mờ đi. Ô "chưa tính" là ngày chưa tới hoặc ngày thợ
    chưa vào làm — để trắng chứ không tô xám, kẻo mở lịch đầu tháng thấy báo nghỉ gần trọn
    tháng thì hoảng.
-3. **Đi đủ cả ngày (2 công) chỉ có dấu tích, không ghi số.** Đi đủ là chuyện thường ngày;
+3. **Đi đủ cả ngày (1 công) chỉ có dấu tích, không ghi số.** Đi đủ là chuyện thường ngày;
    ghi số vào thì cả tháng chi chít, mắt không bắt được ngày nào khác thường. Chỉ ngày lệch
-   khỏi 2 công mới ghi thêm `0,5`, `1`, `2,5` bên cạnh dấu tích.
+   khỏi 1 công mới ghi thêm `0,25`, `0,5`, `1,25` bên cạnh dấu tích.
 4. **Chú thích nằm ngay dưới lịch và kiêm luôn chỗ đếm ngày** — "Đi làm 21 ngày · Nghỉ 6
    ngày". Vừa khỏi phải đoán ô xanh nghĩa là gì, vừa khỏi ngồi đếm ô.
 
 Đổi lại, **tiền của từng ngày không còn hiện** như hồi làm danh sách — ô lịch không đủ chỗ.
 Số đó suy ra được từ số công nhân đơn giá, mà tổng tiền công thì vẫn nằm ngay trên đầu.
 
-Mỗi ô có nhãn cho trình đọc màn hình dạng `03/08 Thứ Hai, đi làm 2 công`, vì bản thân ô chỉ
+Mỗi ô có nhãn cho trình đọc màn hình dạng `03/08 Thứ Hai, đi làm 1 công`, vì bản thân ô chỉ
 là một con số với một dấu tích, đọc trơn lên thì không rõ nghĩa.
 
 #### Quyết toán kỳ
@@ -306,13 +311,13 @@ từng người bao nhiêu trước khi gật đầu.
 │  ‹      Quyết toán kỳ              │
 │         03/08 → 05/08              │
 ├────────────────────────────────────┤
-│  Anh Tuấn                  2 công  │
-│  Tiền công            600.000 đ    │
+│  Anh Tuấn                  1 công  │
+│  Tiền công            300.000 đ    │
 │  Đã ứng              −200.000 đ    │
 │  ────────────────────────────────  │
-│  Phải trả             400.000 đ    │
+│  Phải trả             100.000 đ    │
 │ ┌────────────────────────────────┐ │
-│ │ Thực trả        400.000 đ   ✎  │ │   điền sẵn, chạm để sửa
+│ │ Thực trả        100.000 đ   ✎  │ │   điền sẵn, chạm để sửa
 │ └────────────────────────────────┘ │
 │ ╔══════════╗                       │   thanh phân đoạn ba mục;
 │ ║ Trả đủ   ║ Khoản khác  Không trả │   Khoản khác mở hộp nhập số

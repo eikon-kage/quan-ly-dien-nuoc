@@ -47,9 +47,9 @@ describe('màn hình kỳ đã chốt', () => {
 
     expect(screen.getByText('03/08 → 05/08')).toBeTruthy();
     expect(screen.getByText('1 kỳ đã quyết toán')).toBeTruthy();
-    expect(screen.getByText('1 thợ · 2 công · chốt 05/08/2026')).toBeTruthy();
-    // Tiền công 600.000, đã ứng 100.000, cầm về 500.000.
-    expect(screen.getByText('500.000 đ')).toBeTruthy();
+    expect(screen.getByText('1 thợ · 1 công · chốt 05/08/2026')).toBeTruthy();
+    // Tiền công 300.000, đã ứng 100.000, cầm về 200.000.
+    expect(screen.getByText('200.000 đ')).toBeTruthy();
   });
 
   test('kỳ mới nhất có dấu riêng vì chỉ nó bỏ chốt được', () => {
@@ -83,7 +83,7 @@ describe('màn hình kỳ đã chốt', () => {
     expect(sau.kyLuongs).toEqual([]);
     // Tiền quay lại kỳ đang mở, không mất buổi công nào.
     expect(sau.buoiCongs).toHaveLength(duLieu.buoiCongs.length);
-    expect(kyHienTai(sau, '2026-08-06').tongPhaiTra).toBe(500_000);
+    expect(kyHienTai(sau, '2026-08-06').tongPhaiTra).toBe(200_000);
   });
 
   test('đổi ý giữa chừng thì bấm Thôi, sổ giữ nguyên', () => {

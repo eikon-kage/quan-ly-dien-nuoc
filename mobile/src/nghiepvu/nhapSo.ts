@@ -1,13 +1,16 @@
 /** Đọc số người dùng gõ vào. Gõ kiểu gì cũng hiểu, miễn là có chữ số. */
 
 /**
- * Một buổi nhiều nhất bằng này công. Không phải luật lệ gì, chỉ để chặn gõ nhầm:
- * gõ "10" thay vì "1,0" mà lọt qua thì cuối tháng tiền công sai gấp mười.
+ * Một buổi nhiều nhất bằng này công. Không phải luật lệ gì, chỉ để chặn gõ nhầm: gõ "5"
+ * thay vì "0,5" mà lọt qua thì cuối tháng tiền công sai gấp mười.
+ *
+ * Bằng năm lần một buổi đi đủ (`CONG_MOT_BUOI`), đúng như hồi mức chặn còn là 5 công của
+ * luật cũ — rộng rãi để buổi làm thêm bao nhiêu cũng ghi được, mà vẫn chặn được số lạc.
  */
-export const CONG_TOI_DA = 5;
+export const CONG_TOI_DA = 2.5;
 
 /**
- * Đọc số công: "1", "0,5", "0.5", "1,25" đều hiểu. Dấu phẩy và dấu chấm đều là dấu thập
+ * Đọc số công: "0,5", "0.5", "1", "0,25" đều hiểu. Dấu phẩy và dấu chấm đều là dấu thập
  * phân — người Việt gõ phẩy, bàn phím số của máy cho dấu chấm.
  *
  * Trả về null nếu không đọc được hoặc không lớn hơn 0. Số quá lớn vẫn trả về để màn hình
@@ -29,7 +32,7 @@ export function docSoCong(chu: string | null | undefined): number | null {
     return null;
   }
 
-  // Làm tròn hai chữ số thập phân: nửa công, một phần tư công là đủ nhỏ rồi.
+  // Làm tròn hai chữ số thập phân: nửa buổi (0,25 công) là đủ nhỏ rồi.
   return Math.round(so * 100) / 100;
 }
 

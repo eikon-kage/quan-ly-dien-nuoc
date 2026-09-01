@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BuoiLam, DuLieuChamCong, Tho } from '../nghiepvu/kieu';
+import { BuoiLam, CONG_MOT_BUOI, DuLieuChamCong, Tho } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { CONG_TOI_DA, docSoCong } from '../nghiepvu/nhapSo';
 import {
@@ -66,7 +66,9 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
 
   /** Chạm ô đang xanh là bỏ chấm — sửa nhầm bằng đúng thao tác vừa rồi. */
   function bamO(tho: Tho, buoi: BuoiLam) {
-    capNhat(datCong(duLieu, tho.id, ngay, buoi, soCongCua(tho, buoi) === null ? 1 : null));
+    capNhat(
+      datCong(duLieu, tho.id, ngay, buoi, soCongCua(tho, buoi) === null ? CONG_MOT_BUOI : null),
+    );
   }
 
   /**
@@ -79,8 +81,14 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
 
     for (const tho of thos) {
       for (const buoi of ['Sang', 'Chieu'] as BuoiLam[]) {
-        // Người đã chấm nửa công thì giữ nguyên nửa công, không ép thành một công.
-        moi = datCong(moi, tho.id, ngay, buoi, xoaHet ? null : soCongCua(tho, buoi) ?? 1);
+        // Người đã chấm nửa buổi thì giữ nguyên, không ép thành cả buổi.
+        moi = datCong(
+          moi,
+          tho.id,
+          ngay,
+          buoi,
+          xoaHet ? null : soCongCua(tho, buoi) ?? CONG_MOT_BUOI,
+        );
       }
     }
 
@@ -98,7 +106,13 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
       return;
     }
 
-    const soCong: Record<string, number | null> = { ca: 1, nua: 0.5, ruoi: 1.5, nghi: null };
+    // Một buổi đi đủ là nửa công, vì cả ngày mới là một công — xem `CONG_MOT_BUOI`.
+    const soCong: Record<string, number | null> = {
+      ca: CONG_MOT_BUOI,
+      nua: CONG_MOT_BUOI / 2,
+      ruoi: CONG_MOT_BUOI * 1.5,
+      nghi: null,
+    };
     capNhat(datCong(duLieu, dangSua.tho.id, ngay, dangSua.buoi, soCong[ma]));
     datDangSua(null);
   }
@@ -226,7 +240,7 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
       </View>
 
       {/*
-        Nửa công / công rưỡi để riêng sau nút Sửa: chín trên mười lần là một công tròn,
+        Nửa buổi / buổi rưỡi để riêng sau nút Sửa: chín trên mười lần là một buổi đi đủ,
         không được bắt người dùng đi qua bước này mỗi ngày. Hai bước: chọn buổi rồi chọn số công.
       */}
       {dangSua !== null && dangSua.buoi === null && (
@@ -259,9 +273,9 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
         <HopChon
           tieuDe={`${dangSua.tho.ten} — buổi ${dangSua.buoi === 'Sang' ? 'sáng' : 'chiều'}`}
           luaChon={[
-            { ma: 'ca', nhan: 'Cả công (1)', icon: 'check' },
-            { ma: 'nua', nhan: 'Nửa công (0,5)', icon: 'clock' },
-            { ma: 'ruoi', nhan: 'Công rưỡi (1,5)', icon: 'plus-circle' },
+            { ma: 'ca', nhan: 'Cả buổi (0,5 công)', icon: 'check' },
+            { ma: 'nua', nhan: 'Nửa buổi (0,25 công)', icon: 'clock' },
+            { ma: 'ruoi', nhan: 'Buổi rưỡi (0,75 công)', icon: 'plus-circle' },
             { ma: 'goSo', nhan: 'Gõ số công khác', icon: 'edit-3' },
             { ma: 'nghi', nhan: 'Nghỉ buổi này', icon: 'x-circle', nguyHiem: true },
           ]}
@@ -274,11 +288,11 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
         <HopNhapSo
           tieuDe={`${dangSua.tho.ten} — buổi ${dangSua.buoi === 'Sang' ? 'sáng' : 'chiều'}`}
           moTa="Buổi này mấy công?"
-          goiY="Ví dụ 0,75"
+          goiY="Ví dụ 0,5"
           doc={docSoCong}
           hienLai={(so) => `${Ngay.soCong(so)} công`}
           banPhim="decimal-pad"
-          loi={(so) => (so > CONG_TOI_DA ? `Nhiều nhất ${CONG_TOI_DA} công một buổi.` : null)}
+          loi={(so) => (so > CONG_TOI_DA ? `Nhiều nhất ${Ngay.soCong(CONG_TOI_DA)} công một buổi.` : null)}
           onGhi={ghiSoCong}
           onDong={() => {
             datGoSoCong(false);
@@ -455,7 +469,7 @@ function OCham({
       />
       <Text style={[kieu.chuOCham, { color: daCham ? Mau.chu : Mau.xam }]}>
         {nhan}
-        {daCham && soCong !== 1 ? `  ${Ngay.soCong(soCong)}` : ''}
+        {daCham && soCong !== CONG_MOT_BUOI ? `  ${Ngay.soCong(soCong)}` : ''}
       </Text>
     </Pressable>
   );

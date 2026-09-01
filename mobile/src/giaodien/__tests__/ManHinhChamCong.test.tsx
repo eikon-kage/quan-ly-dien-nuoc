@@ -59,14 +59,14 @@ describe('màn hình chấm công', () => {
     expect(screen.queryByText('Hôm nay')).toBeNull();
   });
 
-  test('chạm ô Sáng là chấm một công cho đúng thợ đó', () => {
+  test('chạm ô Sáng là chấm nửa công cho đúng thợ đó', () => {
     const { duLieu, ids } = khoCoTho('Anh Tuấn');
     const { capNhat, moiNhat } = dung(duLieu);
 
     fireEvent.press(screen.getByText('Sáng'));
 
     expect(capNhat).toHaveBeenCalledTimes(1);
-    expect(dangCham(moiNhat(), ids[0], HOM_NAY, 'Sang')?.soCong).toBe(1);
+    expect(dangCham(moiNhat(), ids[0], HOM_NAY, 'Sang')?.soCong).toBe(0.5);
     expect(dangCham(moiNhat(), ids[0], HOM_NAY, 'Chieu')).toBeUndefined();
   });
 
@@ -100,8 +100,9 @@ describe('màn hình chấm công', () => {
     fireEvent.press(screen.getByText('Cả tổ đi đủ cả ngày'));
 
     for (const id of ids) {
-      expect(dangCham(moiNhat(), id, HOM_NAY, 'Sang')?.soCong).toBe(1);
-      expect(dangCham(moiNhat(), id, HOM_NAY, 'Chieu')?.soCong).toBe(1);
+      // Hai buổi nửa công, cộng lại đúng một công một ngày.
+      expect(dangCham(moiNhat(), id, HOM_NAY, 'Sang')?.soCong).toBe(0.5);
+      expect(dangCham(moiNhat(), id, HOM_NAY, 'Chieu')?.soCong).toBe(0.5);
     }
   });
 
@@ -122,7 +123,7 @@ describe('màn hình chấm công', () => {
     fireEvent.press(screen.getByText('Cả tổ đi đủ cả ngày'));
     render(<ManHinhChamCong duLieu={moiNhat()} capNhat={() => {}} />);
 
-    expect(screen.getByText('4 công')).toBeTruthy();
+    expect(screen.getByText('2 công')).toBeTruthy();
   });
 
   test('dải ngày hiện đủ bảy ngày trong tuần, ô hôm nay ghi rõ chữ Nay', () => {
@@ -164,10 +165,10 @@ describe('màn hình chấm công', () => {
     fireEvent.press(screen.getByText('Cả tổ đi đủ cả ngày'));
     render(<ManHinhChamCong duLieu={moiNhat()} capNhat={() => {}} />);
 
-    // Ô hôm nay trên dải hiện "4", tách biệt với dòng "4 công" dưới chân màn hình.
-    expect(screen.getByText('4')).toBeTruthy();
+    // Ô hôm nay trên dải hiện "2", tách biệt với dòng "2 công" dưới chân màn hình.
+    expect(screen.getByText('2')).toBeTruthy();
     expect(screen.getByLabelText(`Chọn ${Ngay.thuVaNgay(HOM_NAY)}`).props.accessibilityHint).toBe(
-      '4 công',
+      '2 công',
     );
   });
 
@@ -203,7 +204,7 @@ describe('màn hình chấm công', () => {
     fireEvent.press(screen.getByText('Sửa'));
     fireEvent.press(screen.getByText('Buổi sáng'));
     fireEvent.press(screen.getByText('Gõ số công khác'));
-    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,75'), '0,75');
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,5'), '0,75');
     fireEvent.press(screen.getByText('Ghi'));
 
     expect(dangCham(moiNhat(), ids[0], HOM_NAY, 'Sang')?.soCong).toBe(0.75);
@@ -216,10 +217,10 @@ describe('màn hình chấm công', () => {
     fireEvent.press(screen.getByText('Sửa'));
     fireEvent.press(screen.getByText('Buổi sáng'));
     fireEvent.press(screen.getByText('Gõ số công khác'));
-    // Gõ "10" thay vì "1,0" là lỗi hay gặp, lọt qua thì tiền công sai gấp mười.
-    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,75'), '10');
+    // Gõ "5" thay vì "0,5" là lỗi hay gặp, lọt qua thì tiền công sai gấp mười.
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,5'), '5');
 
-    expect(screen.getByText('Nhiều nhất 5 công một buổi.')).toBeTruthy();
+    expect(screen.getByText('Nhiều nhất 2,5 công một buổi.')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Ghi'));
     expect(capNhat).not.toHaveBeenCalled();

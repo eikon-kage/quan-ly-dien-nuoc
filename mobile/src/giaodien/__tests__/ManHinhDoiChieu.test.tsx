@@ -229,7 +229,7 @@ describe('máy thợ', () => {
     expect(screen.getByText(/ngoài hôm nay thì chưa hôm nào cả hai bên cùng khai/)).toBeTruthy();
     // Công chủ đã chấm hôm qua vẫn hiện ra bên dưới, không mất hút.
     expect(screen.getByText('Chỉ một bên có sổ · 1 buổi')).toBeTruthy();
-    expect(screen.getByText('1 công')).toBeTruthy();
+    expect(screen.getByText('0,5 công')).toBeTruthy();
   });
 
   test('hôm nay hai bên đều chấm mà lệch số công thì vẫn báo', () => {
@@ -279,11 +279,11 @@ describe('máy thợ', () => {
     // Không gọi là lệch — nhưng cũng không được nói trơn "hai sổ khớp nhau".
     expect(screen.getByText('Khớp phần so được')).toBeTruthy();
     // Hai tổng nói đúng cái mỗi sổ ghi: chủ chấm hai buổi thật, dù máy này mới biết một.
-    // Trước đây tổng của chủ bám theo phần so được nên đọc thành "sổ chủ 1 công".
-    expect(screen.getByText('Sổ tôi 1 công')).toBeTruthy();
-    expect(screen.getByText('Sổ chủ 2 công')).toBeTruthy();
+    // Trước đây tổng của chủ bám theo phần so được nên đọc thành "sổ chủ 0,5 công".
+    expect(screen.getByText('Sổ tôi 0,5 công')).toBeTruthy();
+    expect(screen.getByText('Sổ chủ 1 công')).toBeTruthy();
     expect(screen.getByText('Chỉ một bên có sổ · 1 buổi')).toBeTruthy();
-    expect(screen.getByText(/Trong đó, sổ chủ có 1 công ở 1 buổi mà sổ tôi chưa có ngày ấy/)).toBeTruthy();
+    expect(screen.getByText(/Trong đó, sổ chủ có 0,5 công ở 1 buổi mà sổ tôi chưa có ngày ấy/)).toBeTruthy();
     // Ô của mình không được viết "Chưa chấm": máy này chưa có sổ ngày ấy chứ không phải đã
     // xem rồi bảo hôm ấy nghỉ.
     expect(screen.getByText('Chưa biết')).toBeTruthy();
@@ -292,7 +292,7 @@ describe('máy thợ', () => {
 
     expect(capNhat).toHaveBeenCalledTimes(1);
     const moi = capNhat.mock.calls[0][0] as DuLieuChamCong;
-    expect(dangCham(moi, thoId, NGAY_CU, 'Sang')?.soCong).toBe(1);
+    expect(dangCham(moi, thoId, NGAY_CU, 'Sang')?.soCong).toBe(0.5);
   });
 
   /**

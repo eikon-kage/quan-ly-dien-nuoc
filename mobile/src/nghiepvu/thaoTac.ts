@@ -3,7 +3,16 @@
  * để React biết là có thay đổi mà vẽ lại màn hình.
  */
 
-import { BuoiCong, BuoiLam, DuLieuChamCong, GhiChuNgay, MocLuong, Tho, UngTien } from './kieu';
+import {
+  BuoiCong,
+  BuoiLam,
+  CONG_MOT_BUOI,
+  DuLieuChamCong,
+  GhiChuNgay,
+  MocLuong,
+  Tho,
+  UngTien,
+} from './kieu';
 
 /**
  * Tiền một công của thợ tại một ngày: lấy mốc lương gần nhất có hiệu lực trước hoặc
@@ -211,7 +220,7 @@ export function cham(
   thoId: string,
   ngay: string,
   buoi: BuoiLam,
-  soCong = 1,
+  soCong = CONG_MOT_BUOI,
   ghiChu = '',
 ): DuLieuChamCong {
   if (soCong <= 0) {
