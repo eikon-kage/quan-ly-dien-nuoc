@@ -96,9 +96,9 @@ Nhờ vậy app chạy được cả trên Android, tiện lúc muốn thử nha
 
 ```
 ┌────────────────────────────────────┐
-│  Thứ Tư 05/08          ┌────┐┌────┐│   ngày đang xem, 19pt đậm, căn trái
-│  [ Hôm nay ]           │ ‹  ││ ›  ││   hai nút đổi tuần dồn sang phải
-│                        │Tuần││Tuần││   nút Hôm nay chỉ hiện khi xem ngày khác
+│  Thứ Tư 05/08 ⌄        ┌────┐┌────┐│   ngày đang xem; chạm là mở tờ lịch cả tháng
+│  [ Hôm nay ]           │ ‹  ││ ›  ││   nút Hôm nay chỉ hiện khi xem ngày khác
+│                        │Tuần││Tuần││   hai nút đổi tuần dồn sang phải
 │                        └────┘└────┘│
 │ ┌───┐┌───┐┌───┐┌───┐┌───┐┌───┐┌───┐│
 │ │ T2││ T3││Nay││ T5││ T6││ T7││ CN││   dải bảy ngày, chạm là sang ngày đó
@@ -152,6 +152,14 @@ Chúng cũng **không còn kẹp hai bên ngày** mà dồn cả sang phải, th
 đúng chỗ đặt nút của đầu trang trong bản thiết kế. Ngày được cả bề ngang bên trái nên tên thứ
 dài (`Thứ Tư 05/08`) không còn bị bó giữa hai mũi tên.
 
+**Ngày đang xem chính là nút mở tờ lịch** ([HopChonNgay](../mobile/src/giaodien/HopChonNgay.tsx)),
+có dấu lịch và mũi tên xuống kèm bên để nhìn ra là bấm được. Dải bảy ngày với hai nút *Tuần*
+chỉ đi được từng tuần một: xem lại tháng trước là bấm năm sáu lần, mà xa hơn nữa thì người
+dùng bỏ cuộc giữa đường. Tờ lịch mở ra ở đúng tháng đang xem, có hai mũi tên lùi / tới tháng,
+và **mỗi ô ghi luôn số công cả tổ ngày ấy** — cùng cách đọc với dải bảy ngày, ngày chưa chấm
+để dấu `·` mờ. Nhờ vậy nó vừa là chỗ nhảy ngày vừa là chỗ *xem lại cả tháng cũ*: mở ra là
+thấy tháng trước ngày nào đã chấm ngày nào chưa, chạm một cái là sang đúng ngày cần sửa.
+
 **Nút "Cả tổ đi đủ cả ngày"** là chỗ nhanh nhất: bình thường cả tổ đi đủ, bấm một cái xong,
 rồi bỏ chấm vài người nghỉ. Nhanh hơn nhiều so với bấm 16 ô. Khi cả tổ đã đủ công thì nút
 đổi thành **"Xoá hết chấm hôm nay"** viền đỏ.
@@ -167,14 +175,44 @@ công. Ba mức có sẵn khi sửa một buổi vì thế là `0,5` (cả buổ
 
 ### 2. Bảng lương
 
-Màn hình này luôn hiện đúng **kỳ đang mở**: từ sau lần quyết toán trước tới hôm nay. Mỗi thợ
-một thẻ: tổng công, tiền công, đã ứng, **còn phải trả** in to nhất và đậm nhất — đó là con số
-anh cần khi móc ví. Ứng quá thì số âm và in đỏ.
+Mở ra là đúng **kỳ đang mở**: từ sau lần quyết toán trước tới hôm nay. Mỗi thợ một thẻ: tổng
+công, tiền công, đã ứng, **còn phải trả** in to nhất và đậm nhất — đó là con số anh cần khi
+móc ví. Ứng quá thì số âm và in đỏ.
 
-> **Trước đây màn hình này xem theo tháng**, đổi tháng bằng hai mũi tên `‹ ›`. Bỏ đi vì tiền
-> công ngoài công trình không chạy theo tháng: xong việc là trả, có khi mười ngày, có khi sáu
-> tuần. Bây giờ chỉ có đúng một kỳ đang mở nên không còn gì để đổi qua đổi lại — hai mũi tên
-> mất luôn. Muốn xem lại kỳ đã trả thì sang mục *Kỳ đã chốt*.
+Hai mũi tên `‹ ›` ở đầu trang lùi về **từng tháng dương lịch** đã qua để tra lại, rồi bấm
+phải là về lại kỳ đang mở. Danh sách tháng chạy liền mạch từ tháng có bản ghi sớm nhất tới
+tháng này — tháng nghỉ trắng vẫn nằm trong đó, vì bấm lùi từng tháng mà app nhảy cóc qua thì
+người xem tưởng mình bấm hụt chứ không nghĩ tháng ấy không có ai đi làm. Hết đường thì mũi
+tên **mờ đi chứ không biến mất**: nút biến mất làm nút còn lại nhảy chỗ, bấm lùi liên tục
+mấy tháng là bấm trượt.
+
+> **Hai mũi tên này đã có, rồi bỏ, rồi cho lại.** Bản đầu xem theo tháng. Bỏ đi vì tiền công
+> ngoài công trình không chạy theo tháng: xong việc là trả, có khi mười ngày, có khi sáu tuần
+> — chỉ còn kỳ đang mở thì không còn gì để đổi qua đổi lại. Chủ dự án yêu cầu cho lại: kỳ cắt
+> theo lúc trả tiền, nhưng người ta vẫn **nhớ việc theo tháng**. *"Tháng Tám vừa rồi hết bao
+> nhiêu tiền công"* là câu hỏi có thật, mà mục *Kỳ đã chốt* không trả lời được — nó cắt theo
+> kỳ, và kỳ chưa chốt thì chưa có ở đó.
+
+Hai cách cắt không khớp nhau và **không được giả vờ là khớp**. Nên thẻ của một tháng cũ khác
+hẳn thẻ của kỳ đang mở:
+
+| | Kỳ đang mở | Tháng đã qua |
+|---|---|---|
+| Con số in to nhất | Còn phải trả | Tiền công cả tháng |
+| Nợ kỳ trước | có dòng riêng | không có |
+| Nút *Ứng tiền* | có | không |
+| Sửa / xoá lần ứng | được | không |
+| Quyết toán | được | không |
+
+*Còn phải trả* không có ở tháng vì món nợ giữa chủ và thợ chốt theo kỳ chứ không theo tháng
+— ghi con số ấy cho một tháng lẻ là ghi ra một khoản không ai đòi ai cả. *Ứng tiền* không có
+vì lần ứng bao giờ cũng ghi vào **hôm nay**: để nút ấy trên một tháng cũ là mời người dùng
+ghi nhầm ngày. Sửa lần ứng cũng chặn luôn — buổi công và lần ứng của tháng cũ phần lớn đã
+nằm trong một kỳ đã chốt, sửa vào là làm lệch tờ quyết toán đã in ra đưa thợ.
+
+Ngược lại, xem theo tháng **không** lọc theo bản ghi nào đã quyết toán mà lấy thẳng theo
+ngày. Chốt kỳ xong bảng lương về 0, nhưng lùi lại tháng vừa rồi thì vẫn phải ra đủ số công
+đã làm — đó chính là chỗ mà xem theo kỳ không trả lời được.
 
 Kỳ trước trả thiếu thì phần thiếu hiện thành **một dòng riêng** *Nợ kỳ trước*, không cộng
 thầm vào tiền công. Thợ hỏi *"sao kỳ này nhiều thế"* thì chỉ đúng vào dòng đó mà trả lời.
@@ -298,7 +336,51 @@ Bốn điều đã cân nhắc, đừng đổi mà không đọc lại:
 Số đó suy ra được từ số công nhân đơn giá, mà tổng tiền công thì vẫn nằm ngay trên đầu.
 
 Mỗi ô có nhãn cho trình đọc màn hình dạng `03/08 Thứ Hai, đi làm 1 công`, vì bản thân ô chỉ
-là một con số với một dấu tích, đọc trơn lên thì không rõ nghĩa.
+là một con số với một dấu tích, đọc trơn lên thì không rõ nghĩa. Ô sửa được thì nhãn có thêm
+*"Chạm để sửa."* ở cuối — xem mục ngay dưới.
+
+##### Sửa thẳng một ngày trên tờ lịch
+
+**Chạm một ô ngày là mở hộp chấm cho đúng ngày ấy** — cùng hai ô *Sáng* / *Chiều* quen mặt ở
+màn hình chấm công, cùng nút *Sửa* dẫn tới nửa buổi, buổi rưỡi và ghi chú
+([HopSuaNgay.tsx](../mobile/src/giaodien/HopSuaNgay.tsx)).
+
+```
+┌──────────────────────────────────────────────┐
+│ Anh Tuấn — Thứ Hai 17/08            [ Sửa ]  │
+│ ┌─────────────────┐┌───────────────────────┐ │
+│ │  SÁNG        ✓  ││  CHIỀU             ○  │ │   chạm là chấm / bỏ chấm
+│ └─────────────────┘└───────────────────────┘ │
+│ Cả ngày 0,5 công                             │
+│ [               Xong                       ] │
+└──────────────────────────────────────────────┘
+```
+
+Tờ lịch vốn là chỗ người ta **nhìn ra chỗ sai** — *"hôm mười bảy tôi có đi mà"* — nhưng trước
+đây nó chỉ để nhìn. Chữa lại phải thoát ra, sang mục *Chấm công*, mở tờ lịch chọn đúng ngày
+ấy, rồi tìm đúng thợ ấy trong danh sách cả tổ. Bốn bước cho một cái dấu tích, mà quay lại thì
+đã mất chỗ đang đứng.
+
+Năm điều đã cân nhắc:
+
+1. **Ô ngày chạm được thì mới vẽ ra `Pressable`**, không thì là `View` trơ — kỳ đã chốt và
+   mấy tháng cũ đều chỉ để đọc, đúng lý do của mục *Ứng của kỳ đã chốt* ngay dưới đây. Một ô
+   bấm không ăn còn tệ hơn ô không bấm được: người ta thử tới lần thứ ba mới tin.
+2. **Có một dòng mách dưới tờ lịch** — *"Chạm vào một ngày để chấm hoặc sửa ngày ấy."* Chạm
+   được hay không là chuyện không nhìn ra được, mà cũng chỉ hiện khi thật sự sửa được.
+3. **Buổi đã nằm trong kỳ đã chốt thì khoá lại**, mang ổ khoá thay dấu tích và không có mặt
+   trong danh sách của nút *Sửa*. Chấm bù một ngày cũ kéo đầu kỳ đang mở lùi về tận đó, nên
+   tờ lịch của kỳ đang mở có cả những ngày đã trả tiền; sửa số công của một buổi đã trả chỉ
+   làm sổ nói khác tờ quyết toán thợ đang cầm (`buoiDaChot` trong
+   [ky.ts](../mobile/src/nghiepvu/ky.ts)). Cần sửa thật thì bỏ chốt kỳ ấy trước.
+4. **Mấy bước sau thay chỗ hộp này chứ không chồng lên trên**, y như hộp sửa ứng: hộp đã nằm
+   trong modal của màn hình chi tiết rồi, thêm một tầng nữa trên iOS là chuyện hên xui.
+5. **Vẫn giữ nguyên mục Chấm công.** Đây là đường chữa *một người một ngày* lúc đang tra sổ;
+   chấm cho cả tổ hằng ngày vẫn là việc của màn hình chính, nơi có nút *Cả tổ đi đủ cả ngày*.
+
+Máy thợ dùng lại đúng hộp này trong *Sổ công của tôi* — xem
+[chamcong-doi-chieu.md](chamcong-doi-chieu.md). Ở đó hộp không có tên thợ (máy chỉ có một
+người) và không có phần ghi chú (máy thợ không có chỗ nào ghi chú).
 
 ##### Sửa lại một lần ứng
 
@@ -539,6 +621,20 @@ máy iOS/Android lại không có vòng ấy — ba bản khác hẳn nhau. Vòn
 Biểu mẫu thêm/sửa thợ cũng `behavior="padding"` cho cả hai hệ, bọc một `ScrollView` có
 `keyboardShouldPersistTaps="handled"` để bấm được nút *Lưu* ngay khi bàn phím còn mở.
 
+**Lề an toàn trong cửa sổ mở đè** — bốn màn hình mở đè lên màn hình chính (chi tiết một thợ,
+chi tiết kỳ, quyết toán, nhập từ Excel) dùng chung vỏ
+[`ManHinhDe`](../mobile/src/giaodien/ManHinhDe.tsx). Vỏ này có để chữa một lỗi đã thấy trên
+máy thật: `Modal` của React Native là **một cửa sổ khác của hệ điều hành**, nằm ngoài cây
+view mà `SafeAreaProvider` của App đo, nên `SafeAreaView` bên trong nhận lề bằng 0 và đầu
+trang chạy tọt lên nằm dưới đồng hồ — tên thợ bị đồng hồ đè mất một nửa. Chữa bằng **một
+`SafeAreaProvider` nữa đặt ngay trong cửa sổ**, mồi sẵn `initialMetrics` để khung hình đầu
+tiên đã đúng lề, không nhảy một cái sau khi đo xong.
+
+Hai màn hình [sổ công của tôi](../mobile/src/giaodien/ManHinhSoCuaToi.tsx) và
+[đối chiếu](../mobile/src/giaodien/ManHinhDoiChieu.tsx) chữa cùng chuyện ấy theo đường khác —
+vẽ đè thẳng lên chỗ của màn hình chính, không mở cửa sổ nào. Đường ấy vẫn đúng, nhưng nó bắt
+màn hình gọi phải nhường hẳn chỗ, nên bốn màn kia giữ `Modal`.
+
 ## Bộ icon app
 
 Logo lấy từ chính file thiết kế (`Logo`, khối lục giác sáu mặt xanh `#3085FE` với hai mặt bên
@@ -579,8 +675,8 @@ File có sáu trang, xếp theo thứ tự cần dùng:
 
 **Hai trang đầu phải khớp từng đồng với hai màn hình Kỳ đã chốt và Bảng lương.** Trước đây
 trang đầu cắt theo tháng trong khi app cắt theo kỳ — cùng một khoản tiền mà file và máy ra
-hai bức tranh khác nhau, đối chiếu là loạn. Muốn xem theo tháng thì lọc cột *Ngày* ở trang
-Buổi công, Excel làm việc đó giỏi hơn app.
+hai bức tranh khác nhau, đối chiếu là loạn. Muốn xem theo tháng thì lùi mũi tên bên Bảng
+lương, hoặc lọc cột *Ngày* ở trang Buổi công — nhưng đừng bắt hai trang đầu cắt theo tháng.
 
 Vừa là cách lấy số liệu ra khỏi điện thoại, vừa là **bản sao lưu đọc được** — máy hỏng mà
 còn file này thì vẫn còn sổ sách, dù đọc bằng Excel chứ không nạp ngược vào app được.

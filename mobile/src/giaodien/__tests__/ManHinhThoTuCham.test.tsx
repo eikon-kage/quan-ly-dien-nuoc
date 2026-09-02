@@ -338,6 +338,27 @@ test('mở được sổ của mình để xem chi tiết từng ngày', () => {
   expect(screen.queryByText(/đ$/)).toBeNull();
 });
 
+/**
+ * Chấm bù ngay trong sổ của mình. Thợ mở tháng trước ra soát rồi thấy một ngày trống —
+ * chỗ nhìn ra chỗ sai cũng phải là chỗ chữa được, chứ không phải lui ra màn hình chính
+ * rồi dò lại đúng ngày ấy.
+ */
+test('chấm bù được ngay trên tờ lịch trong sổ của mình', () => {
+  const { duLieu, thoId, caiDat } = kho();
+  const capNhat = dung(duLieu, caiDat);
+
+  fireEvent.press(screen.getByText('Sổ công của tôi'));
+  fireEvent.press(
+    screen.getByLabelText(
+      new RegExp(`^${Ngay.ngayGon(HOM_QUA).slice(0, 5)} ${Ngay.thu(HOM_QUA)},`),
+    ),
+  );
+  fireEvent.press(screen.getByLabelText('Sáng chưa chấm, chạm để đổi'));
+
+  const moi = capNhat.mock.calls[0][0] as DuLieuChamCong;
+  expect(dangCham(moi, thoId, HOM_QUA, 'Sang')?.soCong).toBe(0.5);
+});
+
 describe('xuất sổ của tôi ra Excel', () => {
   beforeEach(() => {
     gioChiaSe.mockReset().mockResolvedValue('file:///tam/So-cong.xlsx');
@@ -439,5 +460,75 @@ describe('nhập từ Excel trên máy thợ', () => {
 
     await waitFor(() => expect(guiFileMau).toHaveBeenCalledTimes(1));
     expect(guiFileMau.mock.calls[0][3]).toBe(false);
+  });
+});
+
+/**
+ * Danh sách chấm bù trước đây cứng mười bốn ngày: thợ nhớ ra hôm mùng năm tháng trước mình
+ * có đi mà quên chấm thì không còn ô nào để bấm, đường duy nhất là nhờ chủ sửa hộ.
+ */
+describe('lọc theo tháng ở danh sách chấm bù', () => {
+  const { nam: namNay, thang: thangNay } = Ngay.tach(HOM_NAY);
+  const THANG_TRUOC = Ngay.congNgay(Ngay.ghep(namNay, thangNay, 1), -1);
+  const NGAY_CU = Ngay.ghep(Ngay.tach(THANG_TRUOC).nam, Ngay.tach(THANG_TRUOC).thang, 5);
+
+  function oLich(ngay: string) {
+    return screen.getByLabelText(`${Ngay.ngayGon(ngay).slice(0, 5)} ${Ngay.thu(ngay)}`);
+  }
+
+  /** Mở tờ lịch rồi lùi về tháng trước. */
+  function veThangTruoc() {
+    fireEvent.press(screen.getByLabelText('Đang xem 14 ngày gần đây. Chạm để chọn tháng khác.'));
+    fireEvent.press(screen.getByLabelText('Tháng trước'));
+  }
+
+  test('chọn tháng trước là chấm bù được ngày của tháng ấy', () => {
+    const { duLieu, thoId, caiDat } = kho();
+    const capNhat = dung(duLieu, caiDat);
+
+    // Chưa lọc thì ngày ấy nằm ngoài mười bốn ngày, không có ô nào để bấm.
+    expect(screen.queryByLabelText(`${Ngay.thuVaNgay(NGAY_CU)} Sáng chưa chấm`)).toBeNull();
+
+    veThangTruoc();
+    fireEvent.press(oLich(NGAY_CU));
+    fireEvent.press(screen.getByLabelText(`${Ngay.thuVaNgay(NGAY_CU)} Sáng chưa chấm`));
+
+    const moi = capNhat.mock.calls[0][0] as DuLieuChamCong;
+    expect(dangCham(moi, thoId, NGAY_CU, 'Sang')?.soCong).toBe(0.5);
+  });
+
+  test('mỗi ô lịch nói luôn ngày ấy được mấy công', () => {
+    const { duLieu, thoId, caiDat } = kho();
+    dung(cham(duLieu, thoId, NGAY_CU, 'Sang'), caiDat);
+
+    veThangTruoc();
+
+    expect(oLich(NGAY_CU).props.accessibilityHint).toBe('0,5 công');
+  });
+
+  test('lọc rồi vẫn có đường về mười bốn ngày gần đây', () => {
+    const { duLieu, caiDat } = kho();
+    dung(duLieu, caiDat);
+
+    veThangTruoc();
+    fireEvent.press(oLich(NGAY_CU));
+
+    // Đang ở tháng cũ: hôm qua không còn trong danh sách, mà nút về thì có.
+    expect(screen.queryByLabelText(`${Ngay.thuVaNgay(HOM_QUA)} Sáng chưa chấm`)).toBeNull();
+
+    fireEvent.press(screen.getByLabelText('Về 14 ngày gần đây'));
+
+    expect(screen.getByLabelText(`${Ngay.thuVaNgay(HOM_QUA)} Sáng chưa chấm`)).toBeTruthy();
+  });
+
+  test('không cho đi quá tháng này — tháng sau chưa có ngày nào để chấm bù', () => {
+    const { duLieu, caiDat } = kho();
+    dung(duLieu, caiDat);
+
+    fireEvent.press(screen.getByLabelText('Đang xem 14 ngày gần đây. Chạm để chọn tháng khác.'));
+    fireEvent.press(screen.getByLabelText('Tháng sau'));
+
+    // Vẫn đứng ở tháng này: ô của hôm nay còn đó chứ không nhảy sang tờ lịch trắng.
+    expect(oLich(HOM_NAY)).toBeTruthy();
   });
 });

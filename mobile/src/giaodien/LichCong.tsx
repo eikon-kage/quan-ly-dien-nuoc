@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ngayTrongThang } from '../nghiepvu/baoCao';
 import { CAC_BUOI, CONG_MOT_BUOI } from '../nghiepvu/kieu';
@@ -36,9 +36,29 @@ interface Props {
   ngayCongs: NgayCoCong[];
   /** Ngày trong kỳ mà thợ không có công nào — đã cắt phần tương lai từ trước. */
   ngayNghis: string[];
+  /**
+   * Chạm một ô là mở ngày ấy ra sửa. Không truyền thì tờ lịch **chỉ để đọc** và ô không
+   * có cả cái vẻ chạm được — đó là màn hình kỳ đã chốt, nơi mỗi buổi đã được đếm vào một
+   * tờ quyết toán đã trao tay.
+   */
+  onChonNgay?: (ngay: string) => void;
+  /**
+   * Ngày muộn nhất còn chạm được, dùng cùng `onChonNgay`. Bỏ trống thì ngày nào cũng chạm
+   * được — máy chủ chấm trước cho ngày mai được, còn máy thợ thì không: buổi chấm cho ngày
+   * chưa tới nằm ngoài khoảng sổ khai là đầy đủ nên gói gửi lên nhóm không mang nó theo,
+   * thợ bấm xong lại không thấy đâu.
+   */
+  denNgayChon?: string;
 }
 
-export function LichCong({ nam, thang, ngayCongs, ngayNghis }: Props) {
+export function LichCong({
+  nam,
+  thang,
+  ngayCongs,
+  ngayNghis,
+  onChonNgay,
+  denNgayChon,
+}: Props) {
   const cong = new Map(ngayCongs.map((d) => [ngayTrongThang(d.ngay), d]));
   const nghi = new Set(ngayNghis.map(ngayTrongThang));
 
@@ -64,6 +84,11 @@ export function LichCong({ nam, thang, ngayCongs, ngayNghis }: Props) {
                 soTrongThang={n}
                 cong={cong.get(n)}
                 nghi={nghi.has(n)}
+                onChon={
+                  denNgayChon !== undefined && Ngay.ghep(nam, thang, n) > denNgayChon
+                    ? undefined
+                    : onChonNgay
+                }
               />
             ),
           )}
@@ -95,17 +120,22 @@ export function LichCong({ nam, thang, ngayCongs, ngayNghis }: Props) {
  * Ba trạng thái một ô: đi làm, nghỉ, và ngoài kỳ tính công (ngày chưa tới, hoặc ngày
  * thợ chưa vào làm). Mỗi trạng thái khác nhau cả nền, cả viền, cả dấu bên trong — không
  * chỉ dựa vào màu, để người phân biệt màu kém vẫn nhìn ra.
+ *
+ * Sửa được thì ô là một `Pressable`, không thì là `View` trơ: ô bấm không ăn còn tệ hơn ô
+ * không bấm được, vì người ta thử tới lần thứ ba mới tin.
  */
 function ONgay({
   ngay,
   soTrongThang,
   cong,
   nghi,
+  onChon,
 }: {
   ngay: string;
   soTrongThang: number;
   cong: NgayCoCong | undefined;
   nghi: boolean;
+  onChon?: (ngay: string) => void;
 }) {
   const ngayVaThu = `${Ngay.ngayGon(ngay).slice(0, 5)} ${Ngay.thu(ngay)}`;
   const nhan =
@@ -115,11 +145,10 @@ function ONgay({
         ? `${ngayVaThu}, nghỉ`
         : `${ngayVaThu}, chưa tính`;
 
-  return (
-    <View
-      style={[kieu.o, cong !== undefined ? kieu.oCong : nghi ? kieu.oNghi : kieu.oNgoai]}
-      accessibilityLabel={nhan}
-    >
+  const kieuO = [kieu.o, cong !== undefined ? kieu.oCong : nghi ? kieu.oNghi : kieu.oNgoai];
+
+  const noiDung = (
+    <>
       <Text
         style={[
           kieu.chuNgay,
@@ -141,7 +170,21 @@ function ONgay({
           )}
         </View>
       )}
-    </View>
+    </>
+  );
+
+  if (onChon === undefined) {
+    return (
+      <View style={kieuO} accessibilityLabel={nhan}>
+        {noiDung}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable style={kieuO} onPress={() => onChon(ngay)} accessibilityLabel={`${nhan}. Chạm để sửa.`}>
+      {noiDung}
+    </Pressable>
   );
 }
 

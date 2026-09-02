@@ -2,14 +2,12 @@ import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { chiaSeFileMau } from '../nghiepvu/chiaSeExcel';
 import { chonFileExcel } from '../nghiepvu/chonFileExcel';
@@ -27,6 +25,7 @@ import {
   tomTatDoc,
 } from '../nghiepvu/nhapExcel';
 import { tatCaTho } from '../nghiepvu/thaoTac';
+import { ManHinhDe } from './ManHinhDe';
 import { DauTrang, HangO, NutChip, TheSo, theTrang } from './ThanhPhan';
 import { Co, Mau, PhongChu, Tuoi } from './thietKe';
 
@@ -184,259 +183,257 @@ export function ManHinhNhapExcel({ duLieu, capNhat, onDong, choTho }: Props) {
   }
 
   return (
-    <Modal visible animationType="slide" onRequestClose={onDong}>
-      <SafeAreaView style={kieu.khung} edges={['top', 'bottom']}>
-        <DauTrang
-          tieuDe="Nhập từ Excel"
-          phu={
-            choTho !== undefined
-              ? 'Nhập công của tôi'
-              : nhapCho === null
-                ? 'Chọn thợ trước'
-                : `Nhập công cho ${nhapCho.ten}`
-          }
-          onLui={onDong}
-        />
+    <ManHinhDe onDong={onDong}>
+      <DauTrang
+        tieuDe="Nhập từ Excel"
+        phu={
+          choTho !== undefined
+            ? 'Nhập công của tôi'
+            : nhapCho === null
+              ? 'Chọn thợ trước'
+              : `Nhập công cho ${nhapCho.ten}`
+        }
+        onLui={onDong}
+      />
 
-        <ScrollView contentContainerStyle={kieu.trong}>
-          {choTho === undefined && thos.length === 0 ? (
-            <View style={kieu.rong}>
-              <Feather name="users" size={34} color={Mau.xam} />
-              <Text style={kieu.chuRongTo}>Chưa có thợ nào</Text>
-              <Text style={kieu.chuPhu}>Anh thêm thợ ở màn hình Thợ đã, rồi quay lại đây.</Text>
-            </View>
-          ) : (
-            <>
-              {/* ---- Bước 1: nhập cho ai. Máy thợ bỏ hẳn bước này: chỉ có một người. ---- */}
-              {choTho === undefined && <Text style={kieu.nhanBuoc}>1. Nhập cho thợ nào</Text>}
+      <ScrollView contentContainerStyle={kieu.trong}>
+        {choTho === undefined && thos.length === 0 ? (
+          <View style={kieu.rong}>
+            <Feather name="users" size={34} color={Mau.xam} />
+            <Text style={kieu.chuRongTo}>Chưa có thợ nào</Text>
+            <Text style={kieu.chuPhu}>Anh thêm thợ ở màn hình Thợ đã, rồi quay lại đây.</Text>
+          </View>
+        ) : (
+          <>
+            {/* ---- Bước 1: nhập cho ai. Máy thợ bỏ hẳn bước này: chỉ có một người. ---- */}
+            {choTho === undefined && <Text style={kieu.nhanBuoc}>1. Nhập cho thợ nào</Text>}
 
-              {/* Điều kiện viết thẳng ra `tho === null || dangDoi` chứ không dùng `dangChonTho`:
-                  hai cái luôn bằng nhau ở nhánh này, nhưng viết thẳng thì nhánh dưới mới
-                  chắc chắn có `tho`. */}
-              {choTho !== undefined ? null : tho === null || dangDoi ? (
-                <View style={kieu.danhSach}>
-                  {thos.map((mot) => (
-                    <Pressable
-                      key={mot.id}
-                      style={[kieu.dongTho, mot.id === tho?.id && kieu.dongThoChon]}
-                      onPress={() => chonTho(mot)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: mot.id === tho?.id }}
-                    >
-                      <Feather
-                        name={mot.id === tho?.id ? 'check-circle' : 'circle'}
-                        size={18}
-                        color={mot.id === tho?.id ? Mau.chinh : Mau.xam}
-                      />
-                      <Text style={kieu.chuTenTho} numberOfLines={1}>
-                        {mot.dangLam ? mot.ten : `${mot.ten} (đã nghỉ)`}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : (
-                <View style={kieu.the}>
-                  <View style={kieu.giua}>
-                    <Text style={kieu.chuTenTho} numberOfLines={1}>
-                      {tho.ten}
-                    </Text>
-                    <Text style={kieu.chuPhu}>Công đọc từ file sẽ ghi cho thợ này</Text>
-                  </View>
-                  <NutChip nhan="Đổi thợ" icon="repeat" onPress={() => datDangDoi(true)} />
-                </View>
-              )}
-
-              {/* ---- Bước 2: lấy file ---- */}
-              {nhapCho !== null && !dangDoi && (
-                <>
-                  <Text style={kieu.nhanBuoc}>{buoc(2)}. Lấy file</Text>
-
-                  {/*
-                    Hai nút cạnh nhau, không phải một nút rồi một mục chọn khoảng: đây là
-                    chỗ người dùng đứng lại hỏi "sao chỉ có tháng này", mà hỏi thì phải
-                    thấy ngay câu trả lời chứ không phải mở thêm một hộp nữa.
-                  */}
-                  <View style={kieu.hangMau}>
-                    <Pressable
-                      style={[kieu.nutVien, dangLam === 'thang' && kieu.nutMo]}
-                      onPress={() => taiFileMau('thang')}
-                      disabled={dangLam !== null}
-                      accessibilityRole="button"
-                      accessibilityLabel="Lấy file mẫu tháng này"
-                    >
-                      {dangLam === 'thang' ? (
-                        <ActivityIndicator color={Mau.chinh} />
-                      ) : (
-                        <Feather name="download" size={16} color={Mau.chinh} />
-                      )}
-                      <Text style={kieu.chuNutVien}>
-                        {dangLam === 'thang' ? 'Đang tạo…' : `Mẫu tháng ${thangGon(homNay)}`}
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      style={[kieu.nutVien, dangLam === 'nam' && kieu.nutMo]}
-                      onPress={() => taiFileMau('nam')}
-                      disabled={dangLam !== null}
-                      accessibilityRole="button"
-                      accessibilityLabel="Lấy file mẫu cả năm"
-                    >
-                      {dangLam === 'nam' ? (
-                        <ActivityIndicator color={Mau.chinh} />
-                      ) : (
-                        <Feather name="download" size={16} color={Mau.chinh} />
-                      )}
-                      <Text style={kieu.chuNutVien}>
-                        {dangLam === 'nam' ? 'Đang tạo…' : `Mẫu cả năm ${Ngay.tach(homNay).nam}`}
-                      </Text>
-                    </Pressable>
-                  </View>
-
-                  <Text style={kieu.chuPhu}>
-                    File mẫu điền sẵn ngày, mở bằng Excel trên máy tính rồi gõ số công vào hai
-                    cột Sáng và Chiều. File cả năm có sẵn ngày của mười hai tháng — điền tháng
-                    nào cũng được, tháng để trống thì trong máy vẫn nguyên.
-                  </Text>
-
+            {/* Điều kiện viết thẳng ra `tho === null || dangDoi` chứ không dùng `dangChonTho`:
+                hai cái luôn bằng nhau ở nhánh này, nhưng viết thẳng thì nhánh dưới mới
+                chắc chắn có `tho`. */}
+            {choTho !== undefined ? null : tho === null || dangDoi ? (
+              <View style={kieu.danhSach}>
+                {thos.map((mot) => (
                   <Pressable
-                    style={[kieu.nutXanh, dangLam === 'chon' && kieu.nutMo]}
-                    onPress={layFile}
-                    disabled={dangLam !== null}
+                    key={mot.id}
+                    style={[kieu.dongTho, mot.id === tho?.id && kieu.dongThoChon]}
+                    onPress={() => chonTho(mot)}
                     accessibilityRole="button"
+                    accessibilityState={{ selected: mot.id === tho?.id }}
                   >
-                    {dangLam === 'chon' ? (
-                      <ActivityIndicator color={Mau.trang} />
-                    ) : (
-                      <Feather name="upload" size={16} color={Mau.trang} />
-                    )}
-                    <Text style={kieu.chuNutXanh}>
-                      {dangLam === 'chon' ? 'Đang đọc file…' : 'Chọn file Excel đã điền'}
+                    <Feather
+                      name={mot.id === tho?.id ? 'check-circle' : 'circle'}
+                      size={18}
+                      color={mot.id === tho?.id ? Mau.chinh : Mau.xam}
+                    />
+                    <Text style={kieu.chuTenTho} numberOfLines={1}>
+                      {mot.dangLam ? mot.ten : `${mot.ten} (đã nghỉ)`}
                     </Text>
                   </Pressable>
-                </>
-              )}
-
-              {loi !== null && (
-                <View style={kieu.theLoi}>
-                  <Feather name="alert-circle" size={16} color={Mau.do} />
-                  <Text style={kieu.chuLoi}>{loi}</Text>
+                ))}
+              </View>
+            ) : (
+              <View style={kieu.the}>
+                <View style={kieu.giua}>
+                  <Text style={kieu.chuTenTho} numberOfLines={1}>
+                    {tho.ten}
+                  </Text>
+                  <Text style={kieu.chuPhu}>Công đọc từ file sẽ ghi cho thợ này</Text>
                 </View>
-              )}
+                <NutChip nhan="Đổi thợ" icon="repeat" onPress={() => datDangDoi(true)} />
+              </View>
+            )}
 
-              {/* ---- Bước 3: xem trước rồi ghi ---- */}
-              {nhapCho !== null && !dangDoi && banNhap !== null && tomTatFile !== null && (
-                <>
-                  <Text style={kieu.nhanBuoc}>{buoc(3)}. Xem lại rồi ghi vào sổ</Text>
+            {/* ---- Bước 2: lấy file ---- */}
+            {nhapCho !== null && !dangDoi && (
+              <>
+                <Text style={kieu.nhanBuoc}>{buoc(2)}. Lấy file</Text>
 
-                  {tenFile !== null && (
-                    <Text style={kieu.chuPhu} numberOfLines={2}>
-                      {tenFile}
-                    </Text>
-                  )}
-
-                  <HangO>
-                    <TheSo
-                      nhan="Ngày có công"
-                      so={String(tomTatFile.soNgay)}
-                      mau="chinh"
-                    />
-                    <TheSo
-                      nhan="Tổng công"
-                      so={Ngay.soCong(tomTatFile.tongCong)}
-                      mau="xanhLa"
-                    />
-                  </HangO>
-                  <HangO>
-                    <TheSo
-                      nhan="Từ ngày → đến ngày"
-                      so={Ngay.khoangGon(tomTatFile.tuNgay, tomTatFile.denNgay)}
-                      mau="ngoc"
-                    />
-                    {/* Máy thợ không có ô tiền nào, kể cả một ô "0 đ": cả app này không biết tiền. */}
-                    {choTho === undefined && (
-                      <TheSo nhan="Ứng tiền" so={Ngay.tien(tomTatFile.tongUng)} mau="do" />
+                {/*
+                  Hai nút cạnh nhau, không phải một nút rồi một mục chọn khoảng: đây là
+                  chỗ người dùng đứng lại hỏi "sao chỉ có tháng này", mà hỏi thì phải
+                  thấy ngay câu trả lời chứ không phải mở thêm một hộp nữa.
+                */}
+                <View style={kieu.hangMau}>
+                  <Pressable
+                    style={[kieu.nutVien, dangLam === 'thang' && kieu.nutMo]}
+                    onPress={() => taiFileMau('thang')}
+                    disabled={dangLam !== null}
+                    accessibilityRole="button"
+                    accessibilityLabel="Lấy file mẫu tháng này"
+                  >
+                    {dangLam === 'thang' ? (
+                      <ActivityIndicator color={Mau.chinh} />
+                    ) : (
+                      <Feather name="download" size={16} color={Mau.chinh} />
                     )}
-                  </HangO>
-
-                  {tomTatFile.soNghi > 0 && (
-                    <Text style={kieu.chuPhu}>
-                      Có {tomTatFile.soNghi} buổi file ghi là nghỉ — buổi ấy trong máy sẽ bị bỏ
-                      chấm.
+                    <Text style={kieu.chuNutVien}>
+                      {dangLam === 'thang' ? 'Đang tạo…' : `Mẫu tháng ${thangGon(homNay)}`}
                     </Text>
-                  )}
+                  </Pressable>
 
-                  {/*
-                    Nói ra chứ không lặng lẽ bỏ: thợ chọn đúng cái file chủ gửi thì trong đó
-                    có cột tiền, mà bỏ im thì thợ tưởng đã khai ứng rồi.
-                  */}
-                  {soDongCoUng > 0 && (
-                    <Text style={kieu.chuPhu}>
-                      File có {soDongCoUng} dòng ghi tiền ứng. App này chỉ nhận số công — tiền
-                      ứng thì nói với chủ, chủ ghi trên máy của chủ.
+                  <Pressable
+                    style={[kieu.nutVien, dangLam === 'nam' && kieu.nutMo]}
+                    onPress={() => taiFileMau('nam')}
+                    disabled={dangLam !== null}
+                    accessibilityRole="button"
+                    accessibilityLabel="Lấy file mẫu cả năm"
+                  >
+                    {dangLam === 'nam' ? (
+                      <ActivityIndicator color={Mau.chinh} />
+                    ) : (
+                      <Feather name="download" size={16} color={Mau.chinh} />
+                    )}
+                    <Text style={kieu.chuNutVien}>
+                      {dangLam === 'nam' ? 'Đang tạo…' : `Mẫu cả năm ${Ngay.tach(homNay).nam}`}
                     </Text>
-                  )}
+                  </Pressable>
+                </View>
 
-                  {banNhap.lois.length > 0 && (
-                    <View style={kieu.theLoi}>
-                      <Feather name="alert-circle" size={16} color={Mau.do} />
-                      <View style={kieu.giua}>
-                        <Text style={kieu.chuLoi}>
-                          {banNhap.lois.length} dòng phải bỏ qua:
-                        </Text>
-                        {banNhap.lois.slice(0, SO_LOI_KE_RA).map((mot) => (
-                          <Text key={mot.soDong} style={kieu.chuLoiNho}>
-                            Dòng {mot.soDong}: {mot.ly}
-                          </Text>
-                        ))}
-                        {banNhap.lois.length > SO_LOI_KE_RA && (
-                          <Text style={kieu.chuLoiNho}>
-                            …và {banNhap.lois.length - SO_LOI_KE_RA} dòng nữa.
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                  )}
+                <Text style={kieu.chuPhu}>
+                  File mẫu điền sẵn ngày, mở bằng Excel trên máy tính rồi gõ số công vào hai
+                  cột Sáng và Chiều. File cả năm có sẵn ngày của mười hai tháng — điền tháng
+                  nào cũng được, tháng để trống thì trong máy vẫn nguyên.
+                </Text>
 
-                  {daGhi === null ? (
-                    <Pressable
-                      style={kieu.nutXanh}
-                      onPress={ghiVaoSo}
-                      accessibilityRole="button"
-                    >
-                      <Feather name="check" size={16} color={Mau.trang} />
-                      <Text style={kieu.chuNutXanh}>Ghi vào sổ</Text>
-                    </Pressable>
+                <Pressable
+                  style={[kieu.nutXanh, dangLam === 'chon' && kieu.nutMo]}
+                  onPress={layFile}
+                  disabled={dangLam !== null}
+                  accessibilityRole="button"
+                >
+                  {dangLam === 'chon' ? (
+                    <ActivityIndicator color={Mau.trang} />
                   ) : (
-                    <View style={kieu.theXong}>
-                      <Feather name="check-circle" size={18} color={Mau.xanhLa} />
-                      <View style={kieu.giua}>
-                        <Text style={kieu.chuXong}>{tomTat(daGhi)}</Text>
-                        {daGhi.boQuaDaChot > 0 && (
-                          <Text style={kieu.chuPhu}>
-                            {daGhi.boQuaDaChot} buổi đã nằm trong kỳ đã chốt nên giữ nguyên.
-                          </Text>
-                        )}
-                        {daGhi.boQuaUngTrung > 0 && (
-                          <Text style={kieu.chuPhu}>
-                            {daGhi.boQuaUngTrung} lần ứng đã có sẵn nên không cộng thêm.
-                          </Text>
-                        )}
-                      </View>
-                    </View>
+                    <Feather name="upload" size={16} color={Mau.trang} />
                   )}
-                </>
-              )}
-            </>
-          )}
-        </ScrollView>
+                  <Text style={kieu.chuNutXanh}>
+                    {dangLam === 'chon' ? 'Đang đọc file…' : 'Chọn file Excel đã điền'}
+                  </Text>
+                </Pressable>
+              </>
+            )}
 
-        <View style={kieu.chanTrang}>
-          <Pressable style={kieu.nutDong} onPress={onDong} accessibilityRole="button">
-            <Text style={kieu.chuNutDong}>{daGhi === null ? 'Đóng' : 'Xong'}</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    </Modal>
+            {loi !== null && (
+              <View style={kieu.theLoi}>
+                <Feather name="alert-circle" size={16} color={Mau.do} />
+                <Text style={kieu.chuLoi}>{loi}</Text>
+              </View>
+            )}
+
+            {/* ---- Bước 3: xem trước rồi ghi ---- */}
+            {nhapCho !== null && !dangDoi && banNhap !== null && tomTatFile !== null && (
+              <>
+                <Text style={kieu.nhanBuoc}>{buoc(3)}. Xem lại rồi ghi vào sổ</Text>
+
+                {tenFile !== null && (
+                  <Text style={kieu.chuPhu} numberOfLines={2}>
+                    {tenFile}
+                  </Text>
+                )}
+
+                <HangO>
+                  <TheSo
+                    nhan="Ngày có công"
+                    so={String(tomTatFile.soNgay)}
+                    mau="chinh"
+                  />
+                  <TheSo
+                    nhan="Tổng công"
+                    so={Ngay.soCong(tomTatFile.tongCong)}
+                    mau="xanhLa"
+                  />
+                </HangO>
+                <HangO>
+                  <TheSo
+                    nhan="Từ ngày → đến ngày"
+                    so={Ngay.khoangGon(tomTatFile.tuNgay, tomTatFile.denNgay)}
+                    mau="ngoc"
+                  />
+                  {/* Máy thợ không có ô tiền nào, kể cả một ô "0 đ": cả app này không biết tiền. */}
+                  {choTho === undefined && (
+                    <TheSo nhan="Ứng tiền" so={Ngay.tien(tomTatFile.tongUng)} mau="do" />
+                  )}
+                </HangO>
+
+                {tomTatFile.soNghi > 0 && (
+                  <Text style={kieu.chuPhu}>
+                    Có {tomTatFile.soNghi} buổi file ghi là nghỉ — buổi ấy trong máy sẽ bị bỏ
+                    chấm.
+                  </Text>
+                )}
+
+                {/*
+                  Nói ra chứ không lặng lẽ bỏ: thợ chọn đúng cái file chủ gửi thì trong đó
+                  có cột tiền, mà bỏ im thì thợ tưởng đã khai ứng rồi.
+                */}
+                {soDongCoUng > 0 && (
+                  <Text style={kieu.chuPhu}>
+                    File có {soDongCoUng} dòng ghi tiền ứng. App này chỉ nhận số công — tiền
+                    ứng thì nói với chủ, chủ ghi trên máy của chủ.
+                  </Text>
+                )}
+
+                {banNhap.lois.length > 0 && (
+                  <View style={kieu.theLoi}>
+                    <Feather name="alert-circle" size={16} color={Mau.do} />
+                    <View style={kieu.giua}>
+                      <Text style={kieu.chuLoi}>
+                        {banNhap.lois.length} dòng phải bỏ qua:
+                      </Text>
+                      {banNhap.lois.slice(0, SO_LOI_KE_RA).map((mot) => (
+                        <Text key={mot.soDong} style={kieu.chuLoiNho}>
+                          Dòng {mot.soDong}: {mot.ly}
+                        </Text>
+                      ))}
+                      {banNhap.lois.length > SO_LOI_KE_RA && (
+                        <Text style={kieu.chuLoiNho}>
+                          …và {banNhap.lois.length - SO_LOI_KE_RA} dòng nữa.
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {daGhi === null ? (
+                  <Pressable
+                    style={kieu.nutXanh}
+                    onPress={ghiVaoSo}
+                    accessibilityRole="button"
+                  >
+                    <Feather name="check" size={16} color={Mau.trang} />
+                    <Text style={kieu.chuNutXanh}>Ghi vào sổ</Text>
+                  </Pressable>
+                ) : (
+                  <View style={kieu.theXong}>
+                    <Feather name="check-circle" size={18} color={Mau.xanhLa} />
+                    <View style={kieu.giua}>
+                      <Text style={kieu.chuXong}>{tomTat(daGhi)}</Text>
+                      {daGhi.boQuaDaChot > 0 && (
+                        <Text style={kieu.chuPhu}>
+                          {daGhi.boQuaDaChot} buổi đã nằm trong kỳ đã chốt nên giữ nguyên.
+                        </Text>
+                      )}
+                      {daGhi.boQuaUngTrung > 0 && (
+                        <Text style={kieu.chuPhu}>
+                          {daGhi.boQuaUngTrung} lần ứng đã có sẵn nên không cộng thêm.
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </ScrollView>
+
+      <View style={kieu.chanTrang}>
+        <Pressable style={kieu.nutDong} onPress={onDong} accessibilityRole="button">
+          <Text style={kieu.chuNutDong}>{daGhi === null ? 'Đóng' : 'Xong'}</Text>
+        </Pressable>
+      </View>
+    </ManHinhDe>
   );
 }
 
@@ -447,7 +444,6 @@ function thangGon(ngay: string): string {
 }
 
 const kieu = StyleSheet.create({
-  khung: { flex: 1, backgroundColor: Mau.nen },
   trong: { padding: 16, paddingTop: 4, paddingBottom: 24, gap: 10 },
 
   nhanBuoc: {

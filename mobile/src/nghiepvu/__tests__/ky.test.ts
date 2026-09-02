@@ -12,6 +12,7 @@ import {
   baoCaoKyHienTai,
   baoCaoTrongKy,
   boChot,
+  buoiDaChot,
   cacKyMoiTruoc,
   khoangKyHienTai,
   kyGanNhat,
@@ -292,6 +293,23 @@ describe('chấm bù ngày đã nằm trong kỳ đã chốt', () => {
     // Tờ quyết toán là bản chụp, chốt xong là đóng.
     expect(kyGanNhat(duLieu)!.dongs[0].tienCong).toBe(300_000);
     expect(banGhiCuaKy(duLieu, kyGanNhat(duLieu)!).buoiCongs).toHaveLength(2);
+  });
+
+  /**
+   * Chỗ sửa thẳng trên tờ lịch hỏi câu này để **khoá** ô chấm lại: chấm bù một ngày cũ kéo
+   * đầu kỳ đang mở lùi về tận đó, nên tờ lịch của kỳ đang mở có cả những ngày đã trả tiền.
+   */
+  test('nhận ra buổi nào đã nằm trong kỳ đã chốt', () => {
+    let { duLieu, tuan } = kho();
+    duLieu = chamCaNgay(duLieu, tuan, '2026-07-02');
+    duLieu = quyetToan(duLieu, { denNgay: '2026-07-10' });
+    duLieu = cham(duLieu, tuan, '2026-07-05', 'Sang');
+
+    const daTra = duLieu.buoiCongs.find((b) => b.ngay === '2026-07-02' && b.buoi === 'Sang')!;
+    const chuaTra = duLieu.buoiCongs.find((b) => b.ngay === '2026-07-05')!;
+
+    expect(buoiDaChot(duLieu, daTra.id)).toBe(true);
+    expect(buoiDaChot(duLieu, chuaTra.id)).toBe(false);
   });
 
   test('sửa số công của buổi đã chốt thì buổi đó vẫn thuộc kỳ cũ', () => {

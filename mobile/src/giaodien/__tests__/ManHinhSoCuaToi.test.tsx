@@ -8,7 +8,9 @@
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { BuoiLam } from '../../nghiepvu/kieu';
 import { SoCong } from '../../nghiepvu/soCong';
+import { CachSuaNgay } from '../HopSuaNgay';
 import { ManHinhSoCuaToi } from '../ManHinhSoCuaToi';
 
 const HOM_NAY = '2026-08-12';
@@ -27,9 +29,15 @@ function so(dongs: SoCong['dongs'], sua: Partial<SoCong> = {}): SoCong {
   };
 }
 
-function dung(cuaToi: SoCong, cuaChu: SoCong | null = null) {
+function dung(cuaToi: SoCong, cuaChu: SoCong | null = null, suaNgay?: CachSuaNgay) {
   return render(
-    <ManHinhSoCuaToi so={cuaToi} soChu={cuaChu} homNay={HOM_NAY} onDong={() => {}} />,
+    <ManHinhSoCuaToi
+      so={cuaToi}
+      soChu={cuaChu}
+      homNay={HOM_NAY}
+      suaNgay={suaNgay}
+      onDong={() => {}}
+    />,
   );
 }
 
@@ -199,4 +207,72 @@ test('không hiện một con số tiền nào', () => {
 
   expect(screen.queryByText(/đ$/)).toBeNull();
   expect(screen.queryByText(/tiền|lương/i)).toBeNull();
+});
+
+/**
+ * Thợ chấm bù ngay tại chỗ nhìn ra ngày trống. Trước đây màn hình này cố ý chỉ cho xem,
+ * nên chữa lại phải lui về màn hình chính rồi dò lại đúng ngày vừa nhìn thấy.
+ */
+describe('chấm bù ngay trên sổ của mình', () => {
+  function cachSua(daCham: Record<string, number> = {}) {
+    const datCong = jest.fn();
+    return {
+      cong: (ngay: string, buoi: BuoiLam) => daCham[`${ngay} ${buoi}`] ?? null,
+      datCong,
+    };
+  }
+
+  test('không truyền đường sửa thì cả tờ lịch lẫn danh sách chỉ để đọc', () => {
+    dung(so([{ ngay: '2026-08-03', buoi: 'Sang', soCong: 0.5 }]));
+
+    expect(screen.queryByLabelText(/Chạm để sửa/)).toBeNull();
+    expect(screen.queryByText('Chạm vào một ngày để chấm hoặc sửa ngày ấy.')).toBeNull();
+  });
+
+  test('chạm một ô trên tờ lịch là mở hộp chấm cho ngày ấy', () => {
+    const sua = cachSua();
+    dung(so([]), null, sua);
+
+    fireEvent.press(screen.getByLabelText('05/08 Thứ Tư, nghỉ. Chạm để sửa.'));
+    fireEvent.press(screen.getByLabelText('Sáng chưa chấm, chạm để đổi'));
+
+    expect(sua.datCong).toHaveBeenCalledWith('2026-08-05', 'Sang', 0.5);
+  });
+
+  test('hộp không có tên thợ: máy này chỉ có một người', () => {
+    dung(so([]), null, cachSua());
+
+    fireEvent.press(screen.getByLabelText('05/08 Thứ Tư, nghỉ. Chạm để sửa.'));
+
+    expect(screen.getByText('Thứ Tư 05/08')).toBeTruthy();
+    expect(screen.queryByText(/Anh Tuấn/)).toBeNull();
+  });
+
+  test('chạm một dòng trong danh sách cũng mở đúng hộp ấy', () => {
+    const sua = cachSua({ '2026-08-04 Sang': 0.5 });
+    dung(so([{ ngay: '2026-08-04', buoi: 'Sang', soCong: 0.5 }]), null, sua);
+
+    fireEvent.press(screen.getByLabelText('Thứ Ba 04/08, 0,5 công. Chạm để sửa.'));
+    fireEvent.press(screen.getByLabelText('Sáng có đi làm, chạm để đổi'));
+
+    expect(sua.datCong).toHaveBeenCalledWith('2026-08-04', 'Sang', null);
+  });
+
+  test('không chấm trước cho ngày chưa tới', () => {
+    dung(so([]), null, cachSua());
+
+    // 13/08 là ngày mai: vẫn vẽ ra ô, nhưng không chạm được — buổi chấm cho ngày chưa tới
+    // nằm ngoài khoảng sổ khai là đầy đủ nên gói gửi lên nhóm không mang nó theo.
+    expect(screen.getByLabelText('13/08 Thứ Năm, chưa tính')).toBeTruthy();
+  });
+
+  test('hộp không có phần ghi chú: máy thợ không có chỗ nào ghi chú', () => {
+    dung(so([]), null, cachSua());
+
+    fireEvent.press(screen.getByLabelText('05/08 Thứ Tư, nghỉ. Chạm để sửa.'));
+    fireEvent.press(screen.getByText('Sửa'));
+
+    expect(screen.getByText('Buổi sáng')).toBeTruthy();
+    expect(screen.queryByText('Ghi chú cho ngày này')).toBeNull();
+  });
 });

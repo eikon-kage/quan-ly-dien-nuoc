@@ -2,8 +2,9 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react-n
 import { Alert } from 'react-native';
 
 import { baoCaoKhoang } from '../../nghiepvu/baoCao';
-import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
+import { BuoiLam, DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import { cham, datCong, themTho, themUng } from '../../nghiepvu/thaoTac';
+import { CachSuaNgay } from '../HopSuaNgay';
 import { ManHinhBaoCaoTho } from '../ManHinhBaoCaoTho';
 
 const hoi = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -27,12 +28,17 @@ function khoCoTho(tienMotCong = 300_000) {
   return { duLieu, thoId: tho.id };
 }
 
-/** Kỳ dùng trong bộ kiểm thử này trùng đúng tháng 8 — khoảng quen mắt nhất. */
+/**
+ * Kỳ dùng trong bộ kiểm thử này trùng đúng tháng 8 — khoảng quen mắt nhất. Trùng khít một
+ * tháng dương lịch thì màn hình gọi nó là *tháng* chứ không phải *kỳ*; kỳ lệch tháng có
+ * bài riêng ở dưới.
+ */
 function dung(
   duLieu: DuLieuChamCong,
   thoId: string,
   homNay = CUOI_KY,
   suaUng?: { ghi: jest.Mock; xoa: jest.Mock },
+  suaNgay?: CachSuaNgay,
 ) {
   return render(
     <ManHinhBaoCaoTho
@@ -40,6 +46,7 @@ function dung(
       tuNgayDau="2026-08-01"
       denNgayDau="2026-08-31"
       suaUng={suaUng}
+      suaNgay={suaNgay}
       onDong={() => {}}
     />,
   );
@@ -57,7 +64,7 @@ describe('màn hình báo cáo một thợ', () => {
     dung(duLieu, thoId);
 
     expect(screen.getByText('Anh Tuấn')).toBeTruthy();
-    expect(screen.getByText('Cả kỳ · 01/08 → 31/08')).toBeTruthy();
+    expect(screen.getByText('Cả tháng · 01/08 → 31/08')).toBeTruthy();
   });
 
   test('tóm tắt số công, tiền công và còn phải trả', () => {
@@ -156,14 +163,14 @@ describe('màn hình báo cáo một thợ', () => {
     const { duLieu, thoId } = khoCoTho();
     dung(duLieu, thoId);
 
-    expect(screen.getByText('Kỳ này chưa ứng lần nào.')).toBeTruthy();
+    expect(screen.getByText('Tháng này chưa ứng lần nào.')).toBeTruthy();
   });
 
   test('kỳ chưa có công nào thì nói rõ chứ không để bảng trống', () => {
     const { duLieu, thoId } = khoCoTho();
     dung(duLieu, thoId);
 
-    expect(screen.getByText('Kỳ này chưa có ngày công nào.')).toBeTruthy();
+    expect(screen.getByText('Tháng này chưa có ngày công nào.')).toBeTruthy();
   });
 
   test('lọc khoảng hẹp thì tóm tắt và tờ lịch chỉ tính trong khoảng', () => {
@@ -198,7 +205,7 @@ describe('màn hình báo cáo một thợ', () => {
     expect(screen.queryByText('ứng đổ xăng')).toBeNull();
   });
 
-  test('bấm Cả tháng là bỏ lọc, quay về trọn kỳ', () => {
+  test('bấm viên đầu là bỏ lọc, quay về trọn khoảng mở ra lúc đầu', () => {
     const { duLieu, thoId } = khoCoTho();
     dung(duLieu, thoId, '2026-08-31');
 
@@ -206,7 +213,32 @@ describe('màn hình báo cáo một thợ', () => {
     expect(screen.getByText('01/08 → 15/08')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Cả tháng'));
-    expect(screen.getByText('Cả kỳ · 01/08 → 31/08')).toBeTruthy();
+    expect(screen.getByText('Cả tháng · 01/08 → 31/08')).toBeTruthy();
+  });
+
+  /*
+    Kỳ lương chốt lúc nào cũng được nên phần lớn kỳ *không* trùng tháng. Lúc ấy màn hình
+    phải gọi đúng tên là "kỳ", và viên "Cả tháng" là một khoảng khác hẳn viên đầu nên có
+    mặt riêng — trùng khít mới bỏ đi.
+  */
+  test('kỳ lệch tháng thì gọi là kỳ, và có thêm viên Cả tháng', () => {
+    const { duLieu, thoId } = khoCoTho();
+    render(
+      <ManHinhBaoCaoTho
+        dungBaoCao={(tu, den) => baoCaoKhoang(duLieu, thoId, tu, den, '2026-08-31')}
+        tuNgayDau="2026-07-20"
+        denNgayDau="2026-08-31"
+        onDong={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('Cả kỳ · 20/07 → 31/08')).toBeTruthy();
+    expect(screen.getByText('Kỳ này chưa có ngày công nào.')).toBeTruthy();
+    expect(screen.getByText('Kỳ này chưa ứng lần nào.')).toBeTruthy();
+
+    // Viên "Cả tháng" ở đây là tháng của ngày cuối kỳ, hẹp hơn cả kỳ.
+    fireEvent.press(screen.getByText('Cả tháng'));
+    expect(screen.getByText('01/08 → 31/08')).toBeTruthy();
   });
 
   test('chọn ngày đầu muộn hơn ngày cuối thì kéo luôn ngày cuối theo', () => {
@@ -345,5 +377,123 @@ describe('sửa lịch sử ứng tiền', () => {
     bamNut('Thôi');
 
     expect(suaUng.xoa).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Chạm thẳng vào một ô ngày trên tờ lịch để chấm hay chữa lại ngày ấy — đường ngắn nhất
+ * từ chỗ *nhìn ra chỗ sai* tới chỗ sửa. Trước đây phải thoát ra, sang mục Chấm công rồi
+ * lần lại đúng ngày.
+ */
+describe('sửa thẳng một ngày trên tờ lịch', () => {
+  /** Sổ giả cho hộp sửa: đọc từ một Map, ghi thì nhớ lại lời gọi. */
+  function cachSua(
+    daCham: Record<string, number> = {},
+    khoa: string[] = [],
+  ): CachSuaNgay & { datCong: jest.Mock; ghi: jest.Mock } {
+    const datCongGia = jest.fn();
+    const ghiGia = jest.fn();
+    return {
+      cong: (ngay: string, buoi: BuoiLam) => daCham[`${ngay} ${buoi}`] ?? null,
+      khoa: (ngay: string, buoi: BuoiLam) => khoa.includes(`${ngay} ${buoi}`),
+      datCong: datCongGia,
+      ghiChu: { doc: () => '', ghi: ghiGia },
+      ghi: ghiGia,
+    };
+  }
+
+  /** Mở hộp sửa của ngày 03/08 ra. */
+  function moNgay(sua: CachSuaNgay) {
+    const { duLieu, thoId } = khoCoTho();
+    dung(duLieu, thoId, '2026-08-31', undefined, sua);
+    fireEvent.press(screen.getByLabelText('03/08 Thứ Hai, nghỉ. Chạm để sửa.'));
+  }
+
+  test('không truyền đường sửa thì ô ngày chỉ để đọc', () => {
+    const { duLieu, thoId } = khoCoTho();
+    dung(duLieu, thoId);
+
+    expect(screen.getByLabelText('03/08 Thứ Hai, nghỉ')).toBeTruthy();
+    expect(screen.queryByText('Chạm vào một ngày để chấm hoặc sửa ngày ấy.')).toBeNull();
+  });
+
+  test('chạm một ô ngày là mở hộp của đúng ngày ấy, kèm tên thợ', () => {
+    moNgay(cachSua());
+
+    expect(screen.getByText('Anh Tuấn — Thứ Hai 03/08')).toBeTruthy();
+    expect(screen.getByText('Ngày này chưa chấm công nào')).toBeTruthy();
+    expect(screen.getByLabelText('Sáng chưa chấm, chạm để đổi')).toBeTruthy();
+    expect(screen.getByLabelText('Chiều chưa chấm, chạm để đổi')).toBeTruthy();
+  });
+
+  test('chạm ô Sáng đang trống là chấm nửa công cho buổi ấy', () => {
+    const sua = cachSua();
+    moNgay(sua);
+
+    fireEvent.press(screen.getByLabelText('Sáng chưa chấm, chạm để đổi'));
+
+    // Một buổi đi đủ là nửa công — cả ngày mới là một công.
+    expect(sua.datCong).toHaveBeenCalledWith('2026-08-03', 'Sang', 0.5);
+  });
+
+  test('chạm ô đang xanh là bỏ chấm, đúng thao tác vừa rồi', () => {
+    const sua = cachSua({ '2026-08-03 Sang': 0.5 });
+    moNgay(sua);
+
+    fireEvent.press(screen.getByLabelText('Sáng có đi làm, chạm để đổi'));
+
+    expect(sua.datCong).toHaveBeenCalledWith('2026-08-03', 'Sang', null);
+  });
+
+  test('nút Sửa mở đường tới nửa buổi', () => {
+    const sua = cachSua();
+    moNgay(sua);
+
+    fireEvent.press(screen.getByText('Sửa'));
+    fireEvent.press(screen.getByText('Buổi chiều'));
+    fireEvent.press(screen.getByText('Nửa buổi (0,25 công)'));
+
+    expect(sua.datCong).toHaveBeenCalledWith('2026-08-03', 'Chieu', 0.25);
+  });
+
+  test('gõ được số công khác, chặn ở mức tối đa một buổi', () => {
+    const sua = cachSua();
+    moNgay(sua);
+
+    fireEvent.press(screen.getByText('Sửa'));
+    fireEvent.press(screen.getByText('Buổi sáng'));
+    fireEvent.press(screen.getByText('Gõ số công khác'));
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 0,5'), '0,75');
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(sua.datCong).toHaveBeenCalledWith('2026-08-03', 'Sang', 0.75);
+  });
+
+  test('ghi chú cho cả ngày cũng sửa được từ đây', () => {
+    const sua = cachSua();
+    moNgay(sua);
+
+    fireEvent.press(screen.getByText('Sửa'));
+    fireEvent.press(screen.getByText('Ghi chú cho ngày này'));
+    fireEvent.changeText(screen.getByLabelText('Ví dụ: về sớm đi đám cưới'), 'về sớm');
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(sua.ghi).toHaveBeenCalledWith('2026-08-03', 'về sớm');
+  });
+
+  test('buổi đã nằm trong kỳ đã chốt thì khoá lại, bấm không được', () => {
+    const sua = cachSua({ '2026-08-03 Sang': 0.5 }, ['2026-08-03 Sang']);
+    moNgay(sua);
+
+    expect(
+      screen.getByLabelText('Sáng có đi làm, đã chốt kỳ nên không sửa được'),
+    ).toBeTruthy();
+    expect(screen.getByText(/Buổi có ổ khoá/)).toBeTruthy();
+
+    // Không có cả trong danh sách của nút Sửa: mở ra rồi mới biết không sửa được là bắt
+    // người dùng đi hai bước để nhận một câu từ chối.
+    fireEvent.press(screen.getByText('Sửa'));
+    expect(screen.queryByText('Buổi sáng')).toBeNull();
+    expect(screen.getByText('Buổi chiều')).toBeTruthy();
   });
 });

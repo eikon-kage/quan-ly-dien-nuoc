@@ -78,6 +78,18 @@ export function banGhiChuaChot(duLieu: DuLieuChamCong): {
 }
 
 /**
+ * Buổi công này đã nằm trong một kỳ đã chốt chưa — tức là tiền của nó đã trao tay rồi.
+ *
+ * Dùng để **khoá** ô chấm ở chỗ sửa thẳng trên tờ lịch. `KyLuong.dongs` là bản chụp, không
+ * tính lại bao giờ nữa, nên sửa số công của một buổi đã trả tiền chỉ làm sổ nói khác tờ
+ * quyết toán thợ đang cầm; còn xoá hẳn nó thì kỳ ấy mở ra mất luôn một dòng. Cần sửa thật
+ * thì bỏ chốt kỳ trước đã.
+ */
+export function buoiDaChot(duLieu: DuLieuChamCong, buoiCongId: string): boolean {
+  return duLieu.kyLuongs.some((ky) => ky.buoiCongIds.includes(buoiCongId));
+}
+
+/**
  * Tiền kỳ trước còn thiếu của từng thợ. Chỉ lấy từ kỳ chốt gần nhất: mỗi lần chốt đã
  * cộng luôn nợ của kỳ trước đó vào rồi, nên không phải cộng dồn ngược lại từ đầu.
  */

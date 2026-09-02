@@ -1,4 +1,4 @@
-import { thang } from '../bangLuong';
+import { cacThangXemDuoc, thang } from '../bangLuong';
 import { BuoiLam, DuLieuChamCong, Tho, duLieuRong } from '../kieu';
 import { taoId } from '../thaoTac';
 
@@ -211,5 +211,57 @@ describe('bảng lương', () => {
     cham(duLieu, binh, '2026-08-03', 'Sang');
 
     expect(thang(duLieu, 2026, 8).map((d) => d.tho.ten)).toEqual(['Anh Bình', 'Anh Tuấn']);
+  });
+});
+
+describe('các tháng xem lại được', () => {
+  test('liền mạch từ tháng có bản ghi sớm nhất tới tháng này, mới nhất đứng đầu', () => {
+    const duLieu = duLieuRong();
+    const tuan = themTho(duLieu, 'Anh Tuấn', 300_000);
+    cham(duLieu, tuan, '2026-06-20', 'Sang');
+    // Tháng 7 nghỉ trắng, nhưng vẫn phải nằm trong danh sách: bấm lùi từng tháng mà app
+    // nhảy cóc qua thì người xem tưởng mình bấm hụt.
+    cham(duLieu, tuan, '2026-08-03', 'Sang');
+
+    expect(cacThangXemDuoc(duLieu, '2026-09-02')).toEqual([
+      { nam: 2026, thang: 9 },
+      { nam: 2026, thang: 8 },
+      { nam: 2026, thang: 7 },
+      { nam: 2026, thang: 6 },
+    ]);
+  });
+
+  test('sang năm mới thì lùi tiếp về tháng 12 năm ngoái', () => {
+    const duLieu = duLieuRong();
+    cham(duLieu, themTho(duLieu, 'Anh Tuấn', 300_000), '2025-12-30', 'Sang');
+
+    expect(cacThangXemDuoc(duLieu, '2026-01-05')).toEqual([
+      { nam: 2026, thang: 1 },
+      { nam: 2025, thang: 12 },
+    ]);
+  });
+
+  test('chỉ có mỗi lần ứng tiền, chưa chấm công buổi nào, vẫn tra lại được tháng ấy', () => {
+    const duLieu = duLieuRong();
+    ung(duLieu, themTho(duLieu, 'Anh Tuấn', 300_000), '2026-07-10', 500_000);
+
+    expect(cacThangXemDuoc(duLieu, '2026-08-01')).toEqual([
+      { nam: 2026, thang: 8 },
+      { nam: 2026, thang: 7 },
+    ]);
+  });
+
+  test('chấm nhầm sang ngày tương lai thì tháng ấy vẫn tới được, kẻo buổi công mất tăm', () => {
+    const duLieu = duLieuRong();
+    cham(duLieu, themTho(duLieu, 'Anh Tuấn', 300_000), '2026-11-04', 'Sang');
+
+    expect(cacThangXemDuoc(duLieu, '2026-09-02')[0]).toEqual({
+      nam: 2026,
+      thang: 11,
+    });
+  });
+
+  test('sổ trắng thì không có tháng nào để lùi về', () => {
+    expect(cacThangXemDuoc(duLieuRong(), '2026-09-02')).toEqual([]);
   });
 });

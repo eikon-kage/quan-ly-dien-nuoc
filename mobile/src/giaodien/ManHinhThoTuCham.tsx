@@ -8,13 +8,15 @@ import { BuoiLam, CAC_BUOI, CONG_MOT_BUOI, DuLieuChamCong } from '../nghiepvu/ki
 import * as Ngay from '../nghiepvu/ngayViet';
 import { CONG_TOI_DA, docSoCong } from '../nghiepvu/nhapSo';
 import { soCuaMay } from '../nghiepvu/soCong';
-import { boCham, cham, dangCham, timTho } from '../nghiepvu/thaoTac';
+import { boCham, cham, dangCham, datCong, timTho } from '../nghiepvu/thaoTac';
 import { CaiDatVai } from '../nghiepvu/vaiMay';
 import { DieuKhienDoiChieu } from './dungDoiChieu';
 import { DieuKhienNhom } from './dungSupabase';
 import { HopChon } from './HopChon';
+import { HopChonNgay } from './HopChonNgay';
 import { HopNhapSo } from './HopNhapSo';
 import { HopNoiNhom } from './HopNoiNhom';
+import { CachSuaNgay } from './HopSuaNgay';
 import { HopVaiMay } from './HopVaiMay';
 import { ManHinhDoiChieu } from './ManHinhDoiChieu';
 import { ManHinhNhapExcel } from './ManHinhNhapExcel';
@@ -71,13 +73,47 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
   const [dangSua, datDangSua] = useState<{ ngay: string; buoi: BuoiLam } | null>(null);
   /** Đang gõ số công cho ô ấy, thay vì chọn một trong mấy mức có sẵn. */
   const [goSoCong, datGoSoCong] = useState(false);
+  /**
+   * Tháng đang xem ở danh sách chấm bù — một ngày bất kỳ trong tháng ấy. `null` là mặc
+   * định: mười bốn ngày gần đây, vắt qua cả tháng trước nếu hôm nay mới mùng hai.
+   */
+  const [thangXem, datThangXem] = useState<string | null>(null);
+  /** Tháng đang mở trong tờ lịch chọn ngày; null là chưa mở. */
+  const [mocLich, datMocLich] = useState<string | null>(null);
 
   const thoId = caiDat.thoId ?? '';
   const homNay = Ngay.homNay();
-  const cacNgay = useMemo(
-    () => Array.from({ length: SO_NGAY }, (_, i) => Ngay.congNgay(homNay, -i)),
-    [homNay],
-  );
+
+  /**
+   * Những ngày mời chấm bù, mới → cũ.
+   *
+   * Mặc định là mười bốn ngày gần đây. Chọn một tháng thì chạy trọn tháng ấy, dừng ở hôm
+   * nay — thợ thắc mắc chuyện *tháng trước* là chuyện thường, mà trước đây quá mười ba
+   * ngày là không còn ô nào để bấm: nhớ ra hôm mùng năm mình có đi mà không chấm được,
+   * đường duy nhất là nhờ chủ sửa hộ.
+   */
+  const cacNgay = useMemo(() => {
+    if (thangXem === null) {
+      return Array.from({ length: SO_NGAY }, (_, i) => Ngay.congNgay(homNay, -i));
+    }
+
+    const { nam, thang } = Ngay.tach(thangXem);
+    const dauThang = Ngay.ghep(nam, thang, 1);
+    const cuoiThang = Ngay.ghep(nam, thang, Ngay.soNgayTrongThang(nam, thang));
+    const cuoi = cuoiThang < homNay ? cuoiThang : homNay;
+
+    const ngays: string[] = [];
+    for (let ngay = cuoi; ngay >= dauThang; ngay = Ngay.congNgay(ngay, -1)) {
+      ngays.push(ngay);
+    }
+    return ngays;
+  }, [homNay, thangXem]);
+
+  /** Nhãn của bộ lọc, cũng là chữ trên nút mở tờ lịch. */
+  const nhanKhoang =
+    thangXem === null
+      ? `${SO_NGAY} ngày gần đây`
+      : `Tháng ${Ngay.tach(thangXem).thang}/${Ngay.tach(thangXem).nam}`;
 
   /** Tên lấy từ sổ chủ gửi xuống nếu có: chủ mới là bên đặt tên, thợ không phải tự gõ. */
   const tenTho =
@@ -112,6 +148,21 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
       .filter((b) => b.thoId === thoId && b.ngay >= tuNgay && b.ngay <= homNay)
       .reduce((tong, b) => tong + b.soCong, 0);
 
+  /**
+   * Công của chính thợ này theo từng ngày, để mỗi ô trên tờ lịch nói luôn ngày ấy mấy
+   * công. Tờ lịch nhờ vậy vừa là chỗ chọn tháng vừa là chỗ *xem lại*: mở ra là thấy cả
+   * tháng ngày nào đi ngày nào nghỉ.
+   */
+  const congMoiNgay = useMemo(() => {
+    const theoNgay = new Map<string, number>();
+    for (const buoi of duLieu.buoiCongs) {
+      if (buoi.thoId === thoId) {
+        theoNgay.set(buoi.ngay, (theoNgay.get(buoi.ngay) ?? 0) + buoi.soCong);
+      }
+    }
+    return theoNgay;
+  }, [duLieu, thoId]);
+
   const dauTuanNay = Ngay.tuan(homNay)[0];
   const { nam, thang } = Ngay.tach(homNay);
   const congTuanNay = congTuNgay(dauTuanNay);
@@ -123,14 +174,20 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
    */
   const cacTuan = useMemo(() => {
     const theoTuan = new Map<string, string[]>();
-    // cacNgay xếp mới → cũ, nên Map giữ đúng thứ tự ấy cho các tuần.
-    for (const ngay of cacNgay.slice(1)) {
+    // cacNgay xếp mới → cũ, nên Map giữ đúng thứ tự ấy cho các tuần. Bỏ đúng hôm nay chứ
+    // không bỏ dòng đầu: xem tháng trước thì hôm nay không nằm trong danh sách, cắt dòng
+    // đầu là mất ngày cuối tháng ấy.
+    for (const ngay of cacNgay) {
+      if (ngay === homNay) {
+        continue;
+      }
+
       const dau = Ngay.tuan(ngay)[0];
       theoTuan.set(dau, [...(theoTuan.get(dau) ?? []), ngay]);
     }
 
     return [...theoTuan.entries()].map(([dauTuan, ngays]) => ({ dauTuan, ngays }));
-  }, [cacNgay]);
+  }, [cacNgay, homNay]);
 
   /**
    * Tổng công của cả tuần, **kể cả hôm nay** — dù hôm nay không nằm trong danh sách dưới
@@ -158,6 +215,30 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
     return `${ngayNgan(dauTuan)} → ${ngayNgan(Ngay.congNgay(dauTuan, 6))}`;
   }
 
+  /**
+   * Lùi / tới một tháng trong tờ lịch. Nhảy qua hẳn mép tháng chứ không cộng 30 ngày —
+   * tháng thiếu tháng thừa thì cộng ngày có lúc nhảy vọt qua cả một tháng.
+   *
+   * Không cho đi quá tháng này: chấm bù là chuyện của những ngày đã qua, mà tháng sau thì
+   * mở ra chỉ có một tờ lịch trắng không bấm được ô nào.
+   */
+  function doiThangLich(buoc: -1 | 1) {
+    if (mocLich === null) {
+      return;
+    }
+
+    const { nam, thang } = Ngay.tach(mocLich);
+    const moi =
+      buoc === -1
+        ? Ngay.congNgay(Ngay.ghep(nam, thang, 1), -1)
+        : Ngay.congNgay(Ngay.ghep(nam, thang, Ngay.soNgayTrongThang(nam, thang)), 1);
+
+    // Lùi thì bao giờ cũng được; tới thì chỉ khi mồng một tháng ấy đã trôi qua.
+    if (moi <= homNay) {
+      datMocLich(moi);
+    }
+  }
+
   async function xuatExcel() {
     if (dangXuat === 'dangLam') {
       return;
@@ -172,6 +253,12 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
       datDangXuat('loi');
     }
   }
+
+  /** Cách hộp sửa một ngày đọc và ghi buổi công — dùng ở màn hình *Sổ công của tôi*. */
+  const cachSuaNgay: CachSuaNgay = {
+    cong: (ngay, buoi) => dangCham(duLieu, thoId, ngay, buoi)?.soCong ?? null,
+    datCong: (ngay, buoi, soCong) => capNhat(datCong(duLieu, thoId, ngay, buoi, soCong)),
+  };
 
   function doCham(ngay: string, buoi: BuoiLam) {
     const dang = dangCham(duLieu, thoId, ngay, buoi);
@@ -224,6 +311,14 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
         so={soCuaToi}
         soChu={dieuKhien.soBenKia.get(thoId)?.so ?? null}
         homNay={homNay}
+        /*
+          Chấm bù thẳng trên tờ lịch của sổ mình: đó là chỗ thợ nhìn ra ngày trống, mà
+          trước đây phải lui về màn hình chính rồi dò lại đúng ngày ấy.
+
+          Không có `khoa`: máy thợ không chốt kỳ bao giờ, cờ `daChot` trong sổ chỉ có ở sổ
+          chủ gửi xuống. Cũng không có `ghiChu`: cả máy thợ không có chỗ nào ghi chú.
+        */
+        suaNgay={cachSuaNgay}
         onDong={() => datMoSoCong(false)}
       />
     );
@@ -452,7 +547,46 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
 
           Bỏ hôm nay: nó đã ở thẻ trên, để lại đây nữa là hai chỗ chấm cùng một buổi.
         */}
-        <Text style={kieu.chuMuc}>Chấm bù mấy ngày trước</Text>
+        {/*
+          Nhãn nói danh sách dưới đây là gì, cạnh nó là nút đổi khoảng. Nút mang sẵn chữ
+          của khoảng đang xem — thợ nhìn một cái là biết mình đang đứng ở đâu, không phải
+          mở tờ lịch ra mới biết.
+        */}
+        <View style={kieu.dongMuc}>
+          <Text style={kieu.chuMuc}>Chấm bù mấy ngày trước</Text>
+
+          <View style={kieu.nhomLoc}>
+            {/* Lỡ lọc sang tháng cũ rồi thì đây là đường về, giống nút *Hôm nay* bên máy chủ. */}
+            {thangXem !== null && (
+              <Pressable
+                style={kieu.nutGanDay}
+                onPress={() => datThangXem(null)}
+                accessibilityLabel={`Về ${SO_NGAY} ngày gần đây`}
+              >
+                <Feather name="corner-up-left" size={13} color={Mau.chinh} />
+                <Text style={kieu.chuNutLoc}>Gần đây</Text>
+              </Pressable>
+            )}
+
+            <Pressable
+              style={kieu.nutLoc}
+              onPress={() => datMocLich(thangXem ?? homNay)}
+              accessibilityRole="button"
+              accessibilityLabel={`Đang xem ${nhanKhoang}. Chạm để chọn tháng khác.`}
+            >
+              <Feather name="calendar" size={14} color={Mau.chinh} />
+              <Text style={kieu.chuNutLoc}>{nhanKhoang}</Text>
+              <Feather name="chevron-down" size={15} color={Mau.xam} />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Tháng vừa sang mà chưa qua ngày nào ngoài hôm nay: nói rõ chứ đừng để trống trơn. */}
+        {cacTuan.length === 0 && (
+          <Text style={kieu.chuTrongThang}>
+            Tháng này chưa có ngày nào trước hôm nay để chấm bù.
+          </Text>
+        )}
 
         {cacTuan.map(({ dauTuan, ngays }) => (
           <View key={dauTuan} style={kieu.theTuan}>
@@ -577,6 +711,26 @@ export function ManHinhThoTuCham({ duLieu, capNhat, caiDat, datCaiDat, dieuKhien
         />
       )}
 
+      {/*
+        Tờ lịch cả tháng, mỗi ô ghi luôn số công của ngày ấy. Chạm một ngày là danh sách
+        dưới nhảy sang trọn tháng của nó — chấm bù được ngay, không phải chỉ ngồi xem.
+      */}
+      {mocLich !== null && (
+        <HopChonNgay
+          tieuDe="Xem tháng nào?"
+          nam={Ngay.tach(mocLich).nam}
+          thang={Ngay.tach(mocLich).thang}
+          ngayDangChon={thangXem ?? homNay}
+          congMoiNgay={congMoiNgay}
+          onDoiThang={doiThangLich}
+          onChon={(ngay) => {
+            datThangXem(ngay);
+            datMocLich(null);
+          }}
+          onDong={() => datMocLich(null)}
+        />
+      )}
+
       {moNhom && <HopNoiNhom vai="tho" dieuKhien={nhom} onDong={() => datMoNhom(false)} />}
 
       {moVaiMay !== null && (
@@ -686,11 +840,51 @@ const kieu = StyleSheet.create({
   chuPhu: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
   chuLoi: { fontFamily: PhongChu.vua, color: Mau.do },
 
-  chuMuc: {
+  // Nhãn và nút lọc cùng một dòng, cho xuống dòng khi chữ to: cỡ chữ hệ thống phóng lên
+  // thì hai thứ này không nhét vừa một hàng, mà nút bị cắt là mất hẳn đường sang tháng cũ.
+  dongMuc: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
     marginTop: 8,
+  },
+  chuMuc: {
     fontSize: Co.chuPhu,
     fontFamily: PhongChu.vua,
     color: Mau.xam,
+  },
+  nhomLoc: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  nutLoc: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: Co.caoNutNho,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Co.bo,
+    borderWidth: 1,
+    borderColor: Tuoi.chinh,
+    backgroundColor: Mau.chinhNhat,
+  },
+  nutGanDay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minHeight: Co.caoNutNho,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    // Bo tròn hẳn chứ không lấy nửa chiều cao: chữ to thì nút cao lên, số cứng hoá vuông góc.
+    borderRadius: 999,
+    backgroundColor: Mau.chinhNhat,
+  },
+  chuNutLoc: { fontSize: Co.chuPhu, fontFamily: PhongChu.vua, color: Mau.chinh },
+  chuTrongThang: {
+    fontSize: Co.chuPhu,
+    fontFamily: PhongChu.thuong,
+    color: Mau.xam,
+    paddingVertical: 6,
   },
 
   // Hai nút việc: viền màu nhạt như bên máy chủ, không phải nút xanh đặc — chúng không

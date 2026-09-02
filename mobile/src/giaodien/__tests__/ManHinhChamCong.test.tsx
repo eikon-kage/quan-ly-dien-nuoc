@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import * as Ngay from '../../nghiepvu/ngayViet';
-import { dangCham, datGhiChuNgay, ghiChuNgay, themTho } from '../../nghiepvu/thaoTac';
+import { dangCham, datCong, datGhiChuNgay, ghiChuNgay, themTho } from '../../nghiepvu/thaoTac';
 import { ManHinhChamCong } from '../ManHinhChamCong';
 
 const HOM_NAY = Ngay.homNay();
@@ -312,5 +312,65 @@ describe('màn hình chấm công', () => {
 
     expect(screen.getByLabelText('Sáng có đi làm')).toBeTruthy();
     expect(screen.getByLabelText('Chiều chưa chấm')).toBeTruthy();
+  });
+});
+
+/**
+ * Dải bảy ngày chỉ đi được từng tuần một: xem lại tháng trước phải bấm năm sáu lần, mà
+ * xa hơn nữa thì người dùng bỏ cuộc giữa đường. Tờ lịch là đường tắt tới thẳng tháng cần.
+ */
+describe('tờ lịch chọn ngày', () => {
+  const { nam: namNay, thang: thangNay } = Ngay.tach(HOM_NAY);
+  const THANG_TRUOC = Ngay.congNgay(Ngay.ghep(namNay, thangNay, 1), -1);
+  const NGAY_CU = Ngay.ghep(Ngay.tach(THANG_TRUOC).nam, Ngay.tach(THANG_TRUOC).thang, 5);
+
+  /** Nhãn của một ô trên tờ lịch. */
+  function oLich(ngay: string) {
+    return screen.getByLabelText(`${Ngay.ngayGon(ngay).slice(0, 5)} ${Ngay.thu(ngay)}`);
+  }
+
+  function moLich() {
+    fireEvent.press(screen.getByLabelText(`${Ngay.thuVaNgay(HOM_NAY)}. Chạm để chọn ngày khác.`));
+  }
+
+  test('lùi một tháng rồi chọn ngày là sang thẳng ngày ấy', () => {
+    const { duLieu } = khoCoTho('Anh Tuấn');
+    dung(duLieu);
+
+    moLich();
+    fireEvent.press(screen.getByLabelText('Tháng trước'));
+    fireEvent.press(oLich(NGAY_CU));
+
+    expect(screen.getByText(Ngay.thuVaNgay(NGAY_CU))).toBeTruthy();
+    // Chọn xong là hộp đóng lại, không phải bấm thêm nút "Thôi".
+    expect(screen.queryByLabelText('Tháng trước')).toBeNull();
+  });
+
+  test('mỗi ô lịch nói luôn ngày ấy cả tổ được mấy công', () => {
+    const { duLieu, ids } = khoCoTho('Anh Tuấn', 'Anh Bình');
+    let daCham = datCong(duLieu, ids[0], NGAY_CU, 'Sang', 0.5);
+    daCham = datCong(daCham, ids[1], NGAY_CU, 'Sang', 0.5);
+    dung(daCham);
+
+    moLich();
+    fireEvent.press(screen.getByLabelText('Tháng trước'));
+
+    expect(oLich(NGAY_CU).props.accessibilityHint).toBe('1 công');
+    // Ngày không chấm thì nói rõ là chưa chấm, không để trống cho người dùng đoán.
+    const ngayTrong = Ngay.ghep(Ngay.tach(THANG_TRUOC).nam, Ngay.tach(THANG_TRUOC).thang, 6);
+    expect(oLich(ngayTrong).props.accessibilityHint).toBe('Chưa chấm ngày này');
+  });
+
+  test('chấm được cho ngày vừa chọn ở tháng trước', () => {
+    const { duLieu, ids } = khoCoTho('Anh Tuấn');
+    const { capNhat, moiNhat } = dung(duLieu);
+
+    moLich();
+    fireEvent.press(screen.getByLabelText('Tháng trước'));
+    fireEvent.press(oLich(NGAY_CU));
+    fireEvent.press(screen.getByText('Sáng'));
+
+    expect(capNhat).toHaveBeenCalledTimes(1);
+    expect(dangCham(moiNhat(), ids[0], NGAY_CU, 'Sang')?.soCong).toBe(0.5);
   });
 });

@@ -4,7 +4,7 @@
  */
 
 import { BuoiCong, DuLieuChamCong, Tho, UngTien } from './kieu';
-import { ghep } from './ngayViet';
+import { cacThangTrongKhoang, ghep } from './ngayViet';
 import { luongTaiNgay } from './thaoTac';
 
 export interface DongLuong {
@@ -94,4 +94,30 @@ export function tinh(duLieu: DuLieuChamCong, tuNgay: string, denNgay: string): D
 export function thang(duLieu: DuLieuChamCong, nam: number, thangTrongNam: number): DongLuong[] {
   const soNgay = new Date(Date.UTC(nam, thangTrongNam, 0)).getUTCDate();
   return tinh(duLieu, ghep(nam, thangTrongNam, 1), ghep(nam, thangTrongNam, soNgay));
+}
+
+/**
+ * Các tháng xem lại được trên màn hình Bảng lương: từ tháng có bản ghi sớm nhất tới tháng
+ * của hôm nay, **tháng mới nhất đứng đầu**.
+ *
+ * Liền mạch chứ không chỉ lấy tháng có công. Tháng nghỉ trắng vẫn nằm trong danh sách:
+ * bấm mũi tên lùi từng tháng mà app tự nhảy qua tháng trống thì người xem tưởng mình bấm
+ * hụt, chứ không nghĩ là tháng ấy không có ai đi làm.
+ */
+export function cacThangXemDuoc(
+  duLieu: DuLieuChamCong,
+  homNay: string,
+): { nam: number; thang: number }[] {
+  const cacNgay = [...duLieu.buoiCongs.map((b) => b.ngay), ...duLieu.ungTiens.map((u) => u.ngay)];
+  if (cacNgay.length === 0) {
+    return [];
+  }
+
+  const somNhat = cacNgay.reduce((a, b) => (a < b ? a : b));
+  // Chấm nhầm sang ngày tương lai thì tháng ấy vẫn phải tới được, kẻo buổi công biến mất
+  // khỏi mọi màn hình xem lại.
+  const muonNhat = cacNgay.reduce((a, b) => (a > b ? a : b));
+  const den = muonNhat > homNay ? muonNhat : homNay;
+
+  return cacThangTrongKhoang(somNhat, den).reverse();
 }

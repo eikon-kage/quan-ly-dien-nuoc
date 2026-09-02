@@ -11,6 +11,7 @@ import {
   khoangCuaSo,
   ngayNghiTrongSo,
 } from '../nghiepvu/soCong';
+import { CachSuaNgay, HopSuaNgay } from './HopSuaNgay';
 import { LichCong } from './LichCong';
 import { DauTrang, HangO, TheSo, ThanhDoan, theTrang } from './ThanhPhan';
 import { Bong, Co, Mau, PhongChu } from './thietKe';
@@ -31,8 +32,15 @@ import { Bong, Co, Mau, PhongChu } from './thietKe';
  * chứ không dựng trên `DuLieuChamCong` như bên chủ. Không có tiền trong tay thì không có
  * đường nào lỡ hiện tiền ra.
  *
- * Chỉ xem, không sửa: chấm và chấm bù vẫn ở màn hình chính, giữ đúng một chỗ chấm cho một
- * buổi. Hai chỗ chấm được cùng một buổi là hai chỗ để bấm nhầm.
+ * Sửa được ngay tại đây: chạm một ô trên tờ lịch — hay một dòng trong danh sách bên dưới —
+ * là mở hộp chấm cho đúng ngày ấy.
+ *
+ * > Bản đầu **cố ý chỉ cho xem**, lấy lý do "giữ đúng một chỗ chấm cho một buổi, hai chỗ
+ * > chấm được cùng một buổi là hai chỗ để bấm nhầm". Chủ dự án yêu cầu bỏ: đây đúng là chỗ
+ * > thợ nhìn ra chỗ sai — mở tháng trước ra soát rồi thấy mùng mười trống — mà chữa lại thì
+ * > phải lui ra, đổi bộ lọc ở màn hình chính sang đúng tháng ấy, rồi dò lại cái ngày mình
+ * > vừa nhìn thấy. Lo bấm nhầm thì bấm nhầm sửa được bằng đúng thao tác vừa rồi, còn lạc
+ * > đường thì không.
  *
  * Vẽ **đè thẳng lên chỗ của màn hình chính** chứ không bọc trong `Modal`, giống màn hình đối
  * chiếu: cửa sổ của `Modal` là một cửa sổ khác, nằm ngoài `SafeAreaView` của App, nên đầu
@@ -52,6 +60,12 @@ interface Props {
   /** Sổ chủ gửi xuống, có thì mỗi ngày lệch được đánh dấu. Chưa nhận được thì null. */
   soChu: SoCong | null;
   homNay: string;
+  /**
+   * Cho chấm và sửa ngay trên màn hình này. Không truyền thì cả tờ lịch lẫn danh sách chỉ
+   * để đọc — dáng cũ của màn hình, vẫn dùng được ở chỗ nào chỉ đưa sổ vào mà không đưa
+   * đường ghi.
+   */
+  suaNgay?: CachSuaNgay;
   onDong: () => void;
 }
 
@@ -60,7 +74,9 @@ function ngayNgan(ngay: string): string {
   return Ngay.ngayGon(ngay).slice(0, 5);
 }
 
-export function ManHinhSoCuaToi({ so, soChu, homNay, onDong }: Props) {
+export function ManHinhSoCuaToi({ so, soChu, homNay, suaNgay, onDong }: Props) {
+  /** Ngày đang mở hộp sửa; null là chưa mở. */
+  const [ngaySua, datNgaySua] = useState<string | null>(null);
   /** Ngày nào cũng được, miễn nằm trong tháng đang xem — lấy tháng của nó ra dùng. */
   const [mocThang, datMocThang] = useState(homNay);
   const [doan, datDoan] = useState('thang');
@@ -218,7 +234,15 @@ export function ManHinhSoCuaToi({ so, soChu, homNay, onDong }: Props) {
             Vẫn vẽ trọn tháng dù đang lọc nửa tháng: ngày ngoài khoảng thành ô trắng, nhìn
             ra ngay phần nào đang tính. Cắt tờ lịch cho vừa khoảng thì mất chỗ dựa của mắt.
           */}
-          <LichCong nam={nam} thang={thang} ngayCongs={ngayCongs} ngayNghis={ngayNghis} />
+          <LichCong
+            nam={nam}
+            thang={thang}
+            ngayCongs={ngayCongs}
+            ngayNghis={ngayNghis}
+            onChonNgay={suaNgay && datNgaySua}
+            // Máy thợ không chấm trước cho ngày chưa tới — xem `denNgayChon`.
+            denNgayChon={homNay}
+          />
         </View>
 
         <Text style={kieu.tieuDeMuc}>Chi tiết từng ngày</Text>
@@ -234,11 +258,24 @@ export function ManHinhSoCuaToi({ so, soChu, homNay, onDong }: Props) {
                 ngay={ngay}
                 laHomNay={ngay.ngay === homNay}
                 soLech={lechTheoNgay.get(ngay.ngay)?.length ?? 0}
+                onPress={suaNgay && (() => datNgaySua(ngay.ngay))}
               />
             ))
           )}
+
+          {/*
+            Một dòng mách nhỏ dưới danh sách: chạm vào để sửa là chuyện không nhìn ra được,
+            mà tờ lịch ngay trên cũng chạm được y như vậy.
+          */}
+          {suaNgay !== undefined && cacDong.length > 0 && (
+            <Text style={kieu.chuMach}>Chạm vào một ngày để chấm hoặc sửa ngày ấy.</Text>
+          )}
         </View>
       </ScrollView>
+
+      {suaNgay !== undefined && ngaySua !== null && (
+        <HopSuaNgay ngay={ngaySua} sua={suaNgay} onDong={() => datNgaySua(null)} />
+      )}
     </View>
   );
 }
@@ -280,16 +317,18 @@ function DongNgay({
   ngay,
   laHomNay,
   soLech,
+  onPress,
 }: {
   ngay: NgayTrongSo;
   laHomNay: boolean;
   soLech: number;
+  onPress?: () => void;
 }) {
   const nghi = ngay.tongCong === 0;
   const buoi = (soCong: number | null) => (soCong === null ? '—' : Ngay.soCong(soCong));
 
-  return (
-    <View style={[kieu.dongNgay, laHomNay && kieu.dongHomNay]}>
+  const noiDung = (
+    <>
       <View style={kieu.coNgay}>
         <Text style={kieu.chuNgay}>{ngayNgan(ngay.ngay)}</Text>
         <Text style={kieu.chuThu}>{laHomNay ? 'Hôm nay' : Ngay.thu(ngay.ngay)}</Text>
@@ -310,7 +349,23 @@ function DongNgay({
       </View>
 
       {!nghi && <Text style={kieu.chuTongCong}>{Ngay.soCong(ngay.tongCong)} công</Text>}
-    </View>
+    </>
+  );
+
+  if (onPress === undefined) {
+    return <View style={[kieu.dongNgay, laHomNay && kieu.dongHomNay]}>{noiDung}</View>;
+  }
+
+  return (
+    <Pressable
+      style={[kieu.dongNgay, kieu.dongSuaDuoc, laHomNay && kieu.dongHomNay]}
+      onPress={onPress}
+      accessibilityLabel={`${Ngay.thuVaNgay(ngay.ngay)}, ${
+        nghi ? 'nghỉ' : `${Ngay.soCong(ngay.tongCong)} công`
+      }. Chạm để sửa.`}
+    >
+      {noiDung}
+    </Pressable>
   );
 }
 
@@ -352,6 +407,8 @@ const kieu = StyleSheet.create({
     paddingHorizontal: 6,
     borderRadius: Co.boNho,
   },
+  // Dòng chạm được thì cao hơn một chút cho vừa đầu ngón tay.
+  dongSuaDuoc: { minHeight: 44 },
   // Hôm nay tô nền nhạt: cuộn xuống một tháng rồi cuộn lên vẫn tìm lại được chỗ mình đứng.
   dongHomNay: { backgroundColor: Mau.chinhNhat },
   coNgay: { width: 66 },
@@ -365,4 +422,13 @@ const kieu = StyleSheet.create({
   chuTongCong: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.xanhLa },
 
   chuTrong: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+  chuMach: {
+    fontSize: Co.chuNho,
+    fontFamily: PhongChu.thuong,
+    color: Mau.xam,
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Mau.vien,
+  },
 });

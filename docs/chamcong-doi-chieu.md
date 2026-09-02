@@ -164,6 +164,16 @@ theo đúng thứ tự thợ cần:
    vẫn không thấy tuần nào đi nhiều tuần nào đi ít. Giờ thứ và ngày nằm chung một cột hẹp bên
    trái, hai ô chấm cùng dòng, Chủ Nhật ghi đỏ như lịch treo tường.
 
+   Cạnh nhãn mục có **nút lọc theo tháng**, mang sẵn chữ của khoảng đang xem (*14 ngày gần
+   đây* hay *Tháng 7/2026*). Bấm là mở tờ lịch cả tháng — cùng
+   [HopChonNgay](../mobile/src/giaodien/HopChonNgay.tsx) với màn hình của chủ, mỗi ô ghi số
+   công của chính thợ ngày ấy — chọn một ngày thì danh sách chạy trọn tháng của nó, dừng ở
+   hôm nay. Vì sao cần: mười bốn ngày là đủ để chấm hằng ngày, nhưng thợ nhớ ra hôm mùng năm
+   tháng trước mình có đi mà quên chấm thì **không còn ô nào để bấm** — đường duy nhất là nhờ
+   chủ sửa hộ, hoặc gõ một bảng Excel rồi nhập vào. Lọc rồi thì có nút *Gần đây* để về, y như
+   nút *Hôm nay* bên máy chủ; và **không đi quá tháng này** — chấm bù là chuyện của những ngày
+   đã qua, tháng sau mở ra chỉ là tờ lịch trắng.
+
 Tổng của thẻ *Tuần này* tính **cả hôm nay**, dù hôm nay không nằm trong danh sách (nó đã có
 thẻ riêng ở trên). Đếm theo mấy dòng đang hiện thì con số ấy lại khác ô tóm tắt, hai chỗ trên
 cùng một màn hình nói hai kiểu.
@@ -173,9 +183,11 @@ Cả màn hình **không có một con số tiền nào** — xem `ketNap` trong
 
 ## Máy thợ xem sổ của mình theo tháng
 
-Màn hình chính của máy thợ chỉ có **14 ngày gần đây** — đủ để chấm và chấm bù, nhưng thợ
-thắc mắc thì hay thắc mắc chuyện *tháng trước*: "hôm mùng mười tôi có đi không". Trước đây
-thợ không có đường nào xem, phải nhờ chủ mở máy ra tra hộ. Giờ có
+Màn hình chính của máy thợ mở ra là **14 ngày gần đây** — lọc sang tháng cũ thì chấm bù được,
+nhưng đó vẫn là danh sách để *bấm*, không phải chỗ tra: không có tờ lịch cả tháng, không có
+số ngày đi làm / ngày nghỉ, cũng không có chỗ nào so với sổ chủ. Mà thợ thắc mắc thì hay thắc
+mắc chuyện *tháng trước*: "hôm mùng mười tôi có đi không". Trước đây thợ không có đường nào
+xem, phải nhờ chủ mở máy ra tra hộ. Giờ có
 [ManHinhSoCuaToi](../mobile/src/giaodien/ManHinhSoCuaToi.tsx), mở từ dòng *Sổ công của tôi*.
 
 Dựng **giống màn hình chi tiết một thợ bên máy chủ**: cùng [tờ lịch](../mobile/src/giaodien/LichCong.tsx),
@@ -190,9 +202,16 @@ kể cả khi sổ trong máy còn sót mốc lương từ lúc máy này từng
 
 Hai chỗ khác cũng đáng ghi:
 
-- **Chỉ xem, không sửa.** Chấm và chấm bù vẫn ở màn hình chính — hai chỗ chấm được cùng một
-  buổi là hai chỗ để bấm nhầm. Ngày nào lệch sổ chủ thì có dấu đỏ ngay trên dòng, còn sửa thì
-  sang màn hình đối chiếu.
+- **Chấm bù được ngay tại đây.** Chạm một ô trên tờ lịch — hay một dòng trong danh sách bên
+  dưới — là mở [hộp sửa một ngày](../mobile/src/giaodien/HopSuaNgay.tsx), cùng cái hộp bên
+  máy chủ dùng. Bản đầu **cố ý chỉ cho xem**, lấy lý do "hai chỗ chấm được cùng một buổi là
+  hai chỗ để bấm nhầm"; chủ dự án yêu cầu bỏ, vì đây đúng là chỗ thợ *nhìn ra* ngày trống —
+  mở tháng trước ra soát rồi thấy mùng mười không có gì — mà chữa lại thì phải lui về màn
+  hình chính, đổi bộ lọc sang đúng tháng ấy, rồi dò lại cái ngày mình vừa nhìn thấy. Bấm
+  nhầm thì bấm lại là xong (điều 7), còn lạc đường thì không. **Ngày chưa tới vẫn không chạm
+  được**: buổi chấm cho ngày mai nằm ngoài khoảng sổ khai là đầy đủ nên gói gửi lên nhóm
+  không mang nó theo, thợ bấm xong lại không thấy đâu. Ngày nào lệch sổ chủ thì vẫn có dấu
+  đỏ trên dòng, và sửa cho khớp hai sổ vẫn là việc của màn hình đối chiếu.
 - **Mũi tên đổi tháng tắt ở hai đầu** theo đúng khoảng sổ khai là đầy đủ. Cho lùi mãi thì thợ
   xem được mười tờ lịch trắng rồi tưởng máy mất dữ liệu — mà ngoài khoảng ấy là *không biết*,
   chứ không phải không đi làm.

@@ -34,6 +34,18 @@ interface Props {
   nhom: DieuKhienNhom;
 }
 
+/**
+ * Nút *Nhập từ Excel* của máy chủ — tạm ẩn theo yêu cầu.
+ *
+ * Ẩn bằng một cờ chứ không xoá: cả đường nhập (`ManHinhNhapExcel`, bộ đọc `nhapExcel.ts`,
+ * file mẫu) vẫn còn nguyên và vẫn được kiểm thử, bật lại chỉ là đổi một chữ. Xoá đi thì
+ * lần cần lại phải dựng lại đúng cụm ấy — mà nó là đường duy nhất đưa được cả tháng công
+ * cũ vào app.
+ *
+ * Máy thợ vẫn có nút này: xem `ManHinhThoTuCham`.
+ */
+const HIEN_NHAP_EXCEL = false;
+
 /** Trạng thái của nút xuất Excel. */
 type TrangThaiXuat = 'ranh' | 'dangLam' | 'loi';
 
@@ -233,17 +245,20 @@ export function ManHinhTho({
           {/*
             Hai chiều của Excel đứng cạnh nhau thành một hàng, mỗi nút một nửa bề ngang:
             xếp dọc thành hai nút to thì chân trang cao thêm gần một nút nữa, mà chân trang
-            cao lên là danh sách thợ — thứ người dùng vào đây để xem — ngắn đi.
+            cao lên là danh sách thợ — thứ người dùng vào đây để xem — ngắn đi. Ẩn một
+            chiều thì `nutNua` cho chiều còn lại ăn trọn hàng, không phải sửa gì thêm.
           */}
           <View style={kieu.hangNut}>
-            <Pressable
-              style={[kieu.nutXuat, kieu.nutNua]}
-              onPress={() => datMoNhap(true)}
-              accessibilityRole="button"
-            >
-              <Feather name="file-plus" size={16} color={Mau.chinh} />
-              <Text style={kieu.chuNutXuat}>Nhập từ Excel</Text>
-            </Pressable>
+            {HIEN_NHAP_EXCEL && (
+              <Pressable
+                style={[kieu.nutXuat, kieu.nutNua]}
+                onPress={() => datMoNhap(true)}
+                accessibilityRole="button"
+              >
+                <Feather name="file-plus" size={16} color={Mau.chinh} />
+                <Text style={kieu.chuNutXuat}>Nhập từ Excel</Text>
+              </Pressable>
+            )}
 
             <Pressable
               style={[kieu.nutXuat, kieu.nutNua, dangXuat === 'dangLam' && kieu.nutXuatMo]}
@@ -333,7 +348,7 @@ export function ManHinhTho({
         />
       )}
 
-      {moNhap && (
+      {HIEN_NHAP_EXCEL && moNhap && (
         <ManHinhNhapExcel duLieu={duLieu} capNhat={capNhat} onDong={() => datMoNhap(false)} />
       )}
 

@@ -13,6 +13,7 @@ import {
   thoDangLam,
 } from '../nghiepvu/thaoTac';
 import { HopChon } from './HopChon';
+import { HopChonNgay } from './HopChonNgay';
 import { HopNhapChu } from './HopNhapChu';
 import { HopNhapSo } from './HopNhapSo';
 import { NutChip, theTrang } from './ThanhPhan';
@@ -31,6 +32,12 @@ interface Props {
 
 export function ManHinhChamCong({ duLieu, capNhat }: Props) {
   const [ngay, datNgay] = useState(Ngay.homNay());
+  /**
+   * Tháng đang mở trong tờ lịch chọn ngày; null là chưa mở. Giữ nguyên một ngày bất kỳ
+   * trong tháng ấy chứ không giữ riêng năm với tháng — cộng trừ tháng bằng `congNgay` là
+   * xong, khỏi tự lo chuyện tháng 12 sang tháng 1.
+   */
+  const [mocLich, datMocLich] = useState<string | null>(null);
   const [dangSua, datDangSua] = useState<DangSua | null>(null);
   const [goSoCong, datGoSoCong] = useState(false);
   /** Đang mở hộp ghi chú cho thợ nào, ngày đang xem. */
@@ -62,6 +69,23 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
 
   function chonNgay(ngayMoi: string) {
     datNgay(ngayMoi);
+  }
+
+  /**
+   * Lùi / tới một tháng trong tờ lịch. Nhảy qua hẳn mép tháng đang xem chứ không cộng 30
+   * ngày: cộng ngày thì tháng thiếu tháng thừa sẽ có lúc nhảy vọt qua cả một tháng.
+   */
+  function doiThangLich(buoc: -1 | 1) {
+    if (mocLich === null) {
+      return;
+    }
+
+    const { nam, thang } = Ngay.tach(mocLich);
+    datMocLich(
+      buoc === -1
+        ? Ngay.congNgay(Ngay.ghep(nam, thang, 1), -1)
+        : Ngay.congNgay(Ngay.ghep(nam, thang, Ngay.soNgayTrongThang(nam, thang)), 1),
+    );
   }
 
   /** Chạm ô đang xanh là bỏ chấm — sửa nhầm bằng đúng thao tác vừa rồi. */
@@ -144,9 +168,24 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
       */}
       <View style={kieu.dauTrang}>
         <View style={kieu.giuaDauTrang}>
-          <Text style={kieu.chuNgay} numberOfLines={1}>
-            {Ngay.thuVaNgay(ngay)}
-          </Text>
+          {/*
+            Ngày đang xem chính là nút mở tờ lịch. Hai nút *Tuần* chỉ đi được từng tuần
+            một: muốn xem lại tháng trước thì phải bấm năm sáu lần, mà xa hơn nữa thì
+            người dùng bỏ cuộc trước khi tới nơi. Có mũi tên xuống với dấu lịch để nó
+            trông ra một thứ bấm được, chứ không phải một dòng tiêu đề.
+          */}
+          <Pressable
+            style={kieu.nutNgay}
+            onPress={() => datMocLich(ngay)}
+            accessibilityRole="button"
+            accessibilityLabel={`${Ngay.thuVaNgay(ngay)}. Chạm để chọn ngày khác.`}
+          >
+            <Feather name="calendar" size={15} color={Mau.chinh} />
+            <Text style={kieu.chuNgay} numberOfLines={1}>
+              {Ngay.thuVaNgay(ngay)}
+            </Text>
+            <Feather name="chevron-down" size={16} color={Mau.xam} />
+          </Pressable>
           {dangXemNgayKhac && (
             <Pressable
               style={kieu.nutHomNay}
@@ -298,6 +337,26 @@ export function ManHinhChamCong({ duLieu, capNhat }: Props) {
             datGoSoCong(false);
             datDangSua(null);
           }}
+        />
+      )}
+
+      {/*
+        Tờ lịch cả tháng, mỗi ô ghi luôn số công cả tổ ngày ấy: mở ra là thấy tháng trước
+        ngày nào đã chấm ngày nào chưa, chạm một cái là sang đúng ngày cần xem hay chấm bù.
+      */}
+      {mocLich !== null && (
+        <HopChonNgay
+          tieuDe="Xem ngày nào?"
+          nam={Ngay.tach(mocLich).nam}
+          thang={Ngay.tach(mocLich).thang}
+          ngayDangChon={ngay}
+          congMoiNgay={congMoiNgay}
+          onDoiThang={doiThangLich}
+          onChon={(ngayMoi) => {
+            chonNgay(ngayMoi);
+            datMocLich(null);
+          }}
+          onDong={() => datMocLich(null)}
         />
       )}
 
@@ -487,6 +546,17 @@ const kieu = StyleSheet.create({
     paddingBottom: 10,
   },
   giuaDauTrang: { flex: 1, alignItems: 'flex-start', gap: 6 },
+  // Nút ngày dính sát mép trái như dòng tiêu đề cũ, nên lề trái trừ đi phần đệm của nút.
+  nutNgay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    minHeight: 34,
+    marginLeft: -8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: Co.bo,
+  },
   // Nút trắng nổi bằng bóng, giống nút icon bên phải đầu trang của bản thiết kế.
   nutTuan: {
     minWidth: 52,
