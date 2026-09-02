@@ -621,6 +621,38 @@ máy iOS/Android lại không có vòng ấy — ba bản khác hẳn nhau. Vòn
 Biểu mẫu thêm/sửa thợ cũng `behavior="padding"` cho cả hai hệ, bọc một `ScrollView` có
 `keyboardShouldPersistTaps="handled"` để bấm được nút *Lưu* ngay khi bàn phím còn mở.
 
+**Bản web phải tự đo bàn phím.** Bốn điều trên chỉ đúng trên máy: bên web
+`KeyboardAvoidingView` **không đẩy được gì cả**, vì nó nghe `Keyboard` của react-native mà
+`Keyboard` của react-native-web là một cái vỏ rỗng — bàn phím ảo mở ra không bắn sự kiện nào.
+Hộp cứ dính đáy, nên gõ số tiền ứng trên iPhone thì bàn phím che đúng cái ô đang gõ: người
+dùng gõ mà không thấy mình gõ gì, cũng không thấy dòng đọc lại *"500.000 đ"* — thứ vốn để bắt
+lỗi thừa thiếu số 0.
+
+Chữa bằng [`dungCaoBanPhim`](../mobile/src/giaodien/dungCaoBanPhim.ts): trả về phần đáy đang
+bị bàn phím che, và `HopDay` lấy con số ấy làm đệm đáy. Bản máy luôn trả 0 —
+`KeyboardAvoidingView` đã lo, cộng thêm một khoảng nữa là đẩy hai lần và hộp bay quá đầu bàn
+phím. Bản web ([`dungCaoBanPhim.web.ts`](../mobile/src/giaodien/dungCaoBanPhim.web.ts)) đo
+bằng `window.visualViewport`:
+
+```
+innerHeight − visualViewport.height − visualViewport.offsetTop
+```
+
+Ba chỗ dễ sai, đều đã chốt thành bài kiểm thử:
+
+1. **Không lấy `innerHeight` làm thước.** Safari trên iOS *không* co khung trang khi bàn phím
+   mở — `innerHeight` giữ nguyên, chỉ phần nhìn thấy được nhỏ lại. Đo bằng `innerHeight` thì
+   ra 0, tức là không chữa gì.
+2. **Phải trừ cả `offsetTop`.** Safari còn đẩy trôi phần nhìn thấy lên; bỏ khoảng trôi ấy ra
+   khỏi phép tính là hộp bị đẩy quá tay đúng bằng nó. Cú trôi này chỉ bắn `scroll` chứ không
+   bắn `resize`, nên phải nghe cả hai — thiếu `scroll` thì hộp lên đúng chỗ rồi lệch lại ngay.
+3. **Có ngưỡng 48 điểm.** Cuộn trang một cái là Safari thu gọn thanh địa chỉ, phần nhìn thấy
+   cũng hụt đi vài chục điểm; không có ngưỡng thì hộp nhấp nhổm theo mỗi cú cuộn. Bàn phím
+   thật bao giờ cũng cao hơn ngưỡng ấy nhiều lần.
+
+Trên Android/Chrome thì phép tính này ra gần 0 vì trình duyệt co hẳn khung trang — và đúng
+như vậy: ở đó trình duyệt đã đẩy hộ rồi.
+
 **Lề an toàn trong cửa sổ mở đè** — bốn màn hình mở đè lên màn hình chính (chi tiết một thợ,
 chi tiết kỳ, quyết toán, nhập từ Excel) dùng chung vỏ
 [`ManHinhDe`](../mobile/src/giaodien/ManHinhDe.tsx). Vỏ này có để chữa một lỗi đã thấy trên

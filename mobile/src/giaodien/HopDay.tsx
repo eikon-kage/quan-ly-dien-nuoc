@@ -17,6 +17,12 @@
  * 4. Đệm đáy lấy từ `useSafeAreaInsets()` chứ không viết cứng: máy có vạch home và máy có
  *    nút bấm chừa ra hai khoảng khác nhau.
  *
+ * 5. **Bản web phải tự đo bàn phím** — `dungCaoBanPhim` trả về phần đáy đang bị bàn phím ảo
+ *    che, và chỗ ấy thành đệm đáy. Trên máy nó luôn là 0 vì `KeyboardAvoidingView` đã lo;
+ *    bên web `KeyboardAvoidingView` **không lo được gì cả** (`Keyboard` của
+ *    react-native-web là vỏ rỗng, không bắn sự kiện nào) nên hộp cứ dính đáy và bàn phím
+ *    che đúng cái ô đang gõ. Xem [dungCaoBanPhim.web.ts](./dungCaoBanPhim.web.ts).
+ *
  * `statusBarTranslucent` kèm `navigationBarTranslucent` để nền mờ phủ luôn thanh trạng thái
  * và thanh điều hướng. Bản cũ chừa hai dải ấy sáng nguyên, nhìn như hộp bị hụt.
  */
@@ -25,6 +31,7 @@ import { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { dungCaoBanPhim } from './dungCaoBanPhim';
 import { Mau } from './thietKe';
 
 export function HopDay({
@@ -38,6 +45,7 @@ export function HopDay({
   onDong: () => void;
 }) {
   const le = useSafeAreaInsets();
+  const caoBanPhim = dungCaoBanPhim();
 
   return (
     <Modal
@@ -52,7 +60,7 @@ export function HopDay({
       <Pressable style={kieu.nenMo} onPress={onDong} accessibilityLabel="Đóng" />
 
       <KeyboardAvoidingView
-        style={[StyleSheet.absoluteFill, kieu.donXuongDay]}
+        style={[StyleSheet.absoluteFill, kieu.donXuongDay, { paddingBottom: caoBanPhim }]}
         behavior="padding"
         pointerEvents="box-none"
       >
