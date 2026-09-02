@@ -37,7 +37,7 @@ function dung(
   duLieu: DuLieuChamCong,
   thoId: string,
   homNay = CUOI_KY,
-  suaUng?: { ghi: jest.Mock; xoa: jest.Mock },
+  suaUng?: { them: jest.Mock; ghi: jest.Mock; xoa: jest.Mock },
   suaNgay?: CachSuaNgay,
 ) {
   return render(
@@ -273,6 +273,9 @@ describe('màn hình báo cáo một thợ', () => {
     // Kỳ đã chốt mở qua đây: không mách chạm được, mà chạm cũng không ra hộp nào.
     expect(screen.queryByText('Chạm vào một dòng để sửa hoặc xoá.')).toBeNull();
     expect(screen.queryByLabelText(/chạm để sửa/)).toBeNull();
+    // Cũng không có nút ứng thêm: ghi thêm một lần ứng vào kỳ đã chốt là làm lệch tờ
+    // quyết toán đã trao tay, đúng lý do danh sách trên kia chỉ để đọc.
+    expect(screen.queryByLabelText('Anh Tuấn ứng tiền')).toBeNull();
   });
 
   test('ứng quá tiền công thì còn phải trả là số âm', () => {
@@ -286,11 +289,65 @@ describe('màn hình báo cáo một thợ', () => {
   });
 });
 
+describe('ghi thêm một lần ứng', () => {
+  function moHopThem() {
+    const { duLieu, thoId } = khoCoTho();
+    const suaUng = { them: jest.fn(), ghi: jest.fn(), xoa: jest.fn() };
+
+    dung(duLieu, thoId, CUOI_KY, suaUng);
+    fireEvent.press(screen.getByLabelText('Anh Tuấn ứng tiền'));
+
+    return suaUng;
+  }
+
+  test('có nút ứng tiền ngay dưới danh sách, cả khi chưa ứng lần nào', () => {
+    const { duLieu, thoId } = khoCoTho();
+    dung(duLieu, thoId, CUOI_KY, { them: jest.fn(), ghi: jest.fn(), xoa: jest.fn() });
+
+    expect(screen.getByText('Tháng này chưa ứng lần nào.')).toBeTruthy();
+    expect(screen.getByLabelText('Anh Tuấn ứng tiền')).toBeTruthy();
+  });
+
+  test('bấm là mở hộp nhập, ghi tên thợ lên đầu', () => {
+    moHopThem();
+
+    expect(screen.getByText('Anh Tuấn ứng tiền')).toBeTruthy();
+  });
+
+  test('gõ số tiền và ghi chú rồi bấm Ghi', () => {
+    const suaUng = moHopThem();
+
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 500000'), '500000');
+    fireEvent.changeText(screen.getByPlaceholderText('Ví dụ: ứng đổ xăng'), 'ứng đổ xăng');
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(suaUng.them).toHaveBeenCalledWith(500_000, 'ứng đổ xăng');
+  });
+
+  test('ghi xong thì hộp đóng lại', () => {
+    const suaUng = moHopThem();
+
+    fireEvent.changeText(screen.getByLabelText('Ví dụ 500000'), '500000');
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(suaUng.them).toHaveBeenCalled();
+    expect(screen.queryByText('Anh Tuấn ứng tiền')).toBeNull();
+  });
+
+  test('số tiền để trống thì nút Ghi không ăn', () => {
+    const suaUng = moHopThem();
+
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(suaUng.them).not.toHaveBeenCalled();
+  });
+});
+
 describe('sửa lịch sử ứng tiền', () => {
   function moHopSua() {
     let { duLieu, thoId } = khoCoTho();
     duLieu = themUng(duLieu, thoId, '2026-08-05', 5_000_000, 'ứng đổ xăng');
-    const suaUng = { ghi: jest.fn(), xoa: jest.fn() };
+    const suaUng = { them: jest.fn(), ghi: jest.fn(), xoa: jest.fn() };
     const ungId = duLieu.ungTiens[0].id;
 
     dung(duLieu, thoId, CUOI_KY, suaUng);

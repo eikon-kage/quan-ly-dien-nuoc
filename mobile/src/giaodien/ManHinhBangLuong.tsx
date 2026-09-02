@@ -227,6 +227,10 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
             // Kỳ này chưa chốt nên sửa lại lịch sử ứng được: gõ nhầm số tiền, ghi muộn nên
             // lệch ngày, hay ghi hai lần cùng một lần đưa tiền.
             suaUng={{
+              // Ứng ghi vào hôm nay, y như nút Ứng tiền ngoài danh sách — ghi muộn mấy hôm
+              // thì chữa lại ngày bằng chính hộp sửa ngay bên trên.
+              them: (soTien, ghiChu) =>
+                capNhat(themUng(duLieu, xemBaoCao, homNay, soTien, ghiChu)),
               ghi: (ungId, ngay, soTien, ghiChu) =>
                 capNhat(suaUng(duLieu, ungId, ngay, soTien, ghiChu)),
               xoa: (ungId) => capNhat(xoaUng(duLieu, ungId)),

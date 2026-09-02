@@ -6,12 +6,13 @@ import { BaoCaoTho } from '../nghiepvu/baoCao';
 import { UngTien } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { HopChonNgay } from './HopChonNgay';
+import { HopNhapSo } from './HopNhapSo';
 import { CachSuaNgay, HopSuaNgay } from './HopSuaNgay';
 import { HopSuaUng } from './HopSuaUng';
 import { LichCong } from './LichCong';
 import { ManHinhDe } from './ManHinhDe';
 import { DauTrang, HangO, TheSo, ThanhDoan, theTrang } from './ThanhPhan';
-import { Bong, Co, Mau, PhongChu } from './thietKe';
+import { Bong, Co, Mau, PhongChu, Tuoi } from './thietKe';
 
 interface Props {
   /**
@@ -24,15 +25,19 @@ interface Props {
   tuNgayDau: string;
   denNgayDau: string;
   /**
-   * Cho sửa lịch sử ứng tiền: chạm một dòng ứng là mở hộp sửa số tiền, ngày, ghi chú,
-   * hoặc xoá hẳn lần ứng ấy.
+   * Cho ghi và sửa lịch sử ứng tiền: nút *Ứng tiền* dưới danh sách ghi thêm một lần, chạm
+   * một dòng ứng là mở hộp sửa số tiền, ngày, ghi chú, hoặc xoá hẳn lần ứng ấy.
    *
    * Không truyền thì danh sách ứng **chỉ để đọc** — đó là màn hình kỳ đã chốt, nơi mỗi
-   * dòng ứng đã được đếm vào một tờ quyết toán đã trao tay. Hai hàm đi thành một cụm chứ
-   * không thành hai prop rời: cả hai cùng nằm trong một hộp, có cái này mà thiếu cái kia
-   * thì hộp ấy mở ra hỏng một nửa.
+   * dòng ứng đã được đếm vào một tờ quyết toán đã trao tay. Ba hàm đi thành một cụm chứ
+   * không thành ba prop rời: cả ba cùng mở ra từ một chỗ, có cái này mà thiếu cái kia
+   * thì chỗ ấy hỏng một nửa.
+   *
+   * `them` tự chọn ngày ghi (bên gọi lấy hôm nay, y như nút ứng bên Bảng lương) — màn hình
+   * này chỉ hỏi số tiền và ghi chú, ngày lệch thì chữa lại bằng chính hộp sửa ở trên.
    */
   suaUng?: {
+    them: (soTien: number, ghiChu: string) => void;
     ghi: (ungId: string, ngay: string, soTien: number, ghiChu: string) => void;
     xoa: (ungId: string) => void;
   };
@@ -94,6 +99,7 @@ export function ManHinhBaoCaoTho({
   const [denNgay, datDenNgay] = useState(denNgayDau);
   const [dangChon, datDangChon] = useState<'tu' | 'den' | null>(null);
   const [dangSuaUng, datDangSuaUng] = useState<UngTien | null>(null);
+  const [dangThemUng, datDangThemUng] = useState(false);
   /** Ngày đang mở hộp sửa; null là chưa mở. */
   const [ngaySua, datNgaySua] = useState<string | null>(null);
 
@@ -327,6 +333,29 @@ export function ManHinhBaoCaoTho({
               )}
             </>
           )}
+
+          {/*
+            Nút ứng tiền nằm ngay dưới danh sách ứng của người này, không phải chỉ ở Bảng
+            lương: chỗ người ta nhìn ra "thợ này đã ứng mấy lần rồi" cũng chính là chỗ hay
+            phải ghi thêm một lần nữa — trước đây phải thoát ra, tìm lại đúng dòng thợ ấy
+            bên Bảng lương rồi mới ghi được.
+
+            Chỉ hiện khi sửa được: kỳ đã chốt thì thêm một lần ứng vào là làm lệch tờ quyết
+            toán đã trao tay, đúng lý do danh sách trên kia chỉ để đọc.
+          */}
+          {suaUng !== undefined && (
+            <Pressable
+              style={kieu.nutUng}
+              onPress={() => datDangThemUng(true)}
+              accessibilityRole="button"
+              // Chữ trên nút trùng với tên mục ngay trên đầu thẻ, nên nhãn đọc cho máy đọc
+              // màn hình gọi kèm tên thợ — nghe ra ngay là ghi ứng cho ai.
+              accessibilityLabel={`${tho.ten} ứng tiền`}
+            >
+              <Feather name="arrow-up-right" size={16} color={Mau.chinh} />
+              <Text style={kieu.chuNutUng}>Ứng tiền</Text>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
 
@@ -347,6 +376,20 @@ export function ManHinhBaoCaoTho({
           tenTho={tho.ten}
           sua={suaNgay}
           onDong={() => datNgaySua(null)}
+        />
+      )}
+
+      {suaUng !== undefined && dangThemUng && (
+        <HopNhapSo
+          tieuDe={`${tho.ten} ứng tiền`}
+          moTa="Thợ ứng bao nhiêu?"
+          goiY="Ví dụ 500000"
+          oChu={{ nhan: 'Ghi chú (không bắt buộc)', goiY: 'Ví dụ: ứng đổ xăng' }}
+          onGhi={(soTien, ghiChu) => {
+            suaUng.them(soTien, ghiChu);
+            datDangThemUng(false);
+          }}
+          onDong={() => datDangThemUng(false)}
         />
       )}
 
@@ -497,6 +540,21 @@ const kieu = StyleSheet.create({
   chuTienUng: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.do },
 
   chuTrong: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+  nutUng: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: Co.caoNut,
+    marginTop: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: Co.bo,
+    borderWidth: 1,
+    borderColor: Tuoi.chinh,
+    backgroundColor: Mau.chinhNhat,
+  },
+  chuNutUng: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, color: Mau.chinh },
   chuMach: {
     fontSize: Co.chuNho,
     fontFamily: PhongChu.thuong,
