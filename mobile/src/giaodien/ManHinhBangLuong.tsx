@@ -5,7 +5,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DuLieuChamCong, Tho } from '../nghiepvu/kieu';
 import { baoCaoKyHienTai, kyHienTai } from '../nghiepvu/ky';
 import * as Ngay from '../nghiepvu/ngayViet';
-import { themUng } from '../nghiepvu/thaoTac';
+import { suaUng, themUng, xoaUng } from '../nghiepvu/thaoTac';
 import { HopNhapSo } from './HopNhapSo';
 import { ManHinhBaoCaoTho } from './ManHinhBaoCaoTho';
 import { ManHinhQuyetToan } from './ManHinhQuyetToan';
@@ -167,6 +167,13 @@ export function ManHinhBangLuong({ duLieu, capNhat }: Props) {
           dungBaoCao={(tu, den) => baoCaoKyHienTai(duLieu, xemBaoCao, homNay, tu, den)}
           tuNgayDau={ky.tuNgay}
           denNgayDau={ky.denNgay}
+          // Kỳ này chưa chốt nên sửa lại lịch sử ứng được: gõ nhầm số tiền, ghi muộn nên
+          // lệch ngày, hay ghi hai lần cùng một lần đưa tiền.
+          suaUng={{
+            ghi: (ungId, ngay, soTien, ghiChu) =>
+              capNhat(suaUng(duLieu, ungId, ngay, soTien, ghiChu)),
+            xoa: (ungId) => capNhat(xoaUng(duLieu, ungId)),
+          }}
           onDong={() => datXemBaoCao(null)}
         />
       )}

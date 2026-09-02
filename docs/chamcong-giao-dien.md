@@ -300,6 +300,45 @@ Số đó suy ra được từ số công nhân đơn giá, mà tổng tiền c�
 Mỗi ô có nhãn cho trình đọc màn hình dạng `03/08 Thứ Hai, đi làm 1 công`, vì bản thân ô chỉ
 là một con số với một dấu tích, đọc trơn lên thì không rõ nghĩa.
 
+##### Sửa lại một lần ứng
+
+Danh sách ứng tiền ở cuối màn hình chi tiết **chạm được từng dòng** để mở hộp sửa
+([HopSuaUng.tsx](../mobile/src/giaodien/HopSuaUng.tsx)). Đây là đường duy nhất chữa một lần
+ứng đã ghi — trước đây ghi xong là nằm đấy, gõ thừa một số 0 thì cả kỳ sai theo.
+
+```
+┌──────────────────────────────────────────────┐
+│ Ứng tiền (2 lần)                             │
+│ 05/08  ứng đổ xăng          −500.000 đ    ✎  │   chạm cả dòng
+│ Thứ Ba                                       │
+│ 20/08  ứng mua thuốc        −200.000 đ    ✎  │
+│ Thứ Năm                                      │
+│ ────────────────────────────────────────────  │
+│ Chạm vào một dòng để sửa hoặc xoá.           │
+└──────────────────────────────────────────────┘
+```
+
+Hộp sửa có **ba thứ điền sẵn** — ngày, số tiền, ghi chú — và nút *Xoá lần ứng này*.
+
+Bốn điều đã cân nhắc ở đây:
+
+1. **Sửa được cả ngày**, không chỉ số tiền. Lúc thêm, ứng luôn lấy ngày hôm nay, nên nhớ ra
+   hôm sau mới ghi là ngày đã lệch — mà kỳ nửa tháng thì lệch một ngày có khi rơi sang kỳ
+   khác. Chạm dòng *Ngày ứng* là mở tờ lịch quen thuộc, **thay chỗ** hộp sửa chứ không chồng
+   lên trên: hộp này đã nằm trong modal của màn hình chi tiết rồi, mở thêm một modal thứ ba
+   nữa trên iOS là chuyện hên xui. Chữ đang gõ vẫn còn nguyên khi tờ lịch đóng lại.
+2. **Không đổi được thợ.** Ứng nhầm sang người khác thì xoá đi ghi lại — sửa thợ nghĩa là
+   chuyển tiền giữa hai bảng lương, mà lúc ấy người dùng không nhìn thấy đầu bên kia đổi
+   thế nào.
+3. **Xoá hẳn chứ không đánh dấu đã huỷ**, và hỏi lại một câu trước khi xoá. Để lại một dòng
+   gạch ngang trong sổ chỉ tổ làm người xem phân vân nó có được trừ hay không.
+4. **Ứng của kỳ đã chốt thì chỉ để đọc** — vào mục *Kỳ đã chốt* xem lại thì dòng ứng không
+   chạm được, cũng không có dòng mách ở dưới. Tờ quyết toán là bản chụp của một lần đã đếm
+   tiền trao tay: sửa số ứng bây giờ chỉ làm sổ nói khác tờ thợ đang cầm. Cần sửa thật thì
+   **bỏ chốt** kỳ ấy đã, rồi sửa, rồi chốt lại. `suaUng` và `xoaUng`
+   ([thaoTac.ts](../mobile/src/nghiepvu/thaoTac.ts)) chặn ngay ở lớp dữ liệu chứ không trông
+   vào giao diện không hiện nút.
+
 #### Quyết toán kỳ
 
 Nút **Quyết toán kỳ này** nằm ở chân màn hình Bảng lương, ngay dưới dòng tổng. Bấm không chốt
@@ -377,7 +416,8 @@ nói đúng như vậy.
 ### 4. Thợ
 
 Danh sách tên kèm tiền một công. Thêm/sửa thợ trên một biểu mẫu chữ to. Thợ nghỉ việc thì
-tắt *Đang làm* chứ không xoá — xoá là mất luôn bảng lương các tháng trước.
+tắt *Đang làm* chứ không xoá — xoá là mất luôn bảng lương các tháng trước. Xoá hẳn có, nhưng
+để tận đáy biểu mẫu và chỉ dành cho cái tên gõ nhầm; xem [Cho nghỉ hay xoá hẳn](#cho-nghỉ-hay-xoá-hẳn).
 
 ```
 ┌────────────────────────────────────┐
@@ -407,6 +447,48 @@ vẫn đúng mức tối thiểu Apple khuyên. Đừng hạ thêm.
 
 Dòng đếm dưới tiêu đề (*3 đang làm · 1 đã nghỉ*) để khỏi ngồi đếm danh sách; chưa có ai thì
 ghi thẳng *Chưa có ai* chứ không bỏ trống.
+
+#### Cho nghỉ hay xoá hẳn
+
+Hai việc khác hẳn nhau, mà người dùng hay nhầm là một:
+
+- **Cho nghỉ** — nút gạt *Đang làm* trong biểu mẫu sửa thợ. Tên biến khỏi màn hình chấm công,
+  nhưng vẫn nằm trong sổ: bảng lương các tháng trước, tờ quyết toán cũ, mọi buổi công đều
+  còn nguyên. **Đây là thứ đúng cho người nghỉ việc**, và danh sách ghi lại `Anh Tuấn (đã nghỉ)`.
+- **Xoá thợ này** — nút viền đỏ ở tận đáy biểu mẫu, dưới cả nút *Thôi, quay lại*. Xoá hẳn
+  người ấy cùng mọi buổi công, lần ứng và ghi chú ngày của họ. **Chỉ dành cho cái tên gõ nhầm
+  hoặc gõ trùng.**
+
+```
+┌────────────────────────────────────┐
+│  [        Lưu        ]             │
+│  [   Thôi, quay lại   ]            │
+│  ──────────────────────────────    │
+│  [ 🗑  Xoá thợ này ]                │   viền đỏ, nền đỏ nhạt
+│  Thợ nghỉ việc thì tắt nút Đang     │
+│  làm ở trên, đừng xoá — xoá là mất  │
+│  luôn phần sổ đã đi làm.            │
+└────────────────────────────────────┘
+```
+
+Bốn điều đã cân nhắc ở đây:
+
+1. **Câu hỏi lại nói rõ mất những gì**, đếm đúng bằng con số: *"Mất luôn 12 buổi công, 2 lần
+   ứng và 1 ghi chú của người này, không lấy lại được."* Hỏi trống không (*"Chắc chưa?"*) thì
+   người ta bấm qua theo thói quen. `demCuaTho` đếm, `xoaTho` xoá — cùng một tập bản ghi, để
+   câu hỏi không nói một đằng mà việc làm một nẻo.
+2. **Hộp hỏi lại luôn chìa ra nút *Cho nghỉ*.** Chín trên mười lần đó mới là thứ người ta
+   muốn, chỉ là không biết nó nằm ở nút gạt phía trên. Thợ đã nghỉ rồi thì bỏ nút ấy đi —
+   Android chỉ vẽ được ba nút, mà nút *Xoá* thì không được rơi mất.
+3. **Thợ đã có tên trong kỳ đã chốt thì chặn hẳn**, hộp đổi thành *"Không xoá được thợ này"*
+   và chỉ còn lối cho nghỉ. Không phải để giữ cho đẹp: tờ quyết toán cũ chụp sẵn tên và số
+   tiền nên vẫn đọc được, nhưng bấm vào dòng ấy để mở chi tiết từng ngày thì `baoCaoTuBanGhi`
+   tìm thợ không ra và trả về `null` — màn hình mở ra trắng trơn, không báo gì. Một chứng từ
+   đã trả tiền mà bấm vào không ra gì thì hỏng nặng hơn hẳn cái tiện của việc xoá được một
+   cái tên.
+4. **Chặn ở lớp dữ liệu chứ không ở giao diện.** `xoaTho`
+   ([thaoTac.ts](../mobile/src/nghiepvu/thaoTac.ts)) tự quăng lỗi, không trông vào việc màn
+   hình có hiện nút hay không.
 
 Dưới đáy màn hình có nút **Xuất toàn bộ ra Excel** — xem mục dưới đây.
 

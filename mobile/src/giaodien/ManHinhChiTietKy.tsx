@@ -170,6 +170,11 @@ export function ManHinhChiTietKy({ duLieu, ky, boChotDuoc, capNhat, onDong }: Pr
           )}
         </View>
 
+        {/*
+          Không truyền `suaUng`: lịch sử ứng của kỳ đã chốt chỉ để đọc. Tờ quyết toán là
+          bản chụp của một lần đã đếm tiền trao tay, sửa số ứng bây giờ chỉ làm sổ nói
+          khác tờ thợ đang cầm. Cần sửa thật thì bỏ chốt kỳ ở nút dưới đáy trang này.
+        */}
         {xemTho !== null && (
           <ManHinhBaoCaoTho
             dungBaoCao={(tu, den) => baoCaoTrongKy(duLieu, ky, xemTho, tu, den)}

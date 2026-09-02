@@ -1,9 +1,23 @@
-import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import { baoCaoKhoang } from '../../nghiepvu/baoCao';
 import { DuLieuChamCong, duLieuRong } from '../../nghiepvu/kieu';
 import { cham, datCong, themTho, themUng } from '../../nghiepvu/thaoTac';
 import { ManHinhBaoCaoTho } from '../ManHinhBaoCaoTho';
+
+const hoi = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+beforeEach(() => hoi.mockClear());
+
+/**
+ * Bấm hộ nút trong hộp thoại xác nhận của hệ điều hành. Bọc `act` vì nút ấy nằm ngoài
+ * cây React — hộp là của máy — mà bấm vào lại đổi trạng thái màn hình.
+ */
+function bamNut(nhan: string) {
+  const nut = (hoi.mock.calls[0][2] ?? []).find((n) => n.text === nhan);
+  act(() => nut?.onPress?.());
+}
 
 const NGAY_TAO = '2026-08-01';
 const CUOI_KY = '2026-08-05';
@@ -14,12 +28,18 @@ function khoCoTho(tienMotCong = 300_000) {
 }
 
 /** Kỳ dùng trong bộ kiểm thử này trùng đúng tháng 8 — khoảng quen mắt nhất. */
-function dung(duLieu: DuLieuChamCong, thoId: string, homNay = CUOI_KY) {
+function dung(
+  duLieu: DuLieuChamCong,
+  thoId: string,
+  homNay = CUOI_KY,
+  suaUng?: { ghi: jest.Mock; xoa: jest.Mock },
+) {
   return render(
     <ManHinhBaoCaoTho
       dungBaoCao={(tu, den) => baoCaoKhoang(duLieu, thoId, tu, den, homNay)}
       tuNgayDau="2026-08-01"
       denNgayDau="2026-08-31"
+      suaUng={suaUng}
       onDong={() => {}}
     />,
   );
@@ -212,6 +232,17 @@ describe('màn hình báo cáo một thợ', () => {
     expect(screen.getByText('Khoảng này chưa ứng lần nào.')).toBeTruthy();
   });
 
+  test('không cho sửa ứng thì dòng ứng chỉ để đọc', () => {
+    let { duLieu, thoId } = khoCoTho();
+    duLieu = themUng(duLieu, thoId, '2026-08-05', 500_000, 'ứng đổ xăng');
+
+    dung(duLieu, thoId);
+
+    // Kỳ đã chốt mở qua đây: không mách chạm được, mà chạm cũng không ra hộp nào.
+    expect(screen.queryByText('Chạm vào một dòng để sửa hoặc xoá.')).toBeNull();
+    expect(screen.queryByLabelText(/chạm để sửa/)).toBeNull();
+  });
+
   test('ứng quá tiền công thì còn phải trả là số âm', () => {
     let { duLieu, thoId } = khoCoTho(300_000);
     duLieu = cham(duLieu, thoId, '2026-08-03', 'Sang');
@@ -220,5 +251,75 @@ describe('màn hình báo cáo một thợ', () => {
     dung(duLieu, thoId);
 
     expect(screen.getByText('−350.000 đ')).toBeTruthy();
+  });
+});
+
+describe('sửa lịch sử ứng tiền', () => {
+  function moHopSua() {
+    let { duLieu, thoId } = khoCoTho();
+    duLieu = themUng(duLieu, thoId, '2026-08-05', 5_000_000, 'ứng đổ xăng');
+    const suaUng = { ghi: jest.fn(), xoa: jest.fn() };
+    const ungId = duLieu.ungTiens[0].id;
+
+    dung(duLieu, thoId, CUOI_KY, suaUng);
+    fireEvent.press(screen.getByLabelText(/chạm để sửa/));
+
+    return { suaUng, ungId };
+  }
+
+  test('chạm một dòng ứng là mở hộp sửa, điền sẵn số cũ', () => {
+    moHopSua();
+
+    expect(screen.getByText('Anh Tuấn — sửa lần ứng')).toBeTruthy();
+    expect(screen.getByLabelText('Số tiền ứng').props.value).toBe('5000000');
+    expect(screen.getByLabelText('Ứng ngày 05/08/2026, chạm để đổi')).toBeTruthy();
+  });
+
+  test('sửa số tiền gõ nhầm rồi bấm Ghi', () => {
+    const { suaUng, ungId } = moHopSua();
+
+    fireEvent.changeText(screen.getByLabelText('Số tiền ứng'), '500000');
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(suaUng.ghi).toHaveBeenCalledWith(ungId, '2026-08-05', 500_000, 'ứng đổ xăng');
+  });
+
+  test('sửa cả ngày ứng — ghi muộn mấy hôm nên ngày bị lệch', () => {
+    const { suaUng, ungId } = moHopSua();
+
+    // Tờ lịch thay chỗ hộp sửa, chọn xong thì hộp quay lại, số tiền đang gõ vẫn còn.
+    fireEvent.press(screen.getByLabelText('Ứng ngày 05/08/2026, chạm để đổi'));
+    fireEvent.press(screen.getByLabelText('03/08 Thứ Hai'));
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(suaUng.ghi).toHaveBeenCalledWith(ungId, '2026-08-03', 5_000_000, 'ứng đổ xăng');
+  });
+
+  test('số tiền để trống thì nút Ghi không ăn', () => {
+    const { suaUng } = moHopSua();
+
+    fireEvent.changeText(screen.getByLabelText('Số tiền ứng'), '');
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(suaUng.ghi).not.toHaveBeenCalled();
+  });
+
+  test('xoá phải hỏi lại một câu rồi mới xoá', () => {
+    const { suaUng, ungId } = moHopSua();
+
+    fireEvent.press(screen.getByText('Xoá lần ứng này'));
+    expect(suaUng.xoa).not.toHaveBeenCalled();
+
+    bamNut('Xoá');
+    expect(suaUng.xoa).toHaveBeenCalledWith(ungId);
+  });
+
+  test('hỏi lại mà bấm Thôi thì không xoá', () => {
+    const { suaUng } = moHopSua();
+
+    fireEvent.press(screen.getByText('Xoá lần ứng này'));
+    bamNut('Thôi');
+
+    expect(suaUng.xoa).not.toHaveBeenCalled();
   });
 });

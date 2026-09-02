@@ -341,3 +341,125 @@ export function themUng(
 
   return { ...duLieu, ungTiens: [...duLieu.ungTiens, ung] };
 }
+
+/**
+ * Lần ứng này đã nằm trong một kỳ đã chốt hay chưa.
+ *
+ * Kỳ nhớ theo id (`KyLuong.ungTienIds`) chứ không theo ngày — xem [ky.ts](./ky.ts) — nên
+ * hỏi được chính xác từng lần ứng một.
+ */
+function ungDaChot(duLieu: DuLieuChamCong, ungId: string): boolean {
+  return duLieu.kyLuongs.some((ky) => (ky.ungTienIds ?? []).includes(ungId));
+}
+
+/**
+ * Sửa lại một lần ứng đã ghi: gõ nhầm số tiền, ghi chú sai, hay ghi muộn mấy hôm nên
+ * ngày bị lệch (lúc thêm, ứng luôn lấy ngày hôm nay).
+ *
+ * **Chặn sửa lần ứng đã nằm trong kỳ đã chốt.** `KyLuong.dongs` là bản chụp của một lần
+ * đã đếm tiền trao tay, không tính lại bao giờ nữa; sửa số tiền ứng bây giờ chỉ làm sổ
+ * nói khác tờ quyết toán thợ đang cầm, mà tiền thì đã trao rồi. Sửa thật thì bỏ chốt kỳ
+ * ấy đã — `boChot` gỡ lại được, không mất buổi công nào.
+ */
+export function suaUng(
+  duLieu: DuLieuChamCong,
+  ungId: string,
+  ngay: string,
+  soTien: number,
+  ghiChu = '',
+): DuLieuChamCong {
+  if (soTien <= 0) {
+    throw new Error('Số tiền ứng phải lớn hơn 0.');
+  }
+  if (ungDaChot(duLieu, ungId)) {
+    throw new Error('Lần ứng này đã nằm trong kỳ đã chốt, bỏ chốt kỳ ấy rồi mới sửa được.');
+  }
+
+  return {
+    ...duLieu,
+    ungTiens: duLieu.ungTiens.map((u) =>
+      u.id === ungId ? { ...u, ngay, soTien, ghiChu: ghiChu.trim(), suaLuc: bayGio() } : u,
+    ),
+  };
+}
+
+/**
+ * Xoá hẳn một lần ứng — ghi nhầm sang thợ khác, hay ghi hai lần cùng một lần đưa tiền.
+ *
+ * Xoá hẳn chứ không đánh dấu đã huỷ: dòng ứng là chuyện tiền nong giữa hai người, để lại
+ * một dòng gạch ngang trong sổ chỉ tổ làm người xem phân vân nó có được trừ hay không.
+ * Chặn xoá lần ứng đã chốt, cùng một lý do với `suaUng`.
+ */
+export function xoaUng(duLieu: DuLieuChamCong, ungId: string): DuLieuChamCong {
+  if (ungDaChot(duLieu, ungId)) {
+    throw new Error('Lần ứng này đã nằm trong kỳ đã chốt, bỏ chốt kỳ ấy rồi mới xoá được.');
+  }
+
+  return { ...duLieu, ungTiens: duLieu.ungTiens.filter((u) => u.id !== ungId) };
+}
+
+/**
+ * Đếm những gì đang treo vào một thợ, để hỏi lại cho rõ trước khi xoá.
+ *
+ * Đếm ở đây chứ không để màn hình tự lọc: câu hỏi *"xoá là mất những gì"* và việc xoá thật
+ * phải nhìn cùng một tập bản ghi, tách ra hai chỗ thì sớm muộn câu hỏi nói một đằng mà
+ * `xoaTho` làm một nẻo.
+ */
+export interface DemCuaTho {
+  soBuoiCong: number;
+  soUngTien: number;
+  soGhiChu: number;
+  /**
+   * Thợ đã có tên trong một kỳ đã chốt — không xoá được nữa, chỉ cho nghỉ.
+   * Xem `xoaTho`.
+   */
+  daChot: boolean;
+}
+
+export function demCuaTho(duLieu: DuLieuChamCong, thoId: string): DemCuaTho {
+  const buoiCongs = duLieu.buoiCongs.filter((b) => b.thoId === thoId);
+  const ungTiens = duLieu.ungTiens.filter((u) => u.thoId === thoId);
+
+  // Hỏi cả ba đường: tên trong bản chụp, buổi công đã trả tiền, lần ứng đã trừ. Bình thường
+  // cả ba cùng đúng hoặc cùng sai, nhưng chỉ cần một cái dính là kỳ ấy có nhắc tới người này.
+  const daChot = duLieu.kyLuongs.some(
+    (ky) =>
+      ky.dongs.some((dong) => dong.thoId === thoId) ||
+      buoiCongs.some((b) => (ky.buoiCongIds ?? []).includes(b.id)) ||
+      ungTiens.some((u) => (ky.ungTienIds ?? []).includes(u.id)),
+  );
+
+  return {
+    soBuoiCong: buoiCongs.length,
+    soUngTien: ungTiens.length,
+    soGhiChu: duLieu.ghiChuNgays.filter((g) => g.thoId === thoId).length,
+    daChot,
+  };
+}
+
+/**
+ * Xoá hẳn một thợ, kéo theo mọi buổi công, lần ứng và ghi chú ngày của người ấy.
+ *
+ * **Chỉ dùng cho người gõ nhầm hoặc gõ trùng.** Thợ nghỉ việc thì tắt `Tho.dangLam` —
+ * xoá là mất luôn phần sổ đã đi làm, mà thợ nghỉ rồi vẫn phải tra lại được tháng trước
+ * cầm về bao nhiêu.
+ *
+ * **Chặn xoá thợ đã có tên trong kỳ đã chốt.** Không phải để giữ cho đẹp: tờ quyết toán cũ
+ * chụp sẵn tên và số tiền nên vẫn đọc được, nhưng bấm vào dòng ấy để mở chi tiết từng ngày
+ * thì `baoCaoTuBanGhi` tìm thợ không ra và trả về null — màn hình mở ra trắng trơn, không
+ * báo gì. Một chứng từ đã trả tiền mà bấm vào không ra gì là hỏng nặng hơn hẳn cái tiện
+ * của việc xoá được một cái tên.
+ */
+export function xoaTho(duLieu: DuLieuChamCong, thoId: string): DuLieuChamCong {
+  if (demCuaTho(duLieu, thoId).daChot) {
+    throw new Error('Thợ đã có tên trong kỳ đã chốt, chỉ cho nghỉ được chứ không xoá được.');
+  }
+
+  return {
+    ...duLieu,
+    thos: duLieu.thos.filter((t) => t.id !== thoId),
+    buoiCongs: duLieu.buoiCongs.filter((b) => b.thoId !== thoId),
+    ungTiens: duLieu.ungTiens.filter((u) => u.thoId !== thoId),
+    ghiChuNgays: duLieu.ghiChuNgays.filter((g) => g.thoId !== thoId),
+  };
+}

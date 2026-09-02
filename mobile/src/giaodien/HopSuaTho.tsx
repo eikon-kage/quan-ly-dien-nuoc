@@ -15,7 +15,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DuLieuChamCong, Tho } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { docTien } from '../nghiepvu/nhapSo';
-import { datLuong, lichSuLuong, luongTaiNgay, luuTho, themTho, xoaMocLuong } from '../nghiepvu/thaoTac';
+import {
+  datLuong,
+  demCuaTho,
+  lichSuLuong,
+  luongTaiNgay,
+  luuTho,
+  themTho,
+  xoaMocLuong,
+  xoaTho,
+} from '../nghiepvu/thaoTac';
 import { HopChon } from './HopChon';
 import { HopNhapSo } from './HopNhapSo';
 import { hoi } from './hopThoai';
@@ -28,6 +37,14 @@ interface Props {
   tho: Tho | null;
   capNhat: (moi: DuLieuChamCong) => void;
   onDong: () => void;
+}
+
+/** Nối danh sách kiểu người Việt đọc: "12 buổi công, 2 lần ứng và 1 ghi chú". */
+function noiTiengViet(cac: string[]): string {
+  if (cac.length <= 1) {
+    return cac.join('');
+  }
+  return `${cac.slice(0, -1).join(', ')} và ${cac[cac.length - 1]}`;
 }
 
 export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
@@ -79,6 +96,85 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
 
     capNhat(datLuong(duLieu, moiNhat.id, tuNgay, soTienMoi));
     datSoTienMoi(null);
+  }
+
+  /**
+   * Đánh dấu đã nghỉ rồi đóng hộp — lối thoát cho người không xoá được, và là thứ nên chọn
+   * cả khi xoá được: thợ nghỉ việc thì bảng lương các tháng trước vẫn phải tra lại được.
+   *
+   * Giữ luôn cái tên đang gõ dở, kẻo sửa tên xong bấm *Cho nghỉ* là mất phần vừa sửa.
+   */
+  function choNghi() {
+    if (moiNhat === null) {
+      return;
+    }
+
+    const tenSach = ten.trim();
+    capNhat(
+      luuTho(duLieu, {
+        ...moiNhat,
+        ten: tenSach === '' ? moiNhat.ten : tenSach,
+        dangLam: false,
+      }),
+    );
+    onDong();
+  }
+
+  /**
+   * Xoá hẳn thợ. Hỏi lại một câu **nói rõ mất những gì**, và luôn chìa ra lối *Cho nghỉ* —
+   * chín trên mười lần người ta muốn cái sau, chỉ là không biết nó nằm ở nút gạt phía trên.
+   */
+  function xoa() {
+    if (moiNhat === null) {
+      return;
+    }
+
+    const dem = demCuaTho(duLieu, moiNhat.id);
+
+    if (dem.daChot) {
+      const loi =
+        `${moiNhat.ten} đã có tên trong một kỳ đã chốt. Tiền kỳ ấy trả xong rồi, mà xoá đi ` +
+        'thì bấm vào tờ quyết toán cũ không mở ra được nữa.';
+
+      hoi(
+        'Không xoá được thợ này',
+        moiNhat.dangLam
+          ? `${loi}\n\nCho nghỉ thì tên vẫn còn trong sổ cũ, chỉ là không hiện ở màn hình chấm công nữa.`
+          : `${loi}\n\nThợ này đã đánh dấu nghỉ rồi nên cũng không hiện ở màn hình chấm công.`,
+        moiNhat.dangLam
+          ? [{ text: 'Thôi', style: 'cancel' }, { text: 'Cho nghỉ', onPress: choNghi }]
+          : [{ text: 'Đóng' }],
+      );
+      return;
+    }
+
+    const mat = [
+      dem.soBuoiCong > 0 ? `${dem.soBuoiCong} buổi công` : null,
+      dem.soUngTien > 0 ? `${dem.soUngTien} lần ứng` : null,
+      dem.soGhiChu > 0 ? `${dem.soGhiChu} ghi chú` : null,
+    ].filter((c): c is string => c !== null);
+
+    const loi =
+      mat.length === 0
+        ? 'Người này chưa có buổi công nào trong sổ nên xoá đi cũng không mất gì.'
+        : `Mất luôn ${noiTiengViet(mat)} của người này, không lấy lại được.` +
+          (moiNhat.dangLam
+            ? '\n\nMuốn giữ lại sổ cũ thì chọn Cho nghỉ: tên vẫn còn để tra, chỉ không hiện ở màn hình chấm công.'
+            : '');
+
+    // Android chỉ vẽ được ba nút, nên thợ đã nghỉ rồi thì bỏ luôn nút Cho nghỉ đi.
+    hoi(`Xoá ${moiNhat.ten}?`, loi, [
+      { text: 'Thôi', style: 'cancel' },
+      ...(moiNhat.dangLam ? [{ text: 'Cho nghỉ', onPress: choNghi }] : []),
+      {
+        text: 'Xoá',
+        style: 'destructive' as const,
+        onPress: () => {
+          capNhat(xoaTho(duLieu, moiNhat.id));
+          onDong();
+        },
+      },
+    ]);
   }
 
   function xoaMoc(tuNgay: string) {
@@ -194,6 +290,24 @@ export function HopSuaTho({ duLieu, tho, capNhat, onDong }: Props) {
             <Pressable style={[kieu.nut, kieu.nutPhu]} onPress={onDong}>
               <Text style={[kieu.chuNut, { color: Mau.xam }]}>Thôi, quay lại</Text>
             </Pressable>
+
+            {/*
+              Nút xoá tách hẳn xuống đáy, sau cả nút *Thôi*, và chỉ có viền đỏ chứ không nền
+              đỏ: nó không phải việc người ta vào đây để làm. Chỗ nào cũng xoá được thì có
+              ngày bấm trượt tay mất cả tháng công của một người.
+            */}
+            {moiNhat !== null && (
+              <View style={kieu.khoiXoa}>
+                <Pressable style={[kieu.nut, kieu.nutXoa]} onPress={xoa}>
+                  <Feather name="trash-2" size={15} color={Mau.do} />
+                  <Text style={[kieu.chuNut, { color: Mau.do }]}>Xoá thợ này</Text>
+                </Pressable>
+                <Text style={kieu.chuPhu}>
+                  Thợ nghỉ việc thì tắt nút Đang làm ở trên, đừng xoá — xoá là mất luôn phần
+                  sổ đã đi làm.
+                </Text>
+              </View>
+            )}
           </ScrollView>
         </SafeAreaView>
       </KeyboardAvoidingView>
@@ -268,6 +382,8 @@ const kieu = StyleSheet.create({
     justifyContent: 'center',
   },
   nutChinh: { backgroundColor: Mau.chinh, borderColor: Mau.chinh },
+  nutXoa: { flexDirection: 'row', gap: 7, backgroundColor: Mau.doNhat, borderColor: Mau.do },
+  khoiXoa: { gap: 7, marginTop: 6, paddingTop: 16, borderTopWidth: 1, borderTopColor: Mau.vien },
   nutPhu: { backgroundColor: Mau.trang, borderColor: Mau.vien },
   chuNut: { fontSize: Co.chuNut, fontFamily: PhongChu.vua, textAlign: 'center' },
 });

@@ -4,8 +4,10 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BaoCaoTho } from '../nghiepvu/baoCao';
+import { UngTien } from '../nghiepvu/kieu';
 import * as Ngay from '../nghiepvu/ngayViet';
 import { HopChonNgay } from './HopChonNgay';
+import { HopSuaUng } from './HopSuaUng';
 import { LichCong } from './LichCong';
 import { DauTrang, HangO, TheSo, ThanhDoan, theTrang } from './ThanhPhan';
 import { Bong, Co, Mau, PhongChu } from './thietKe';
@@ -20,6 +22,19 @@ interface Props {
   /** Khoảng mở ra lúc đầu — trọn kỳ đang xem. */
   tuNgayDau: string;
   denNgayDau: string;
+  /**
+   * Cho sửa lịch sử ứng tiền: chạm một dòng ứng là mở hộp sửa số tiền, ngày, ghi chú,
+   * hoặc xoá hẳn lần ứng ấy.
+   *
+   * Không truyền thì danh sách ứng **chỉ để đọc** — đó là màn hình kỳ đã chốt, nơi mỗi
+   * dòng ứng đã được đếm vào một tờ quyết toán đã trao tay. Hai hàm đi thành một cụm chứ
+   * không thành hai prop rời: cả hai cùng nằm trong một hộp, có cái này mà thiếu cái kia
+   * thì hộp ấy mở ra hỏng một nửa.
+   */
+  suaUng?: {
+    ghi: (ungId: string, ngay: string, soTien: number, ghiChu: string) => void;
+    xoa: (ungId: string) => void;
+  };
   onDong: () => void;
 }
 
@@ -50,10 +65,17 @@ function ngayNgan(ngay: string): string {
  * xếp dọc, có tên tháng ở trên — gộp hai tháng vào một tờ thì không còn là tờ lịch treo
  * tường nữa, mà đó mới là thứ làm người xem nhìn ra ngay chỗ nghỉ nằm ở đâu.
  */
-export function ManHinhBaoCaoTho({ dungBaoCao, tuNgayDau, denNgayDau, onDong }: Props) {
+export function ManHinhBaoCaoTho({
+  dungBaoCao,
+  tuNgayDau,
+  denNgayDau,
+  suaUng,
+  onDong,
+}: Props) {
   const [tuNgay, datTuNgay] = useState(tuNgayDau);
   const [denNgay, datDenNgay] = useState(denNgayDau);
   const [dangChon, datDangChon] = useState<'tu' | 'den' | null>(null);
+  const [dangSuaUng, datDangSuaUng] = useState<UngTien | null>(null);
 
   const baoCao = dungBaoCao(tuNgay, denNgay);
   if (baoCao === null) {
@@ -247,18 +269,24 @@ export function ManHinhBaoCaoTho({ dungBaoCao, tuNgayDau, denNgayDau, onDong }: 
                 {laCaKy ? 'Kỳ này chưa ứng lần nào.' : 'Khoảng này chưa ứng lần nào.'}
               </Text>
             ) : (
-              ungTiens.map((ung) => (
-                <View key={ung.id} style={kieu.dongUng}>
-                  <View style={kieu.coNgay}>
-                    <Text style={kieu.chuNgay}>{ngayNgan(ung.ngay)}</Text>
-                    <Text style={kieu.chuThu}>{Ngay.thu(ung.ngay)}</Text>
-                  </View>
-                  <Text style={kieu.chuGhiChu} numberOfLines={1}>
-                    {ung.ghiChu}
-                  </Text>
-                  <Text style={kieu.chuTienUng}>{Ngay.tienTru(ung.soTien)}</Text>
-                </View>
-              ))
+              <>
+                {ungTiens.map((ung) => (
+                  <DongUng
+                    key={ung.id}
+                    ung={ung}
+                    onPress={suaUng && (() => datDangSuaUng(ung))}
+                  />
+                ))}
+
+                {/*
+                  Một dòng mách nhỏ dưới danh sách: chạm vào dòng ứng để sửa là chuyện
+                  không nhìn ra được, mà cái hộp ấy lại là đường duy nhất chữa số tiền gõ
+                  nhầm. Kỳ đã chốt thì không có dòng này vì cũng không sửa được.
+                */}
+                {suaUng !== undefined && (
+                  <Text style={kieu.chuMach}>Chạm vào một dòng để sửa hoặc xoá.</Text>
+                )}
+              </>
             )}
           </View>
         </ScrollView>
@@ -273,8 +301,60 @@ export function ManHinhBaoCaoTho({ dungBaoCao, tuNgayDau, denNgayDau, onDong }: 
             onDong={() => datDangChon(null)}
           />
         )}
+
+        {suaUng !== undefined && dangSuaUng !== null && (
+          <HopSuaUng
+            ung={dangSuaUng}
+            tenTho={tho.ten}
+            onGhi={(ngay, soTien, ghiChu) => {
+              suaUng.ghi(dangSuaUng.id, ngay, soTien, ghiChu);
+              datDangSuaUng(null);
+            }}
+            onXoa={() => {
+              suaUng.xoa(dangSuaUng.id);
+              datDangSuaUng(null);
+            }}
+            onDong={() => datDangSuaUng(null)}
+          />
+        )}
       </SafeAreaView>
     </Modal>
+  );
+}
+
+/**
+ * Một dòng trong lịch sử ứng: ngày, ghi chú, số tiền.
+ *
+ * Không có `onPress` thì vẽ ra một `View` trơ chứ không phải `Pressable` bấm không ăn —
+ * kỳ đã chốt thì dòng ấy không được có cả cái vẻ chạm được.
+ */
+function DongUng({ ung, onPress }: { ung: UngTien; onPress?: () => void }) {
+  const noiDung = (
+    <>
+      <View style={kieu.coNgay}>
+        <Text style={kieu.chuNgay}>{ngayNgan(ung.ngay)}</Text>
+        <Text style={kieu.chuThu}>{Ngay.thu(ung.ngay)}</Text>
+      </View>
+      <Text style={kieu.chuGhiChu} numberOfLines={1}>
+        {ung.ghiChu}
+      </Text>
+      <Text style={kieu.chuTienUng}>{Ngay.tienTru(ung.soTien)}</Text>
+    </>
+  );
+
+  if (onPress === undefined) {
+    return <View style={kieu.dongUng}>{noiDung}</View>;
+  }
+
+  return (
+    <Pressable
+      style={kieu.dongUngSua}
+      onPress={onPress}
+      accessibilityLabel={`Ứng ${Ngay.tien(ung.soTien)} ngày ${Ngay.ngayGon(ung.ngay)}, chạm để sửa`}
+    >
+      {noiDung}
+      <Feather name="edit-3" size={14} color={Mau.xam} />
+    </Pressable>
   );
 }
 
@@ -365,6 +445,14 @@ const kieu = StyleSheet.create({
   chuGiaDam: { fontSize: Co.chuTen, fontFamily: PhongChu.dam },
 
   dongUng: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 },
+  // Dòng chạm được thì cao hơn một chút cho vừa đầu ngón tay, và có icon bút ở cuối.
+  dongUngSua: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 44,
+    paddingVertical: 5,
+  },
   coNgay: { width: 62 },
   chuNgay: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
   chuThu: { fontSize: 11, fontFamily: PhongChu.thuong, color: Mau.xam },
@@ -372,4 +460,13 @@ const kieu = StyleSheet.create({
   chuTienUng: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.do },
 
   chuTrong: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+  chuMach: {
+    fontSize: Co.chuNho,
+    fontFamily: PhongChu.thuong,
+    color: Mau.xam,
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Mau.vien,
+  },
 });
