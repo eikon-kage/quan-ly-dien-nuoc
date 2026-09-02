@@ -19,7 +19,7 @@ import { HopNoiNhom } from './HopNoiNhom';
 import { HopVaiMay } from './HopVaiMay';
 import { ManHinhDoiChieu } from './ManHinhDoiChieu';
 import { ManHinhNhapExcel } from './ManHinhNhapExcel';
-import { DauTrang, NutChip, theTrang } from './ThanhPhan';
+import { DauTrang, theTrang } from './ThanhPhan';
 import { Co, Mau, PhongChu, Tuoi } from './thietKe';
 
 interface Props {
@@ -181,8 +181,18 @@ export function ManHinhTho({
             <Text style={kieu.chuTrong}>Bấm nút Thêm thợ ở trên.</Text>
           </View>
         }
+        /*
+          Cả tấm thẻ chạm được chứ không phải mỗi viên *Sửa* ở góc: đây là việc duy nhất làm
+          được với một dòng thợ, nên bắt ngắm trúng viên nhỏ chỉ làm chậm tay chứ không giữ được gì.
+          Cùng dáng với dòng ứng tiền bên màn báo cáo: cả dòng bấm được, cây bút xám đứng cuối
+          làm dấu, và một dòng mách nhỏ dưới danh sách.
+        */
         renderItem={({ item: tho }) => (
-          <View style={kieu.the}>
+          <Pressable
+            style={kieu.the}
+            onPress={() => datDangMo(tho)}
+            accessibilityLabel={`${tho.ten}, chạm để sửa`}
+          >
             <View style={kieu.trai}>
               <Text
                 style={[kieu.chuTen, { color: tho.dangLam ? Mau.chu : Mau.xam }]}
@@ -196,9 +206,16 @@ export function ManHinhTho({
               </Text>
             </View>
 
-            <NutChip nhan="Sửa" icon="edit-2" onPress={() => datDangMo(tho)} />
-          </View>
+            <Feather name="edit-2" size={15} color={Mau.xam} />
+          </Pressable>
         )}
+        ListFooterComponent={
+          thos.length > 0 ? (
+            <Text style={kieu.chuMach}>
+              Chạm vào một thợ để sửa tên, giá công hoặc cho nghỉ.
+            </Text>
+          ) : null
+        }
       />
 
       {/*
@@ -396,6 +413,13 @@ const kieu = StyleSheet.create({
   trai: { flex: 1, gap: 3 },
   chuTen: { fontSize: Co.chuTen, fontFamily: PhongChu.dam },
   chuTien: { fontSize: Co.chuPhu, fontFamily: PhongChu.thuong, color: Mau.xam },
+  chuMach: {
+    fontSize: Co.chuNho,
+    fontFamily: PhongChu.thuong,
+    color: Mau.xam,
+    textAlign: 'center',
+    marginTop: 2,
+  },
 
   chanTrang: { paddingHorizontal: 16, paddingBottom: 12, gap: 10 },
   // Mỗi dòng là một thẻ trắng nổi bóng, giống hàng việc trong danh sách của bản thiết kế.

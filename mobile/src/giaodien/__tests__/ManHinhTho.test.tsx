@@ -123,6 +123,27 @@ describe('đầu trang màn hình Thợ', () => {
     expect(screen.getByPlaceholderText('Ví dụ: Anh Tuấn')).toBeTruthy();
   });
 
+  test('chạm cả tấm thẻ thợ là mở hộp sửa, không phải ngắm trúng cây bút', () => {
+    dung(khoCoCong());
+
+    fireEvent.press(screen.getByLabelText('Anh Tuấn, chạm để sửa'));
+
+    expect(screen.getByText('Tên thợ')).toBeTruthy();
+    expect(screen.getByDisplayValue('Anh Tuấn')).toBeTruthy();
+  });
+
+  test('mách một dòng dưới danh sách là chạm được, vì chạm cả thẻ thì không nhìn ra', () => {
+    dung(khoCoCong());
+
+    expect(screen.getByText('Chạm vào một thợ để sửa tên, giá công hoặc cho nghỉ.')).toBeTruthy();
+  });
+
+  test('chưa có thợ nào thì không mách chạm — không có gì để chạm', () => {
+    dung(duLieuRong());
+
+    expect(screen.queryByText('Chạm vào một thợ để sửa tên, giá công hoặc cho nghỉ.')).toBeNull();
+  });
+
   test('đếm số thợ ngay dưới tiêu đề', () => {
     const { duLieu } = themTho(duLieuRong(), 'Anh Tuấn', 300_000, HOM_NAY);
     const them = themTho(duLieu, 'Anh Bình', 300_000, HOM_NAY);
