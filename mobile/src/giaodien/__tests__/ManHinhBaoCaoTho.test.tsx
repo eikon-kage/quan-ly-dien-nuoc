@@ -295,6 +295,30 @@ describe('sửa lịch sử ứng tiền', () => {
     expect(suaUng.ghi).toHaveBeenCalledWith(ungId, '2026-08-03', 5_000_000, 'ứng đổ xăng');
   });
 
+  test('lùi được sang tháng trước — ứng cuối tháng mà mấy hôm sau mới ghi', () => {
+    const { suaUng, ungId } = moHopSua();
+
+    fireEvent.press(screen.getByLabelText('Ứng ngày 05/08/2026, chạm để đổi'));
+    fireEvent.press(screen.getByLabelText('Tháng trước'));
+    expect(screen.getByText('Tháng 7/2026')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('31/07 Thứ Sáu'));
+    fireEvent.press(screen.getByText('Ghi'));
+
+    expect(suaUng.ghi).toHaveBeenCalledWith(ungId, '2026-07-31', 5_000_000, 'ứng đổ xăng');
+  });
+
+  test('tới được tháng sau rồi lùi lại thì về đúng chỗ cũ', () => {
+    moHopSua();
+
+    fireEvent.press(screen.getByLabelText('Ứng ngày 05/08/2026, chạm để đổi'));
+    fireEvent.press(screen.getByLabelText('Tháng sau'));
+    expect(screen.getByText('Tháng 9/2026')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Tháng trước'));
+    expect(screen.getByText('Tháng 8/2026')).toBeTruthy();
+  });
+
   test('số tiền để trống thì nút Ghi không ăn', () => {
     const { suaUng } = moHopSua();
 

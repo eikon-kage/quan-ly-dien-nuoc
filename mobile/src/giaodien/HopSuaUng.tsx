@@ -33,15 +33,37 @@ interface Props {
  * Tờ lịch chọn ngày **thay chỗ** hộp này chứ không chồng lên trên: hộp này đã nằm trong
  * modal của màn hình báo cáo rồi, mở thêm một modal thứ ba nữa trên iOS là chuyện hên xui.
  * Chữ đang gõ không mất vì hộp vẫn còn đấy, chỉ có phần vẽ ra là đổi.
+ *
+ * Tờ lịch ấy **lùi / tới tháng được**. Ứng hôm 30 mà mùng 2 mới nhớ ra để ghi thì ngày
+ * đúng nằm ở tháng trước — khoá trong đúng một tháng thì chỗ cần sửa nhất lại không với
+ * tới được.
  */
 export function HopSuaUng({ ung, tenTho, onGhi, onXoa, onDong }: Props) {
   const [ngay, datNgay] = useState(ung.ngay);
   const [chu, datChu] = useState(String(ung.soTien));
   const [ghiChu, datGhiChu] = useState(ung.ghiChu);
-  const [dangChonNgay, datDangChonNgay] = useState(false);
+  /** Tháng đang mở trên tờ lịch. `null` là chưa mở tờ lịch. */
+  const [mocLich, datMocLich] = useState<string | null>(null);
 
   const soTien = docTien(chu);
   const ghiDuoc = soTien !== null && soTien > 0;
+
+  /**
+   * Lùi / tới một tháng trên tờ lịch. Nhảy qua hẳn mép tháng đang xem chứ không cộng 30
+   * ngày: cộng ngày thì tháng thiếu tháng thừa sẽ có lúc nhảy vọt qua cả một tháng.
+   */
+  function doiThangLich(buoc: -1 | 1) {
+    if (mocLich === null) {
+      return;
+    }
+
+    const { nam, thang } = Ngay.tach(mocLich);
+    datMocLich(
+      buoc === -1
+        ? Ngay.congNgay(Ngay.ghep(nam, thang, 1), -1)
+        : Ngay.congNgay(Ngay.ghep(nam, thang, Ngay.soNgayTrongThang(nam, thang)), 1),
+    );
+  }
 
   function xoa() {
     hoi('Xoá lần ứng này?', `${Ngay.tien(ung.soTien)} ngày ${Ngay.ngayGon(ung.ngay)}.`, [
@@ -50,19 +72,22 @@ export function HopSuaUng({ ung, tenTho, onGhi, onXoa, onDong }: Props) {
     ]);
   }
 
-  if (dangChonNgay) {
-    const { nam, thang } = Ngay.tach(ngay);
+  if (mocLich !== null) {
+    const { nam, thang } = Ngay.tach(mocLich);
     return (
       <HopChonNgay
         tieuDe="Ứng hôm nào?"
         nam={nam}
         thang={thang}
         ngayDangChon={ngay}
+        // Có hai mũi tên lùi / tới tháng: ứng cuối tháng mà mấy hôm sau mới nhớ ra để ghi
+        // thì ngày đúng nằm ở tháng trước, khoá trong một tháng là không với tới được.
+        onDoiThang={doiThangLich}
         onChon={(chon) => {
           datNgay(chon);
-          datDangChonNgay(false);
+          datMocLich(null);
         }}
-        onDong={() => datDangChonNgay(false)}
+        onDong={() => datMocLich(null)}
       />
     );
   }
@@ -73,7 +98,7 @@ export function HopSuaUng({ ung, tenTho, onGhi, onXoa, onDong }: Props) {
 
       <Pressable
         style={kieu.dongNgay}
-        onPress={() => datDangChonNgay(true)}
+        onPress={() => datMocLich(ngay)}
         accessibilityLabel={`Ứng ngày ${Ngay.ngayGon(ngay)}, chạm để đổi`}
       >
         <Feather name="calendar" size={15} color={Mau.chinh} />

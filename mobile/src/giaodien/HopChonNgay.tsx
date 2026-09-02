@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import * as Ngay from '../nghiepvu/ngayViet';
@@ -10,6 +11,21 @@ interface Props {
   thang: number;
   /** Ngày đang chọn, để tô đậm khi mở hộp lên. */
   ngayDangChon: string;
+  /**
+   * Cho lùi / tới tháng ngay trong hộp. Không truyền thì hộp đứng yên ở đúng tháng cha
+   * đưa vào — chỗ nào chỉ chọn ngày quanh đây (đổi mốc khoảng báo cáo chẳng hạn) thì hai
+   * mũi tên ấy chỉ tổ thêm thứ để bấm nhầm.
+   *
+   * Sửa lần ứng thì **có** truyền: ứng hôm 30 mà mùng 2 mới nhớ ra để ghi thì ngày đúng
+   * nằm ở tháng trước, khoá trong một tháng là chỗ cần sửa nhất lại không với tới được.
+   */
+  onDoiThang?: (buoc: -1 | 1) => void;
+  /**
+   * Số công của từng ngày, để mỗi ô lịch nói luôn ngày ấy được mấy công. Có nó thì hộp
+   * này vừa là chỗ chọn ngày vừa là chỗ *xem lại* cả tháng — mở ra là thấy tháng trước
+   * ngày nào đi ngày nào nghỉ, không phải chọn từng ngày rồi bấm ra xem.
+   */
+  congMoiNgay?: Map<string, number>;
   onChon: (ngay: string) => void;
   onDong: () => void;
 }
@@ -22,7 +38,16 @@ interface Props {
  * bản iOS. Ở đây chỉ chọn ngày trong đúng một tháng nên tờ lịch vừa gọn vừa quen mắt —
  * chạm một cái là xong, không có nút "Đồng ý".
  */
-export function HopChonNgay({ tieuDe, nam, thang, ngayDangChon, onChon, onDong }: Props) {
+export function HopChonNgay({
+  tieuDe,
+  nam,
+  thang,
+  ngayDangChon,
+  onDoiThang,
+  congMoiNgay,
+  onChon,
+  onDong,
+}: Props) {
   function bamNgay(soTrongThang: number) {
     onChon(Ngay.ghep(nam, thang, soTrongThang));
   }
@@ -30,9 +55,19 @@ export function HopChonNgay({ tieuDe, nam, thang, ngayDangChon, onChon, onDong }
   return (
     <HopDay khoang={5} onDong={onDong}>
       <Text style={kieu.tieuDe}>{tieuDe}</Text>
-      <Text style={kieu.moTa}>
-        Tháng {thang}/{nam}
-      </Text>
+      {onDoiThang === undefined ? (
+        <Text style={kieu.moTa}>
+          Tháng {thang}/{nam}
+        </Text>
+      ) : (
+        <View style={kieu.dongThang}>
+          <NutThang huong={-1} onPress={() => onDoiThang(-1)} />
+          <Text style={kieu.chuThang}>
+            Tháng {thang}/{nam}
+          </Text>
+          <NutThang huong={1} onPress={() => onDoiThang(1)} />
+        </View>
+      )}
 
       <View style={kieu.hang}>
         {Ngay.COT_LICH.map((ten) => (
@@ -53,6 +88,12 @@ export function HopChonNgay({ tieuDe, nam, thang, ngayDangChon, onChon, onDong }
                 ngay={Ngay.ghep(nam, thang, n)}
                 soTrongThang={n}
                 dangChon={Ngay.ghep(nam, thang, n) === ngayDangChon}
+                cong={
+                  // Không có bản đồ công thì ô lịch không nói gì về công; có mà ngày ấy
+                  // trống thì đó là *chưa chấm*, khác hẳn — nên phải ra số 0, không phải
+                  // undefined.
+                  congMoiNgay === undefined ? undefined : congMoiNgay.get(Ngay.ghep(nam, thang, n)) ?? 0
+                }
                 onPress={() => bamNgay(n)}
               />
             ),
@@ -71,11 +112,14 @@ function ONgay({
   ngay,
   soTrongThang,
   dangChon,
+  cong,
   onPress,
 }: {
   ngay: string;
   soTrongThang: number;
   dangChon: boolean;
+  /** undefined là hộp này không hiện công; 0 là ngày ấy chưa chấm gì. */
+  cong: number | undefined;
   onPress: () => void;
 }) {
   return (
@@ -83,6 +127,9 @@ function ONgay({
       style={[kieu.o, dangChon ? kieu.oChon : kieu.oThuong]}
       onPress={onPress}
       accessibilityLabel={`${Ngay.ngayGon(ngay).slice(0, 5)} ${Ngay.thu(ngay)}`}
+      accessibilityHint={
+        cong === undefined ? undefined : cong > 0 ? `${Ngay.soCong(cong)} công` : 'Chưa chấm ngày này'
+      }
       accessibilityState={{ selected: dangChon }}
     >
       <Text
@@ -91,6 +138,35 @@ function ONgay({
       >
         {soTrongThang}
       </Text>
+      {/*
+        Ngày chưa chấm để dấu chấm mờ chứ không bỏ trống, y như dải ngày ở màn hình chấm
+        công: bỏ trống thì ô cao thấp khác nhau, tờ lịch nhìn bị gãy.
+      */}
+      {cong !== undefined && (
+        <Text
+          style={[kieu.chuCong, cong === 0 && kieu.chuChuaCham, dangChon && kieu.chuNgayChon]}
+          maxFontSizeMultiplier={HeSoChuToiDaLuoi}
+        >
+          {cong > 0 ? Ngay.soCong(cong) : '·'}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+/** Mũi tên lùi / tới một tháng, cùng dáng với nút đổi tháng ở sổ công của thợ. */
+function NutThang({ huong, onPress }: { huong: -1 | 1; onPress: () => void }) {
+  return (
+    <Pressable
+      style={kieu.nutThang}
+      onPress={onPress}
+      accessibilityLabel={huong === -1 ? 'Tháng trước' : 'Tháng sau'}
+    >
+      <Feather
+        name={huong === -1 ? 'chevron-left' : 'chevron-right'}
+        size={20}
+        color={Mau.chu}
+      />
     </Pressable>
   );
 }
@@ -102,6 +178,24 @@ const kieu = StyleSheet.create({
     fontFamily: PhongChu.thuong,
     color: Mau.xam,
     marginBottom: 4,
+  },
+
+  dongThang: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  chuThang: { fontSize: Co.chuTieuDe, fontFamily: PhongChu.dam, color: Mau.chu },
+  nutThang: {
+    width: 44,
+    height: 44,
+    borderRadius: Co.bo,
+    backgroundColor: Mau.nen,
+    borderWidth: 1,
+    borderColor: Mau.vien,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   hang: { flexDirection: 'row', gap: 5 },
@@ -127,6 +221,8 @@ const kieu = StyleSheet.create({
   oChon: { backgroundColor: Mau.chinh, borderWidth: 1, borderColor: Mau.chinh },
   chuNgay: { fontSize: Co.chuThuong, fontFamily: PhongChu.vua, color: Mau.chu },
   chuNgayChon: { fontFamily: PhongChu.dam, color: Mau.trang },
+  chuCong: { fontSize: 10, fontFamily: PhongChu.vua, color: Mau.xanhLa },
+  chuChuaCham: { color: Mau.xam },
 
   nutThoi: {
     minHeight: Co.caoNut,
