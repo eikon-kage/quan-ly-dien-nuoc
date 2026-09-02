@@ -92,6 +92,11 @@ thì thêm một dòng vào hoá đơn đó. Mỗi khách có bảng giá riêng
   ngày, số tiền, chia cho hoá đơn nào, ghi chú. Ghi nhầm thì chọn dòng rồi xoá cả lần thu ấy.
 - **Chốt hoá đơn**: hoá đơn đã chốt thì khoá không cho sửa, cần thì mở lại.
 - **Danh mục vật tư**: giá chung của cửa hàng, dùng khi khách chưa có giá riêng.
+- **Danh mục dựng sẵn**: máy mới chưa có dữ liệu thì phần mềm điền luôn 173 mặt hàng điện nước
+  phổ biến (Bình Minh, Cadivi, Panasonic, Rạng Đông, Inax, Sơn Hà…) chia 11 nhóm, kèm đơn vị,
+  mã tắt và giá tham khảo. Cửa hàng đang dùng rồi mà muốn lấy thêm thì bấm *Điền danh mục mẫu…*
+  ở màn danh mục vật tư: hàng nào đã có thì giữ nguyên giá, đơn vị, nhóm — chỉ thêm phần còn
+  thiếu, và Ctrl+Z bỏ được cả lần điền.
 - **Nhóm hàng**: tự đặt nhóm (Ống nước, Điện, Đèn…) ở màn *Quản lý nhóm* rồi gắn cho mặt
   hàng — chọn ở cột NHÓM, hoặc chọn nhiều dòng rồi bấm *Gắn cho hàng đang chọn*. Lọc danh
   mục theo nhóm, gõ tên nhóm vào ô tìm cũng ra cả nhóm. Đổi tên nhóm là cả nhóm đổi theo,
@@ -202,6 +207,7 @@ src/
     Data/CaiDat.cs              cài đặt, lưu riêng khỏi dữ liệu
     Data/NhatKy.cs              nhật ký thay đổi, ghi nối tiếp ra file
     Data/SaoLuu.cs              tạo / liệt kê / khôi phục bản sao lưu
+    Data/DanhMucMau.cs          danh mục vật tư điện nước dựng sẵn (173 hàng, 11 nhóm)
     BaoCao/CongNo.cs            tính công nợ và số ngày nợ từng khách
     BaoCao/TinNhacNo.cs         soạn tin nhắc nợ
     BaoCao/TongHopNgay.cs       gom hàng khách lấy trong một ngày thành bảng kê
@@ -238,7 +244,7 @@ src/
     Forms/ThanhToanForm.cs      các lần trả tiền của một hoá đơn
     Forms/ThuTienForm.cs        thu một cục tiền, chia cho nhiều hoá đơn
     Forms/BangGiaForm.cs        bảng giá riêng theo khách
-    Forms/VatTuForm.cs          danh mục vật tư (kèm mã tắt, nhóm hàng)
+    Forms/VatTuForm.cs          danh mục vật tư (kèm mã tắt, nhóm hàng, điền danh mục mẫu)
     Forms/NhomHangForm.cs       thêm/đổi tên/xoá nhóm hàng
     Forms/NhapNhieuDongForm.cs  gõ một dòng ra nhiều món, có xem trước
     Forms/SaoLuuForm.cs         sao lưu, khôi phục, xuất toàn bộ ra Excel

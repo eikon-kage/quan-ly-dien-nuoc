@@ -208,6 +208,9 @@ public sealed class VatTuForm : Form
         var btnNhom = Theme.NutPhu("Quản lý nhóm…", 200, 46, noTheoChu: true);
         btnNhom.Click += (_, _) => MoQuanLyNhom();
 
+        var btnMau = Theme.NutPhu("Điền danh mục mẫu…", 230, 46, noTheoChu: true);
+        btnMau.Click += (_, _) => DienDanhMucMau();
+
         var btnDong = Theme.NutPhu("Đóng", 140, 46, noTheoChu: true);
         btnDong.Click += (_, _) => Close();
 
@@ -218,7 +221,7 @@ public sealed class VatTuForm : Form
         khung.Controls.Add(nenThem, 0, 1);
         khung.Controls.Add(thanhTim, 0, 2);
         khung.Controls.Add(vienLuoi, 0, 3);
-        khung.Controls.Add(Theme.ThanhDuoi(_lblTrangThai, btnNhom, btnXoa, btnDong), 0, 4);
+        khung.Controls.Add(Theme.ThanhDuoi(_lblTrangThai, btnMau, btnNhom, btnXoa, btnDong), 0, 4);
         Controls.Add(khung);
 
         ActiveControl = _txtTen;
@@ -350,6 +353,53 @@ public sealed class VatTuForm : Form
 
         Nap(hang[0].Id);
         _lblTrangThai.Text = $"Đã {char.ToLowerInvariant(moTa[0])}{moTa[1..]}. Bấm Ctrl+Z để hoàn tác.";
+    }
+
+    /// <summary>
+    /// Điền danh mục vật tư điện nước dựng sẵn (các mặt hàng và hãng phổ biến, kèm giá tham khảo).
+    /// Hàng cửa hàng đã có thì bỏ qua, giá và nhóm đang dùng không bị đè.
+    /// </summary>
+    private void DienDanhMucMau()
+    {
+        if (HopThoai.ChanKhiChiXem(this, _kho))
+        {
+            return;
+        }
+
+        // Đếm trước trên một bản chụp để nói đúng số hàng sẽ thêm, khỏi hứa suông rồi thêm 0 hàng.
+        var thu = DanhMucMau.BoSung(_kho.ChupNhanhDuLieu());
+        if (!thu.CoThemGi)
+        {
+            HopThoai.Bao(
+                this,
+                $"Danh mục của cửa hàng đã có đủ {DanhMucMau.SoMatHang} mặt hàng mẫu, không phải thêm gì.");
+            return;
+        }
+
+        var themNhom = thu.SoNhomThem > 0 ? $"\nSẽ thêm {thu.SoNhomThem} nhóm hàng mới." : string.Empty;
+        var daCo = thu.SoHangDaCo > 0 ? $"\n{thu.SoHangDaCo} mặt hàng cửa hàng đã có sẽ được giữ nguyên." : string.Empty;
+
+        if (!HopThoai.Hoi(
+                this,
+                $"Thêm {thu.SoHangThem} mặt hàng điện nước dựng sẵn vào danh mục?{themNhom}{daCo}\n\n"
+                + "Giá kèm theo chỉ là giá tham khảo, cửa hàng sửa lại theo giá thật của mình.\n"
+                + "(Ctrl+Z để bỏ nếu không thích.)"))
+        {
+            return;
+        }
+
+        DanhMucMau.KetQua ketQua = new(0, 0, 0);
+        _kho.ThucHien(
+            "Điền danh mục vật tư mẫu",
+            () => ketQua = DanhMucMau.BoSung(_kho.DuLieu),
+            phatSuKien: false);
+
+        Nap();
+        _lblTrangThai.Text = ketQua.CoThemGi
+            ? $"Đã thêm {ketQua.SoHangThem} mặt hàng"
+              + (ketQua.SoNhomThem > 0 ? $" và {ketQua.SoNhomThem} nhóm" : string.Empty)
+              + ". Bấm Ctrl+Z để bỏ."
+            : "Không thêm gì: danh mục đã có đủ hàng mẫu.";
     }
 
     private void MoQuanLyNhom()

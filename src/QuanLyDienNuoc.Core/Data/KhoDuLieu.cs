@@ -110,7 +110,7 @@ public sealed class KhoDuLieu
         if (!File.Exists(DuongDanFile))
         {
             DuLieu = new DuLieuApp();
-            TaoDanhMucMau();
+            DanhMucMau.BoSung(DuLieu);
             Luu();
             return;
         }
@@ -228,6 +228,13 @@ public sealed class KhoDuLieu
 
     /// <summary>Chụp lại trạng thái hiện tại để có thể quay về sau này.</summary>
     public string ChupNhanh() => JsonSerializer.Serialize(DuLieu, TuyChonJson);
+
+    /// <summary>
+    /// Bản sao rời của dữ liệu hiện tại — để thử trước một thay đổi (xem nó thêm bao nhiêu hàng)
+    /// mà không đụng gì vào sổ thật.
+    /// </summary>
+    public DuLieuApp ChupNhanhDuLieu() =>
+        JsonSerializer.Deserialize<DuLieuApp>(ChupNhanh(), TuyChonJson) ?? new DuLieuApp();
 
     /// <summary>Chạy một thay đổi và ghi vào lịch sử hoàn tác.</summary>
     public void ThucHien(string moTa, Action thayDoi, bool phatSuKien = true)
@@ -375,41 +382,6 @@ public sealed class KhoDuLieu
     {
         var soDaCo = DuLieu.HoaDons.Count(h => h.KhachHangId == khachId && h.Nam == nam && h.Loai == loai);
         return $"{(loai == LoaiHoaDon.HoanHang ? "HH" : "HD")}{nam}-{soDaCo + 1:00}";
-    }
-
-    private void TaoDanhMucMau()
-    {
-        Guid Nhom(string ten)
-        {
-            var nhom = new NhomHang { Ten = ten };
-            DuLieu.NhomHangs.Add(nhom);
-            return nhom.Id;
-        }
-
-        var ongNuoc = Nhom("Ống nước");
-        var thietBiNuoc = Nhom("Thiết bị nước");
-        var dien = Nhom("Điện");
-        var den = Nhom("Đèn");
-
-        void Them(string ten, string donVi, decimal gia, Guid nhomId) =>
-            DuLieu.VatTus.Add(new VatTu { Ten = ten, DonVi = donVi, DonGiaMacDinh = gia, NhomId = nhomId });
-
-        Them("Ống nhựa PVC D21", "Cây", 32000, ongNuoc);
-        Them("Ống nhựa PVC D27", "Cây", 45000, ongNuoc);
-        Them("Ống nhựa PVC D34", "Cây", 62000, ongNuoc);
-        Them("Co nối PVC D21", "Cái", 4000, ongNuoc);
-        Them("Tê PVC D21", "Cái", 5000, ongNuoc);
-        Them("Keo dán ống 100g", "Lọ", 25000, ongNuoc);
-        Them("Van khoá nước D21", "Cái", 55000, ongNuoc);
-        Them("Vòi rửa inox", "Cái", 250000, thietBiNuoc);
-        Them("Dây điện Cadivi 2x1.5", "Mét", 12000, dien);
-        Them("Dây điện Cadivi 2x2.5", "Mét", 18000, dien);
-        Them("Ống ruột gà D20", "Mét", 6000, dien);
-        Them("Ổ cắm đôi 3 chấu", "Cái", 65000, dien);
-        Them("Công tắc đơn", "Cái", 32000, dien);
-        Them("Aptomat 1 pha 20A", "Cái", 95000, dien);
-        Them("Bóng đèn LED bulb 9W", "Bóng", 45000, den);
-        Them("Máng đèn LED 1m2", "Bộ", 130000, den);
     }
 
     private sealed record BuocLichSu(string AnhChup, string MoTa);
